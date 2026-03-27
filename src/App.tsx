@@ -3,8 +3,9 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { Layout } from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import StudentsList from './pages/StudentsList';
+import StudentHub from './pages/StudentHub';
 import ConvergenceEditor from './pages/ConvergenceEditor';
-import StudentPanel from './pages/StudentPanel';
 import PEIBuilder from './pages/PEIBuilder';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
@@ -37,11 +38,14 @@ export default function App() {
           
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/students" element={<Dashboard />} />
-            <Route path="/students/:id" element={<StudentPanel />} />
-            <Route path="/instruments" element={<PEIBuilder />} />
-            <Route path="/convergence" element={<ConvergenceEditor />} />
-            <Route path="/repository" element={<PEIBuilder />} />
+            <Route path="/students" element={<StudentsList />} />
+            
+            {/* Student Contextual Routes */}
+            <Route path="/students/:studentId" element={<StudentHub />} />
+            <Route path="/students/:studentId/case-study" element={<StudentHub />} />
+            <Route path="/students/:studentId/mapping" element={<ConvergenceEditor />} />
+            <Route path="/students/:studentId/builder" element={<PEIBuilder />} />
+            <Route path="/students/:studentId/evaluation" element={<StudentHub />} />
             
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Route>

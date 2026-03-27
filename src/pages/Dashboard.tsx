@@ -1,53 +1,49 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp, CheckCircle, Clock } from 'lucide-react';
+import { TrendingUp, CheckCircle, Clock, ArrowRight, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { TopBar } from '../components/Navigation';
-
-const students = [
-  {
-    id: 1,
-    name: 'Lucas Oliveira',
-    grade: '4º Ano',
-    specialty: 'Educação Especial',
-    status: 'Ativo',
-    progress: 85,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAwBDm0so1Fi5aUI7jFKz4Y7kHre0YKcy0rNd93VT30EMCKx32mslJpzyHlOlhdSWBR-htXOD2uFXZ8zYDXNLYfui8NTOtgeI1kWyDNEufaLutaHtcwUUSKnTjgXpq0ARzV3oenSWLB5--FpksfgNcXlh_P5T-ukohvMMSGJ79_7dlHPNVX2wPmB2qaeLJ8W8Xd1Gv2YWn6CAu-5hh7N5_c5qvcghVTn0scAhEp0dIGk3DGs7B1oMGDDo4NLk5nN_H6UFk2CiJKr8zb'
-  },
-  {
-    id: 2,
-    name: 'Beatriz Santos',
-    grade: '2º Ano',
-    specialty: 'Suporte de Alfabetização',
-    status: 'Pendente',
-    progress: 42,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCGfev_dq6QNsq8G_hNEShfwp_8aHSiAb3Gp3bKDNiGv_0sBz65qoTB9WxhgOykdUMAlrlplUq6P9dCko2J8VlzdHarD2YKDhre6bbRRoFePXDhOu16CSBZCvjMcPvxXpqwnRIrJ_IVDvDuqCMJgtq1Ew3o3a9QTeFKJR6b9YrA4lMA2-oNdpDeyetwO5O_Z9Su_Ro0rviVF5Qu68O9oj9I4TVxbDXiyaLoYBFkLW2cq4icct1pS8M3uoFbyYnRQloea9Sn3bahWeeQ'
-  },
-  {
-    id: 3,
-    name: 'Gabriel Lima',
-    grade: '6º Ano',
-    specialty: 'Plano Comportamental',
-    status: 'Ativo',
-    progress: 95,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD4kbXa_ktpOKaBb0sRvkAcumXmsuwBJ2WWzbd-cAFtPJO5TF9Bb4tnW_KoCd1j-TE1ZuE685QL_3zzI1vZWs806hLGSgvnF7cw7kGAUWGtXk0IdgHYC8GRPQdifpXCAhs41ZhLCkRKo3WWZMjQWAApD8HwwKbnWlinetP_C6p1cGuFeMQyHgGgxCWqrSZzgg95fLGQ42f0AnHfAM87ZRIKwzIOT5qAgkzvCyGOOjxONM6nTBEHBewIUdH7Md_AIueXd0W-dDK9JNqS'
-  },
-  {
-    id: 4,
-    name: 'Mariana Costa',
-    grade: 'Educação Infantil',
-    specialty: 'Desenvolvimento Precoce',
-    status: 'Crítico',
-    progress: 15,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC0lHZ5nrG4rTztmXx1MaiWUFHvuuBLDNZ61pr_ayQuj-Rhebw2VAj8_idkUVbflt9t639LGOt68Pl93P6hBNTJS9jgPXBYqmr0ty0SYRTUBj0xvyserJNxRV5ZLwJPr3MjbGbaC4Ifv4rv0uNLwUMrNQQeQ_u0T7ZFEW4Hwa1f-wDDq5hbLdJ3l_xB-8Jnjfv_ULzdg_vaJBRjDksVb9Yny8eeE-HDevN1HfNJz3c9tAAkjZdVAvtbiEohHLsG3Q9I7M-08BowxDh_'
-  }
-];
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    completedPEIs: 0,
+    pendingEvaluations: 0,
+    loading: true
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!user) return;
+      
+      try {
+        const { count, error } = await supabase
+          .from('students')
+          .select('*', { count: 'exact', head: true })
+          .eq('teacher_id', user.id);
+
+        if (error) throw error;
+
+        setStats(prev => ({
+          ...prev,
+          totalStudents: count || 0,
+          loading: false
+        }));
+      } catch (err) {
+        console.error('Erro ao buscar estatísticas:', err);
+        setStats(prev => ({ ...prev, loading: false }));
+      }
+    };
+
+    fetchStats();
+  }, [user]);
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen pb-20 md:pb-0">
       <TopBar title="Singul-AH" />
       <div className="max-w-7xl mx-auto px-6 pt-8 pb-12 w-full">
         <motion.section 
@@ -55,97 +51,95 @@ export default function Dashboard() {
           animate={{ opacity: 1, x: 0 }}
           className="mb-10"
         >
-          <h2 className="text-3xl font-bold tracking-tight text-on-surface">Visão Geral do Painel</h2>
-          <p className="text-slate-500 mt-1">Monitorando o progresso da educação individualizada</p>
+          <div className="flex items-center gap-3 mb-2">
+             <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                <TrendingUp size={22} />
+             </div>
+             <h2 className="text-3xl font-black tracking-tight text-on-surface">Visão Geral</h2>
+          </div>
+          <p className="text-on-surface-variant text-sm font-medium opacity-60">Monitoramento centralizado de indicadores e progresso educacional.</p>
         </motion.section>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           <KPICard 
-            title="Total de Alunos" 
-            value="128" 
-            trend="+12 este mês" 
+            title="Alunos em Acompanhamento" 
+            value={stats.loading ? '...' : stats.totalStudents.toString()} 
+            trend={stats.totalStudents > 0 ? "+1 este mês" : "Comece agora"} 
             icon={<TrendingUp size={16} />} 
             color="primary"
           />
           <KPICard 
-            title="PEIs Concluídos" 
-            value="94" 
-            trend="73.4% conformidade" 
+            title="PEIs Documentados" 
+            value="0" 
+            trend="0% concluídos" 
             icon={<CheckCircle size={16} />} 
             color="tertiary"
           />
           <KPICard 
-            title="PEIs Pendentes" 
-            value="34" 
-            trend="Requer atenção" 
+            title="Avaliações Pendentes" 
+            value="0" 
+            trend="Próximo ciclo" 
             icon={<Clock size={16} />} 
             color="error"
           />
         </div>
 
-        <div className="flex justify-between items-end mb-6">
-          <h3 className="text-2xl font-bold tracking-tight">Alunos Ativos</h3>
-          <button className="text-primary font-bold text-sm hover:underline">Ver todos os registros</button>
-        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-8">
+            <section>
+               <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-xl font-black text-on-surface tracking-tight">Atividades Recentes</h3>
+                  <button onClick={() => navigate('/students')} className="text-primary font-bold text-xs hover:underline flex items-center gap-1">Ver todos os alunos <ArrowRight size={14} /></button>
+               </div>
+               <div className="bg-white rounded-[32px] p-6 atmospheric-shadow border border-outline-variant/5">
+                  <div className="space-y-6">
+                     {stats.totalStudents > 0 ? (
+                       <div className="text-center py-6 opacity-40 italic text-sm font-medium">
+                          Funcionalidade de atividades em breve...
+                       </div>
+                     ) : (
+                       <div className="text-center py-10">
+                          <p className="text-on-surface-variant text-sm font-medium opacity-40 mb-4">Nenhuma atividade registrada.</p>
+                          <button 
+                            onClick={() => navigate('/students')}
+                            className="bg-primary/10 text-primary px-6 py-2 rounded-xl text-xs font-bold hover:bg-primary hover:text-white transition-all"
+                          >
+                            Cadastre seu primeiro aluno
+                          </button>
+                       </div>
+                     )}
+                  </div>
+               </div>
+            </section>
+          </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {students.map((student, index) => (
-            <motion.div
-              key={student.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="bg-surface-container-lowest rounded-lg p-6 atmospheric-shadow flex gap-6 items-center"
-            >
-              <div className="w-24 h-24 rounded-xl overflow-hidden flex-shrink-0">
-                <img 
-                  src={student.image} 
-                  alt={student.name} 
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-              <div className="flex-grow">
-                <div className="flex justify-between items-start mb-1">
-                  <div>
-                    <h4 className="text-lg font-bold text-on-surface">{student.name}</h4>
-                    <span className="text-sm text-slate-500">{student.grade} • {student.specialty}</span>
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                    student.status === 'Ativo' ? 'bg-secondary-container/30 text-on-secondary-container' :
-                    student.status === 'Pendente' ? 'bg-tertiary-container/20 text-tertiary' :
-                    'bg-error-container/30 text-error'
-                  }`}>
-                    {student.status}
-                  </span>
+          <div className="space-y-8">
+             <section>
+                <h3 className="text-xl font-black text-on-surface tracking-tight mb-6">Distribuição por Status</h3>
+                <div className="bg-white rounded-[32px] p-8 atmospheric-shadow border border-outline-variant/5">
+                   <div className="flex flex-col items-center">
+                      <div className="w-32 h-32 rounded-full border-[12px] border-surface-container-high relative flex items-center justify-center mb-6">
+                         <div className="absolute inset-[-12px] rounded-full border-[12px] border-primary" style={{ clipPath: 'polygon(50% 50%, 50% 0%, 100% 0%, 100% 0%, 0% 0%, 0% 0%)' }} />
+                         <span className="text-2xl font-black text-on-surface tracking-tighter">0%</span>
+                      </div>
+                      <div className="w-full space-y-3">
+                         <div className="flex justify-between items-center text-xs font-bold text-on-surface-variant">
+                            <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-primary" /> Concluído</span>
+                            <span>0</span>
+                         </div>
+                         <div className="flex justify-between items-center text-xs font-bold text-on-surface-variant">
+                            <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-tertiary-container" /> Em Processo</span>
+                            <span>0</span>
+                         </div>
+                         <div className="flex justify-between items-center text-xs font-bold text-on-surface-variant">
+                            <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-error" /> Crítico</span>
+                            <span>0</span>
+                         </div>
+                      </div>
+                   </div>
                 </div>
-                <div className="mt-4">
-                  <div className="flex justify-between text-[11px] font-bold text-slate-400 uppercase mb-1.5">
-                    <span>Status de Progresso</span>
-                    <span>{student.progress}%</span>
-                  </div>
-                  <div className="w-full h-2 bg-surface-container-high rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full ${
-                        student.progress > 80 ? 'bg-primary' :
-                        student.progress > 40 ? 'bg-tertiary-container' :
-                        'bg-error'
-                      }`} 
-                      style={{ width: `${student.progress}%` }}
-                    ></div>
-                  </div>
-                </div>
-              </div>
-              <div className="flex-shrink-0 ml-2">
-                <button 
-                  onClick={() => navigate(`/students/${student.id}`)}
-                  className="bg-primary text-white px-5 py-2.5 rounded-full font-bold text-sm hover:opacity-90 transition-opacity atmospheric-shadow"
-                >
-                  Preencher/Ver
-                </button>
-              </div>
-            </motion.div>
-          ))}
+             </section>
+          </div>
         </div>
       </div>
     </div>
