@@ -78,27 +78,27 @@ export default function FamilyCollection() {
       title: 'Bloco I - PERFIL DO ESTUDANTE',
       icon: Star,
       questions: [
-        { id: 'q1', label: 'Q1: O que o(a) estudante gosta de fazer ou apresenta facilidade para realizar? (ex.: matemática, ciências, artes, música, tecnologia, linguagem, jogos, esportes)' },
-        { id: 'q2', label: 'Q2: Como é a interação do seu filho com outras pessoas? Relate exemplo(s).' },
-        { id: 'q3', label: 'Q3: Como seu filho reage a desafios e frustrações? Relate exemplo(s).' },
+        { id: 'q1', label: '01. O que o(a) estudante gosta de fazer ou apresenta facilidade para realizar? (ex.: matemática, ciências, artes, música, tecnologia, linguagem, jogos, esportes)' },
+        { id: 'q2', label: '02. Como é a interação do seu filho com outras pessoas? Relate exemplo(s).' },
+        { id: 'q3', label: '03. Como seu filho reage a desafios e frustrações? Relate exemplo(s).' },
       ]
     },
     {
       title: 'Bloco II - CONTEXTO FAMILIAR E APOIO EXTERNO',
       icon: Heart,
       questions: [
-        { id: 'q4', label: 'Q4: O estudante participa de atividades extracurriculares fora da escola? Se sim, quais?' },
-        { id: 'q5', label: 'Q5: A família já comunicou à escola a existência de desafios pedagógicos, emocionais ou comportamentais relacionados ao estudante? Se sim, quais?' },
+        { id: 'q4', label: '04. O estudante participa de atividades extracurriculares fora da escola? Se sim, quais?' },
+        { id: 'q5', label: '05. A família já comunicou à escola a existência de desafios pedagógicos, emocionais ou comportamentais relacionados ao estudante? Se sim, quais?' },
       ]
     },
     {
       title: 'Bloco III - DESAFIOS E NECESSIDADES EDUCACIONAIS',
       icon: GraduationCap,
       questions: [
-        { id: 'q6', label: 'Q6: O aluno demonstra sinais de desmotivação na escola? Quais comportamentos, atitudes ou situações evidenciam essa desmotivação?' },
-        { id: 'q7', label: 'Q7: Na sua opinião, quais são atualmente as maiores necessidades pedagógicas do seu filho na escola?' },
-        { id: 'q8', label: 'Q8: Que expectativas você tem em relação ao desenvolvimento escolar do(a) seu(sua) filho(a)?' },
-        { id: 'q9', label: 'Q9: Gostaria de sugerir algo que considere importante para que possamos planejar um atendimento mais adequado ao seu(sua) filho(a)?' },
+        { id: 'q6', label: '06. O aluno demonstra sinais de desmotivação na escola? Quais comportamentos, atitudes ou situações evidenciam essa desmotivação?' },
+        { id: 'q7', label: '07. Na sua opinião, quais são atualmente, as maiores necessidades pedagógicas do seu filho na escola?' },
+        { id: 'q8', label: '08. Que expectativas você tem em relação ao desenvolvimento escolar do(a) seu(sua) filho(a)?' },
+        { id: 'q9', label: '09. Gostaria de sugerir algo que considere importante para que possamos planejar um atendimento mais adequado ao seu(sua) filho(a)?' },
       ]
     }
   ];
