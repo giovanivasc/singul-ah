@@ -7,6 +7,7 @@ import StudentsList from './pages/StudentsList';
 import StudentHub from './pages/StudentHub';
 import ConvergenceEditor from './pages/ConvergenceEditor';
 import PEIBuilder from './pages/PEIBuilder';
+import FamilyCollection from './pages/FamilyCollection';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
@@ -36,6 +37,9 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           
+          {/* External Public Routes */}
+          <Route path="/coleta/if-sahs/:token" element={<FamilyCollection />} />
+
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/students" element={<StudentsList />} />
