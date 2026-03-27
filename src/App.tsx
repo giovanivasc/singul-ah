@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import StudentsList from './pages/StudentsList';
 import StudentHub from './pages/StudentHub';
+import CaseStudy from './pages/CaseStudy';
 import ConvergenceEditor from './pages/ConvergenceEditor';
 import PEIBuilder from './pages/PEIBuilder';
 import FamilyCollection from './pages/FamilyCollection';
@@ -46,7 +47,7 @@ export default function App() {
             
             {/* Student Contextual Routes */}
             <Route path="/students/:studentId" element={<StudentHub />} />
-            <Route path="/students/:studentId/case-study" element={<StudentHub />} />
+            <Route path="/students/:studentId/case-study" element={<CaseStudy />} />
             <Route path="/students/:studentId/mapping" element={<ConvergenceEditor />} />
             <Route path="/students/:studentId/builder" element={<PEIBuilder />} />
             <Route path="/students/:studentId/evaluation" element={<StudentHub />} />
