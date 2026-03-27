@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { TopBar } from '../components/Navigation';
 import { supabase } from '../lib/supabase';
 import { Student } from '../types/database';
+import { MultimodalInput } from '../components/MultimodalInput';
 import { cn } from '../lib/utils';
 
 export default function CaseStudy() {
@@ -122,6 +123,93 @@ export default function CaseStudy() {
         </div>
 
         <AnimatePresence mode="wait">
+          {activeTab === 'IF-SAHS' && (
+            <motion.div 
+              key="if-sahs"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-12"
+            >
+              <div className="bg-white rounded-[40px] p-10 shadow-[0px_4px_40px_rgba(0,0,0,0.03)] border-l-[12px] border-primary">
+                 <div className="flex items-center gap-4 mb-8">
+                    <div className="w-12 h-12 rounded-2xl bg-primary/5 text-primary flex items-center justify-center">
+                       <ClipboardList size={24} />
+                    </div>
+                    <div>
+                       <h3 className="text-2xl font-black text-on-surface tracking-tight">Inventário Familiar (IF-SAHS)</h3>
+                       <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Preenchimento assistido pelo Professor</p>
+                    </div>
+                 </div>
+
+                 <div className="space-y-16">
+                    {/* Bloco I */}
+                    <div className="space-y-8">
+                       <h4 className="text-xs font-black text-primary uppercase tracking-[0.2em] border-b border-slate-100 pb-2">Bloco I - PERFIL DO ESTUDANTE</h4>
+                       {[
+                         { id: 'q1', label: 'Q1: O que o(a) estudante gosta de fazer ou apresenta facilidade para realizar?' },
+                         { id: 'q2', label: 'Q2: Como é a interação do estudante com outras pessoas? Relate exemplo(s).' },
+                         { id: 'q3', label: 'Q3: Como o estudante reage a desafios e frustrações? Relate exemplo(s).' }
+                       ].map(q => (
+                         <div key={q.id} className="space-y-4">
+                            <p className="text-lg font-black text-on-surface tracking-tight leading-tight">{q.label}</p>
+                            <MultimodalInput 
+                               value={""} 
+                               onChange={() => {}} 
+                               placeholder="Clique no microfone para transcrever..."
+                            />
+                         </div>
+                       ))}
+                    </div>
+
+                    {/* Bloco II */}
+                    <div className="space-y-8">
+                       <h4 className="text-xs font-black text-primary uppercase tracking-[0.2em] border-b border-slate-100 pb-2">Bloco II - CONTEXTO FAMILIAR</h4>
+                       {[
+                         { id: 'q4', label: 'Q4: O estudante participa de atividades extracurriculares fora da escola?' },
+                         { id: 'q5', label: 'Q5: A família já comunicou à escola a existência de desafios?' }
+                       ].map(q => (
+                         <div key={q.id} className="space-y-4">
+                            <p className="text-lg font-black text-on-surface tracking-tight leading-tight">{q.label}</p>
+                            <MultimodalInput 
+                               value={""} 
+                               onChange={() => {}} 
+                               placeholder="Clique no microfone para transcrever..."
+                            />
+                         </div>
+                       ))}
+                    </div>
+
+                    {/* Bloco III */}
+                    <div className="space-y-8">
+                       <h4 className="text-xs font-black text-primary uppercase tracking-[0.2em] border-b border-slate-100 pb-2">Bloco III - NECESSIDADES EDUCACIONAIS</h4>
+                       {[
+                         { id: 'q6', label: 'Q6: O aluno demonstra sinais de desmotivação na escola?' },
+                         { id: 'q7', label: 'Q7: Quais são atualmente as maiores necessidades pedagógicas?' },
+                         { id: 'q8', label: 'Q8: Que expectativas você tem em relação ao desenvolvimento?' },
+                         { id: 'q9', label: 'Q9: Alguma sugestão ou observação vital adicional?' }
+                       ].map(q => (
+                         <div key={q.id} className="space-y-4">
+                            <p className="text-lg font-black text-on-surface tracking-tight leading-tight">{q.label}</p>
+                            <MultimodalInput 
+                               value={""} 
+                               onChange={() => {}} 
+                               placeholder="Clique no microfone para transcrever..."
+                            />
+                         </div>
+                       ))}
+                    </div>
+
+                    <div className="pt-8 flex justify-end">
+                       <button className="bg-primary text-white px-12 py-5 rounded-3xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all">
+                          Salvar Instrumento
+                       </button>
+                    </div>
+                 </div>
+              </div>
+            </motion.div>
+          )}
+
           {activeTab === 'N-ILS' && (
             <motion.div 
               key="nils"
