@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-background: #E0EAF3;
+  --color-surface: #f5faff;
+  --color-on-surface: #131d23;
+  --color-on-surface-variant: #424754;
+  
+  --color-primary: #0057c1;
+  --color-primary-container: #136fed;
+  --color-on-primary: #ffffff;
+  
+  --color-secondary: #455e91;
+  --color-secondary-container: #abc3fe;
+  --color-on-secondary-container: #375082;
+  
+  --color-tertiary: #964400;
+  --color-tertiary-container: #bc5700;
+  
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #ebf5fe;
+  --color-surface-container: #e5eff8;
+  --color-surface-container-high: #dfe9f2;
+  --color-surface-container-highest: #dae4ed;
+  
+  --color-outline: #727786;
+  --color-outline-variant: #c2c6d7;
+  
+  --radius-xl: 32px;
+  --radius-lg: 24px;
+  --radius-card: 30px;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-on-surface font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  .atmospheric-shadow {
+    box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.05);
+  }
+  
+  .glass-panel {
+    @apply bg-white/80 backdrop-blur-xl border border-white/15;
+  }
+  
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
