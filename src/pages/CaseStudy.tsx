@@ -217,7 +217,7 @@ export default function CaseStudy() {
                                     if(confirm('Tem certeza que deseja arquivar o teste atual? Isso permitirá uma nova coleta.')) {
                                       try {
                                         await supabase
-                                          .from('nils_results')
+                                          .from('n_ils_responses')
                                           .update({ status: 'archived', updated_at: new Date().toISOString() })
                                           .eq('student_id', studentId)
                                           .neq('status', 'archived');

@@ -86,7 +86,7 @@ export default function StudentNILS() {
       if (studentData) setStudent(studentData);
 
       const { data: resultDataList } = await supabase
-        .from('nils_results')
+        .from('n_ils_responses')
         .select('*')
         .eq('student_id', studentId)
         .order('updated_at', { ascending: false });
@@ -196,7 +196,7 @@ export default function StudentNILS() {
     };
 
     const { error } = await supabase
-      .from('nils_results')
+      .from('n_ils_responses')
       .insert({ student_id: studentId, ...processedToSave });
 
     if (error) {
@@ -213,7 +213,7 @@ export default function StudentNILS() {
     if (!activeResult) return;
     if (confirm('Deseja realmente arquivar este teste? A tela será liberada para um novo teste.')) {
       await supabase
-        .from('nils_results')
+        .from('n_ils_responses')
         .update({ status: 'archived', updated_at: new Date().toISOString() })
         .eq('id', activeResult.id);
       
@@ -229,7 +229,7 @@ export default function StudentNILS() {
   const handleReset = async () => {
     if (!activeResult) return;
     if (confirm('Deseja realmente excluir este teste? Essa ação não pode ser desfeita.')) {
-      await supabase.from('nils_results').delete().eq('id', activeResult.id);
+      await supabase.from('n_ils_responses').delete().eq('id', activeResult.id);
       setHasResult(false);
       setResultsData([]);
       setCurrentStep(0);
