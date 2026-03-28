@@ -218,7 +218,14 @@ export default function CaseStudy() {
                     ) : (
                       <div className="w-full space-y-4 pt-4">
                          <button 
-                           onClick={() => { setActiveInstrumentId(inst.id); setView('filling'); }}
+                           onClick={() => { 
+                             if (inst.id === 'IP-SAHS') {
+                               navigate(`/students/${studentId}/ip-sahs`);
+                             } else {
+                               setActiveInstrumentId(inst.id); 
+                               setView('filling'); 
+                             }
+                           }}
                            className="w-full py-4 bg-white border-2 border-dashed border-slate-200 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-3"
                          >
                             <Plus size={16} /> Preencher agora
