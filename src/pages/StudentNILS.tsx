@@ -17,45 +17,45 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Student } from '../types/database';
 import { cn } from '../lib/utils';
 
-// Dados do Instrumento (Roteiro N-ILS)
-// Nota: O usuário mencionou um "original script", aqui usei a adaptação padrão N-ILS.
-const nilsQuestions = [
-  {
-    id: 1,
-    dimension: 'ati-ref',
-    label: 'Sou uma pessoa que...',
-    options: [
-      { id: 'a', label: 'Tenta as coisas na prática', image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=400&h=300&fit=crop' },
-      { id: 'b', label: 'Pensa antes de agir', image: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?q=80&w=400&h=300&fit=crop' }
-    ]
-  },
-  {
-    id: 2,
-    dimension: 'sen-int',
-    label: 'Prefiro aprender...',
-    options: [
-      { id: 'a', label: 'Fatos e dados concretos', image: 'https://images.unsplash.com/photo-1543286386-713bcd534a70?q=80&w=400&h=300&fit=crop' },
-      { id: 'b', label: 'Teorias e conceitos novos', image: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=400&h=300&fit=crop' }
-    ]
-  },
-  {
-    id: 3,
-    dimension: 'vis-ver',
-    label: 'Lembro melhor de...',
-    options: [
-      { id: 'a', label: 'Figuras e diagramas', image: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=400&h=300&fit=crop' },
-      { id: 'b', label: 'Textos e explicações faladas', image: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=400&h=300&fit=crop' }
-    ]
-  },
-  {
-    id: 4,
-    dimension: 'seq-glo',
-    label: 'Geralmente entendo as coisas...',
-    options: [
-      { id: 'a', label: 'Passo a passo, em ordem', image: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?q=80&w=400&h=300&fit=crop' },
-      { id: 'b', label: 'Tudo de uma vez, no final', image: 'https://images.unsplash.com/photo-1493612276216-ee3925520721?q=80&w=400&h=300&fit=crop' }
-    ]
-  }
+const dimensions = {
+  'ATI/REF': { dim1: 'ATI', dim2: 'REF', label1: 'Ativo', label2: 'Reflexivo' },
+  'SEN/INT': { dim1: 'SEN', dim2: 'INT', label1: 'Sensorial', label2: 'Intuitivo' },
+  'VIS/VER': { dim1: 'VIS', dim2: 'VER', label1: 'Visual', label2: 'Verbal' },
+  'SEQ/GLO': { dim1: 'SEQ', dim2: 'GLO', label1: 'Sequencial', label2: 'Global' }
+} as const;
+
+const explanations_full = {
+  'ATI': 'Você prefere aprender fazendo, se envolver em atividades, discussões em grupo e experimentos. Você gosta de se mover e interagir para entender as coisas.',
+  'REF': 'Você prefere aprender observando, pensando sobre o assunto antes de agir. Gosta de trabalhar sozinho e de ter tempo para refletir.',
+  'SEN': 'Você prefere aprender sobre fatos e coisas concretas. Gosta de exemplos, de ver como as coisas funcionam na prática e de usar seus sentidos para aprender.',
+  'INT': 'Você prefere aprender sobre ideias, teorias e conceitos abstratos. Gosta de inovar, de imaginar e de resolver problemas complexos.',
+  'VIS': 'Você prefere aprender através de imagens, diagramas, gráficos e desenhos. O que você vê é o que você mais lembra.',
+  'VER': 'Você prefere aprender através de palavras, tanto escritas quanto faladas. O que você lê ou ouve é o que você mais lembra.',
+  'SEQ': 'Você prefere aprender passo a passo, de forma organizada e lógica. Você constrói o conhecimento aos poucos, de forma linear.',
+  'GLO': 'Você prefere aprender de forma holística, vendo o "quadro geral" primeiro e depois se aprofundando nos detalhes. Você faz conexões entre diferentes assuntos.'
+};
+
+const questions = [
+  { text: 'Quando estou aprendendo algo novo, eu prefiro:', scale: 'ATI/REF', value: { a: 'ATI', b: 'REF' }, options: [ { image: 'https://drive.google.com/thumbnail?id=157iPnw51K-an6D5R04lN8Rp2UbFCHuza', description: 'Conversar sobre isso com outras pessoas.' }, { image: 'https://drive.google.com/thumbnail?id=1WJb-bKM4QxWFfYvbDSJomunDR9DZloak', description: 'Pensar sozinho sobre o assunto antes de falar com alguém.' } ] },
+  { text: 'Se eu fosse professor, eu preferiria ensinar sobre:', scale: 'SEN/INT', value: { a: 'SEN', b: 'INT' }, options: [ { image: 'https://drive.google.com/thumbnail?id=17QO0TgXoIgEste5mcPCdHsDGtEe43JDy', description: 'Coisas do mundo real, como animais ou a natureza.' }, { image: 'https://drive.google.com/thumbnail?id=16XjuwFTxuyYc1dUjrCPJOl3CKDgoA5dF', description: 'Ideias e pensamentos, como imaginar coisas novas.' } ] },
+  { text: 'Eu aprendo melhor quando vejo:', scale: 'VIS/VER', value: { a: 'VIS', b: 'VER' }, options: [ { image: 'https://drive.google.com/thumbnail?id=1tdtnO2LKla61TdRIveh1zqMbUx7HH13M', description: 'Desenhos, fotos, gráficos e mapas.' }, { image: 'https://drive.google.com/thumbnail?id=1NbV1pWxWGsG_vjO4_bvK-UQyRpIF5cHY', description: 'Palavras escritas ou quando alguém me explica falando.' } ] },
+  { text: 'Quando resolvo uma questão de Matemática, eu:', scale: 'SEQ/GLO', value: { a: 'SEQ', b: 'GLO' }, options: [ { image: 'https://drive.google.com/thumbnail?id=12PuQmgJtP__0BeSotQEmmMgomZ0GgaBu', description: 'Faço cada passo até chegar à resposta.' }, { image: 'https://drive.google.com/thumbnail?id=1muCVnnfo02qwKhQGGKwuI1Uw5Wn65KN-', description: 'Já sei a resposta, mas às vezes me atrapalho com os passos.' } ] },
+  { text: 'Quando estou estudando com amigos, eu:', scale: 'ATI/REF', value: { a: 'ATI', b: 'REF' }, options: [ { image: 'https://drive.google.com/thumbnail?id=1dJ-U99V9xVjsXmV3-IqR0WjB9N6vdXaU', description: 'Gosto de dar ideias e falar sobre o assunto.' }, { image: 'https://drive.google.com/thumbnail?id=13YwqTtAiqR_gAy3_hUaNSKgy490ArtRT', description: 'Prefiro ouvir e pensar antes de falar.' } ] },
+  { text: 'Eu acho mais fácil aprender:', scale: 'SEN/INT', value: { a: 'SEN', b: 'INT' }, options: [ { image: 'https://drive.google.com/thumbnail?id=1otZZFuR1uStTqY8_nD6-qgKuMhzJi39m', description: 'Fazendo experiências e testando.' }, { image: 'https://drive.google.com/thumbnail?id=1HL8TZA9Xy7P8En6HebluBAhdt2zwZv4q', description: 'Ouvindo explicações e entendendo a ideia.' } ] },
+  { text: 'Quando leio um livro, eu:', scale: 'VIS/VER', value: { a: 'VIS', b: 'VER' }, options: [ { image: 'https://drive.google.com/thumbnail?id=1qHB5Wd9Ov80MxdE-M_k0LOBV5VW1lj7f', description: 'Olho primeiro as figuras e desenhos.' }, { image: 'https://drive.google.com/thumbnail?id=1bggaJKBTaM5CjEiH5ob_pwZCWZt1NqNj', description: 'Leio primeiro o texto.' } ] },
+  { text: 'Prefiro quando meu professor:', scale: 'SEQ/GLO', value: { a: 'SEQ', b: 'GLO' }, options: [ { image: 'https://drive.google.com/thumbnail?id=1wvbeBVdByhcotDnMUICkwKf4mwEjVae-', description: 'Explica tudo passo a passo.' }, { image: 'https://drive.google.com/thumbnail?id=1Q2IOIxEu_ew2q6I6dJziKaECVJO458NT', description: 'Mostra o assunto todo e faz conexões com outras coisas.' } ] },
+  { text: 'Meus amigos dizem que eu sou mais:', scale: 'ATI/REF', value: { a: 'ATI', b: 'REF' }, options: [ { image: 'https://drive.google.com/thumbnail?id=1baNLs5cE3wVd3FOJC5_uvreLN6cPIvO9', description: 'Animado e gosto de conversar com todo mundo.' }, { image: 'https://drive.google.com/thumbnail?id=1Il_foB5ZiU9uPrMDXZAFwl1pNCDe8sTA', description: 'Calmo, gosto de ficar mais na minha.' } ] },
+  { text: 'Gosto mais de livros que:', scale: 'SEN/INT', value: { a: 'SEN', b: 'INT' }, options: [ { image: 'https://drive.google.com/thumbnail?id=1Ezwq-3ew1U3M_EQdcaBYGJtUhKAJxkuh', description: 'Me ensinam como fazer algo na prática.' }, { image: 'https://drive.google.com/thumbnail?id=1nWoHQ9nnBAgFT9D-8M4tgm8zEjjNiipr', description: 'Contem histórias ou ideias diferentes.' } ] },
+  { text: 'Eu lembro melhor:', scale: 'VIS/VER', value: { a: 'VIS', b: 'VER' }, options: [ { image: 'https://drive.google.com/thumbnail?id=1L8en6ok52o6G9JVs5Ky4sTix9S-RliN7', description: 'Das coisas que vejo (como cores e formas).' }, { image: 'https://drive.google.com/thumbnail?id=1JgT81WIoc2_Ow0wmeK6ennGn9tBXSc5F', description: 'Das coisas que ouço (como músicas ou histórias).' } ] },
+  { text: 'Quando estou aprendendo algo novo, eu:', scale: 'SEQ/GLO', value: { a: 'SEQ', b: 'GLO' }, options: [ { image: 'https://drive.google.com/thumbnail?id=11d1J6f2bcmC3Uv4Npc9iXadP3N3xOj5Q', description: 'Aprendo aos poucos, um passo de cada vez.' }, { image: 'https://drive.google.com/thumbnail?id=18K_cSrERPWyUXrxbvy6o7AOCYZzKpp1T', description: 'Fico confuso no começo, mas depois tenho uma grande ideia de repente!' } ] },
+  { text: 'Eu gosto mais de estudar:', scale: 'ATI/REF', value: { a: 'ATI', b: 'REF' }, options: [ { image: 'https://drive.google.com/thumbnail?id=1i_axGZil0blcPtTS251Hc-tAizbtHCCO', description: 'Com amigos ou em grupo.' }, { image: 'https://drive.google.com/thumbnail?id=1B6xVyXaaxPzlEVUiLESIvjLuiTui43U0', description: 'Sozinho, no meu cantinho.' } ] },
+  { text: 'Gosto mais de coisas que são:', scale: 'SEN/INT', value: { a: 'SEN', b: 'INT' }, options: [ { image: 'https://drive.google.com/thumbnail?id=1ks8mhHIjPEXpKp43uxNabPieFS89rX5R', description: 'Reais (como plantas, brinquedos ou experimentos).' }, { image: 'https://drive.google.com/thumbnail?id=1yR3qSkD5VjJaLBVKjuw-Bj3RlSk_rTYO', description: 'Inventadas (como super-heróis, jogos de imaginação).' } ] },
+  { text: 'Quando o professor mostra um desenho no quadro:', scale: 'VIS/VER', value: { a: 'VIS', b: 'VER' }, options: [ { image: 'https://drive.google.com/thumbnail?id=1bPmu6ZtQs1S2a81QrDA1F9eqEIdbN2HW', description: 'Lembro mais da imagem.' }, { image: 'https://drive.google.com/thumbnail?id=10pHQpSOioTK6ouoghpB5LwJGou8UqoiF', description: 'Lembro mais do que ele explicou sobre ela.' } ] },
+  { text: 'Quando aprendo algo novo, eu:', scale: 'SEQ/GLO', value: { a: 'SEQ', b: 'GLO' }, options: [ { image: 'https://drive.google.com/thumbnail?id=1sp6GJcZ1CladJ9WFJf73zhrPMAJPoXlq', description: 'Gosto de focar só nisso até aprender bem.' }, { image: 'https://drive.google.com/thumbnail?id=1EL5Mijz3Tfs0OWYqj2denmbhED_UhBka', description: 'Gosto de pensar como isso se liga a outras coisas que já sei.' } ] },
+  { text: 'Meus amigos dizem que eu sou mais:', scale: 'ATI/REF', value: { a: 'ATI', b: 'REF' }, options: [ { image: 'https://drive.google.com/thumbnail?id=1Hcuoz7MC3RFhgVW109y0hTfk1tr6hNJw', description: 'Animado e gosto de conversar com todo mundo.' }, { image: 'https://drive.google.com/thumbnail?id=1zWIhMVPulOkJ4QuKDjwE9IBqqAYNVHT1', description: 'Calmo, gosto de ficar mais na minha.' } ] },
+  { text: 'Gosto mais de aulas sobre:', scale: 'SEN/INT', value: { a: 'SEN', b: 'INT' }, options: [ { image: 'https://drive.google.com/thumbnail?id=12So9gs90pwd72dywZuhBT7_6OFswc462', description: 'Coisas que posso tocar ou ver (como animais, jogos).' }, { image: 'https://drive.google.com/thumbnail?id=11DaMc97rXVRH7WOWoY-4bL88FcdyF0pe', description: 'Coisas que imagino (como contos, estórias, invenções).' } ] },
+  { text: 'Se alguém me explica algo, prefiro:', scale: 'VIS/VER', value: { a: 'VIS', b: 'VER' }, options: [ { image: 'https://drive.google.com/thumbnail?id=1sjCBElK6b1mBQ7tASkHnnSJ9pSDKcP2t', description: 'Gráficos, desenhos ou cores.' }, { image: 'https://drive.google.com/thumbnail?id=1_SNUfcf43T1JgoKrB3976cUZfdlcbvQx', description: 'Um resumo escrito ou falado.' } ] },
+  { text: 'Quando estou resolvendo um problema, eu:', scale: 'SEQ/GLO', value: { a: 'SEQ', b: 'GLO' }, options: [ { image: 'https://drive.google.com/thumbnail?id=1Pbfs9857ZS-DIc_JEJWE6-y3WdsgULIu', description: 'Penso nos passos para chegar à resposta.' }, { image: 'https://drive.google.com/thumbnail?id=1IE0SMTadgWnnfPGdf8bGXdkRUdLla2pU', description: 'Já penso no resultado e depois volto para os detalhes.' } ] }
 ];
 
 export default function StudentNILS() {
@@ -66,17 +66,17 @@ export default function StudentNILS() {
   const [hasResult, setHasResult] = useState(false);
   const [resultsData, setResultsData] = useState<any[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [answers, setAnswers] = useState<Record<number, 'a' | 'b'>>({});
   const [isGeneratingIA, setIsGeneratingIA] = useState(false);
   const [activeResult, setActiveResult] = useState<any>(null);
   const [archivedTests, setArchivedTests] = useState<any[]>([]);
   const [showArchived, setShowArchived] = useState(false);
+  const [profileCards, setProfileCards] = useState<any[]>([]);
 
   useEffect(() => {
     async function fetchData() {
       if (!studentId) return;
       
-      // Busca estudante
       const { data: studentData } = await supabase
         .from('students')
         .select('*')
@@ -85,7 +85,6 @@ export default function StudentNILS() {
       
       if (studentData) setStudent(studentData);
 
-      // Verifica se já existe resultado N-ILS
       const { data: resultDataList } = await supabase
         .from('nils_results')
         .select('*')
@@ -93,14 +92,13 @@ export default function StudentNILS() {
         .order('updated_at', { ascending: false });
 
       if (resultDataList && resultDataList.length > 0) {
-        // Encontra o resultado ativo
         const active = resultDataList.find(r => r.status !== 'archived');
         const archived = resultDataList.filter(r => r.status === 'archived');
         
         if (active) {
           setHasResult(true);
           setActiveResult(active);
-          processResults(active);
+          processResultsFromDB(active);
         }
         setArchivedTests(archived);
       }
@@ -109,44 +107,104 @@ export default function StudentNILS() {
     fetchData();
   }, [studentId]);
 
-  const processResults = (data: any) => {
-    // Transforma dados tabulados para o formato recharts
-    const chartData = [
-      { subject: 'Ativo', A: data.ati_val },
-      { subject: 'Reflexivo', A: data.ref_val },
-      { subject: 'Sensorial', A: data.sen_val },
-      { subject: 'Intuitivo', A: data.int_val },
-      { subject: 'Visual', A: data.vis_val },
-      { subject: 'Verbal', A: data.ver_val },
-      { subject: 'Sequencial', A: data.seq_val },
-      { subject: 'Global', A: data.glo_val },
-    ];
+  const processResultsFromDB = (data: any) => {
+    // Nós podemos tentar recalcular a diferença a partir dos saves se existirem os campos ati_val etc.
+    // Mas vamos usar os values que salvamos ou os brutos disponíveis:
+    const chartData = [];
+    const profiles = [];
+    
+    Object.entries(dimensions).forEach(([scaleKey, scaleInfo]) => {
+      const dbPrefix = scaleKey.split('/')[0].toLowerCase();
+      const dbSuffix = scaleKey.split('/')[1].toLowerCase();
+      const score1 = data[`${dbPrefix}_val`] || 0;
+      const score2 = data[`${dbSuffix}_val`] || 0;
+      
+      const difference = Math.abs(score1 - score2);
+      let winner = 'Ambos';
+      let winnerLabel = 'Ambos';
+      let intensity = 0;
+      let text = 'Não há preferência. Você tem um estilo de aprendizagem equilibrado.';
+      let explanation = 'Seu estilo é perfeitamente equilibrado entre essas duas extremidades.';
+
+      if (score1 > score2) {
+        winner = scaleInfo.dim1;
+        winnerLabel = scaleInfo.label1;
+      } else if (score2 > score1) {
+        winner = scaleInfo.dim2;
+        winnerLabel = scaleInfo.label2;
+      }
+
+      if (winner !== 'Ambos') {
+        explanation = explanations_full[winner as keyof typeof explanations_full];
+        if (difference === 1) {
+          text = `Leve preferência por: ${winnerLabel}.`;
+          intensity = 1;
+        } else if (difference <= 3) {
+          text = `Preferência moderada por: ${winnerLabel}. ${explanation}`;
+          intensity = 3;
+        } else {
+          text = `Forte preferência por: ${winnerLabel}. ${explanation}`;
+          intensity = 5;
+        }
+      }
+
+      // Gráfico apenas "puxa" para o vencedor
+      chartData.push({ subject: scaleInfo.label1, A: winner === scaleInfo.dim1 ? intensity : 0 });
+      chartData.push({ subject: scaleInfo.label2, A: winner === scaleInfo.dim2 ? intensity : 0 });
+
+      profiles.push({
+        title: `${scaleInfo.label1} vs ${scaleInfo.label2}`,
+        value: winnerLabel === 'Ambos' ? 'Equilibrado' : `${winnerLabel} (${difference === 1 ? 'Leve' : difference <= 3 ? 'Moderada' : 'Forte'})`,
+        desc: explanation
+      });
+    });
+
     setResultsData(chartData);
+    setProfileCards(profiles);
   };
 
   const handleFinish = async () => {
-    // Lógica de tabulação (Simulada conforme N-ILS)
-    const processed = {
-      ati_val: Object.values(answers).filter(v => v === 'a').length * 2,
-      ref_val: Object.values(answers).filter(v => v === 'b').length * 2,
-      sen_val: 3, int_val: 7, vis_val: 10, ver_val: 2, seq_val: 8, glo_val: 4
+    const scores = {
+      'ATI/REF': { ATI: 0, REF: 0 },
+      'SEN/INT': { SEN: 0, INT: 0 },
+      'VIS/VER': { VIS: 0, VER: 0 },
+      'SEQ/GLO': { SEQ: 0, GLO: 0 }
+    };
+
+    questions.forEach((q, index) => {
+      const ans = answers[index];
+      if (ans) {
+        const selectedDim = q.value[ans];
+        const scaleObj = scores[q.scale as keyof typeof scores] as Record<string, number>;
+        if (scaleObj[selectedDim] !== undefined) {
+          scaleObj[selectedDim]++;
+        }
+      }
+    });
+
+    const processedToSave = {
+      ati_val: scores['ATI/REF'].ATI,
+      ref_val: scores['ATI/REF'].REF,
+      sen_val: scores['SEN/INT'].SEN,
+      int_val: scores['SEN/INT'].INT,
+      vis_val: scores['VIS/VER'].VIS,
+      ver_val: scores['VIS/VER'].VER,
+      seq_val: scores['SEQ/GLO'].SEQ,
+      glo_val: scores['SEQ/GLO'].GLO,
+      status: 'active',
+      updated_at: new Date().toISOString()
     };
 
     const { data: newResult, error } = await supabase
       .from('nils_results')
-      .insert({ 
-        student_id: studentId, 
-        ...processed,
-        status: 'active',
-        updated_at: new Date().toISOString()
-      })
+      .insert({ student_id: studentId, ...processedToSave })
       .select()
       .single();
 
     if (!error && newResult) {
        setHasResult(true);
        setActiveResult(newResult);
-       processResults(processed);
+       processResultsFromDB(processedToSave);
     }
   };
 
@@ -163,7 +221,6 @@ export default function StudentNILS() {
       setCurrentStep(0);
       setAnswers({});
       setActiveResult(null);
-      // Reload is optimal to refresh the active tests completely
       window.location.reload();
     }
   };
@@ -208,71 +265,78 @@ export default function StudentNILS() {
                  </div>
                  <div className="bg-primary/10 px-6 py-3 rounded-2xl flex flex-col items-center">
                     <span className="text-[10px] font-black text-primary uppercase tracking-widest">Progresso</span>
-                    <span className="text-2xl font-black text-primary">{Math.round(((currentStep + 1) / nilsQuestions.length) * 100)}%</span>
+                    <span className="text-2xl font-black text-primary">{Math.round(((currentStep + 1) / questions.length) * 100)}%</span>
                  </div>
               </div>
 
               {/* Game Card */}
-              <section className="max-w-4xl mx-auto bg-white rounded-[48px] p-12 atmospheric-shadow border border-slate-100 flex flex-col items-center min-h-[500px]">
+              <section className="max-w-5xl mx-auto bg-white rounded-[48px] p-8 md:p-12 atmospheric-shadow border border-slate-100 min-h-[500px] w-full relative">
                  <motion.div 
                    key={currentStep}
                    initial={{ opacity: 0, x: 20 }}
                    animate={{ opacity: 1, x: 0 }}
-                   className="w-full space-y-12 flex flex-col items-center"
+                   className="w-full h-full flex flex-col items-center justify-between gap-10"
                  >
-                    <h2 className="text-4xl font-black text-on-surface text-center leading-tight tracking-tight max-w-2xl">
-                       {nilsQuestions[currentStep].label}
-                    </h2>
+                    <div className="text-center space-y-2">
+                       <h2 className="text-3xl md:text-4xl font-black text-on-surface leading-tight tracking-tight max-w-2xl mx-auto">
+                          {questions[currentStep].text}
+                       </h2>
+                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full px-6">
-                       {nilsQuestions[currentStep].options.map((opt) => (
+                    <div className="flex flex-col sm:flex-row items-stretch justify-center gap-6 sm:gap-8 w-full max-w-4xl">
+                       {(['a', 'b'] as const).map((optKey, idx) => (
                          <button 
-                           key={opt.id}
-                           onClick={() => setAnswers({ ...answers, [currentStep]: opt.id })}
+                           key={optKey}
+                           onClick={() => setAnswers({ ...answers, [currentStep]: optKey })}
                            className={cn(
-                             "group relative p-4 rounded-[40px] border-4 transition-all active:scale-95 text-left h-full",
-                             answers[currentStep] === opt.id 
+                             "group flex-1 relative p-4 rounded-[40px] border-4 transition-all active:scale-95 text-left h-auto min-h-[300px] flex flex-col",
+                             answers[currentStep] === optKey 
                                ? "border-primary bg-primary/5 shadow-2xl shadow-primary/20 scale-105" 
-                               : "border-transparent bg-slate-50 hover:bg-white hover:border-slate-100 hover:scale-105"
+                               : "border-transparent bg-slate-50 hover:bg-white hover:border-slate-100 hover:scale-[1.02]"
                            )}
                          >
-                            <img 
-                              src={opt.image} 
-                              alt={opt.label} 
-                              className="w-full aspect-[4/3] object-cover rounded-[32px] mb-6 shadow-md transition-all group-hover:rotate-1" 
-                            />
-                            <div className="px-4 flex items-center justify-between">
-                               <p className="text-xl font-bold text-on-surface leading-tight font-serif">{opt.label}</p>
+                            <div className="w-full bg-slate-200 rounded-[32px] overflow-hidden aspect-video relative mb-6">
+                              <img 
+                                src={questions[currentStep].options[idx].image} 
+                                alt="Opção" 
+                                className="w-full h-full object-contain bg-black/5" 
+                                onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src='https://placehold.co/400x400/cccccc/ffffff?text=Imagem+Indisponível' }}
+                              />
+                            </div>
+                            <div className="px-2 flex items-center justify-between gap-4 mt-auto">
+                               <p className="text-xl font-bold text-on-surface leading-tight font-serif flex-1">{questions[currentStep].options[idx].description}</p>
                                <div className={cn(
-                                 "w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all",
-                                 answers[currentStep] === opt.id ? "bg-primary border-primary text-white" : "border-slate-200 text-transparent"
+                                 "w-10 h-10 shrink-0 rounded-full border-2 flex items-center justify-center transition-all",
+                                 answers[currentStep] === optKey ? "bg-primary border-primary text-white" : "border-slate-300 text-transparent"
                                )}>
-                                  <Send size={14} />
+                                  <Send size={18} />
                                </div>
                             </div>
                          </button>
                        ))}
                     </div>
 
-                    <div className="flex gap-4 pt-8 w-full max-w-md">
+                    <div className="flex gap-4 w-full max-w-md mt-4">
                        <button 
                          disabled={currentStep === 0}
                          onClick={() => setCurrentStep(prev => prev - 1)}
-                         className="flex-1 py-5 rounded-[24px] bg-slate-100 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all disabled:opacity-30 flex items-center justify-center gap-2"
+                         className="flex-1 py-5 rounded-[24px] bg-slate-100 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all disabled:opacity-30 disabled:hover:bg-slate-100 disabled:hover:text-slate-400 flex items-center justify-center gap-2"
                        >
                           <ChevronLeft size={16} /> Anterior
                        </button>
-                       {currentStep < nilsQuestions.length - 1 ? (
+                       {currentStep < questions.length - 1 ? (
                          <button 
+                           disabled={!answers[currentStep]}
                            onClick={() => setCurrentStep(prev => prev + 1)}
-                           className="flex-3 py-5 px-12 rounded-[24px] bg-primary text-white font-black text-[10px] uppercase tracking-widest shadow-xl shadow-primary/30 hover:scale-105 transition-all flex items-center justify-center gap-2"
+                           className="flex-[2] py-5 px-12 rounded-[24px] bg-primary text-white font-black text-[10px] uppercase tracking-widest shadow-xl shadow-primary/30 hover:scale-105 transition-all disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2"
                          >
                             Próximo <ChevronRight size={16} />
                          </button>
                        ) : (
                          <button 
+                           disabled={!answers[currentStep]}
                            onClick={handleFinish}
-                           className="flex-3 py-5 px-12 rounded-[24px] bg-green-500 text-white font-black text-[10px] uppercase tracking-widest shadow-xl shadow-green-500/30 hover:scale-105 transition-all flex items-center justify-center gap-2"
+                           className="flex-[2] py-5 px-12 rounded-[24px] bg-green-500 text-white font-black text-[10px] uppercase tracking-widest shadow-xl shadow-green-500/30 hover:scale-105 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                          >
                             Finalizar Jogo <Zap size={16} />
                          </button>
@@ -337,30 +401,15 @@ export default function StudentNILS() {
                  {/* Information Column */}
                  <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                       <ProfileSubCard 
-                         title="Ativo vs Reflexivo" 
-                         value="Ativo (Forte)" 
-                         desc="Prefere discutir a matéria e trabalhar em grupo. Aprende melhor colocando a mão na massa."
-                         icon={Target}
-                       />
-                       <ProfileSubCard 
-                         title="Visual vs Verbal" 
-                         value="Visual (Moderado)" 
-                         desc="Lembranças baseadas em imagens, fluxogramas e vídeos são mais permanentes."
-                         icon={LayoutGrid}
-                       />
-                       <ProfileSubCard 
-                         title="Sensorial vs Intuitivo" 
-                         value="Intuitivo (Equilibrado)" 
-                         desc="Gosta de descobrir conexões entre novos conteúdos e temas já conhecidos."
-                         icon={Sparkles}
-                       />
-                       <ProfileSubCard 
-                         title="Sequencial vs Global" 
-                         value="Sequencial (Leve)" 
-                         desc="Entende melhor a matéria através de passos lógicos e encadeamento ordenado."
-                         icon={Activity}
-                       />
+                       {profileCards.map((p, i) => (
+                         <ProfileSubCard 
+                           key={i}
+                           title={p.title}
+                           value={p.value}
+                           desc={p.desc}
+                           icon={Target}
+                         />
+                       ))}
                     </div>
                     
                     {/* Estudo IA Section */}
@@ -397,19 +446,15 @@ export default function StudentNILS() {
                                <h3 className="text-xl font-black text-on-surface">Sugestão do Singul-AH AI</h3>
                             </div>
                             <div className="space-y-6 text-on-surface-variant font-medium leading-relaxed">
-                               <p>Com base no seu estilo predominante **Ativo-Visual**, aqui estão 3 dicas para você:</p>
+                               <p>Com base no seu perfil, aqui estão dicas adaptadas:</p>
                                <ul className="space-y-4">
                                   <li className="flex gap-4">
                                      <div className="w-6 h-6 rounded-full bg-primary/5 flex items-center justify-center text-primary font-black text-[10px] shrink-0 mt-1">1</div>
-                                     <span>**Mapas Mentais Coloridos**: Use canetas de cores diferentes para ligar os assuntos. Isso ajuda seu lado visual a "fotografar" a matéria.</span>
+                                     <span>Use materiais que se alinhem à sua dimensão vencedora (ex: recursos visuais se Visual).</span>
                                   </li>
                                   <li className="flex gap-4">
                                      <div className="w-6 h-6 rounded-full bg-primary/5 flex items-center justify-center text-primary font-black text-[10px] shrink-0 mt-1">2</div>
-                                     <span>**Explique para Alguém**: Como você é ativo, falar sobre o que aprendeu ajuda o cérebro a fixar o conhecimento muito mais rápido.</span>
-                                  </li>
-                                  <li className="flex gap-4">
-                                     <div className="w-6 h-6 rounded-full bg-primary/5 flex items-center justify-center text-primary font-black text-[10px] shrink-0 mt-1">3</div>
-                                     <span>**Simule Experimentos**: Procure vídeos de simulações ou tente reproduzir o conteúdo com objetos em casa.</span>
+                                     <span>Mantenha anotações coerentes com a sua forma de aprender.</span>
                                   </li>
                                </ul>
                             </div>
@@ -455,8 +500,12 @@ export default function StudentNILS() {
                                     <div className="grid grid-cols-2 gap-2 mt-4 text-xs font-bold text-slate-500">
                                        <span className="bg-white px-3 py-2 rounded-xl">Ativo: {test.ati_val}</span>
                                        <span className="bg-white px-3 py-2 rounded-xl">Reflexivo: {test.ref_val}</span>
+                                       <span className="bg-white px-3 py-2 rounded-xl">Sensorial: {test.sen_val}</span>
+                                       <span className="bg-white px-3 py-2 rounded-xl">Intuitivo: {test.int_val}</span>
                                        <span className="bg-white px-3 py-2 rounded-xl">Visual: {test.vis_val}</span>
                                        <span className="bg-white px-3 py-2 rounded-xl">Verbal: {test.ver_val}</span>
+                                       <span className="bg-white px-3 py-2 rounded-xl">Sequencial: {test.seq_val}</span>
+                                       <span className="bg-white px-3 py-2 rounded-xl">Global: {test.glo_val}</span>
                                     </div>
                                   </div>
                                </div>
