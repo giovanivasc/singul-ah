@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  ClipboardList, User as UserIcon, GraduationCap, 
+  ClipboardList, User, GraduationCap, 
   Star, Target, AlertCircle, Plus, 
   Trash2, Send, CheckCircle2, ChevronRight, ChevronLeft,
   Sparkles, Brain, Trophy, Heart, Activity
@@ -105,7 +105,7 @@ export default function TeacherCollection() {
                           {[
                             { id: 'professor', label: 'Professor', icon: GraduationCap },
                             { id: 'aee', label: 'Professor do AEE', icon: Brain },
-                            { id: 'pae', label: 'PAE - Mediador', icon: UserIcon }
+                            { id: 'pae', label: 'PAE - Mediador', icon: User }
                           ].map((item) => (
                             <button
                               key={item.id}
