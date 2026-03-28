@@ -36,7 +36,16 @@ export default function TeacherCollection() {
     "Gosta de reinventar tarefas ou desafios propostos",
     "Expressa-se através de humor, sarcasmo, analogias ou metáforas",
     "Cria histórias, desenhos ou jogos únicos",
-    "Mostra paixão por tópicos específicos"
+    "Mostra paixão por tópicos específicos",
+    "Busca ativamente materiais ou atividades além do currículo",
+    "Fica frustrado com tarefas repetitivas ou pouco desafiadoras",
+    "Se entedia facilmente com conteúdos apresentados em sala",
+    "Se distrai facilmente quando não está desafiado",
+    "Sensível a injustiças ou questões éticas (ex.: defende colegas)",
+    "Prefere trabalhar sozinho ou com alunos de mesma habilidade",
+    "Questiona regras ou autoridades quando não vê lógica nelas",
+    "Coopera bem em grupos",
+    "Tem grande atenção aos detalhes"
   ];
 
   const addSuggestion = () => {
@@ -155,20 +164,31 @@ export default function TeacherCollection() {
               </div>
               <p className="text-sm font-medium text-slate-400 mb-10">Avalie a frequência dos comportamentos abaixo (1: Pouco - 5: Muito).</p>
 
-              <div className="space-y-10">
+              <div className="space-y-4">
+                 <div className="hidden md:grid grid-cols-[40px_1fr_auto] gap-6 px-6 py-4 bg-slate-50 rounded-2xl mb-8 border border-slate-100">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Nº</span>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Descrição do Comportamento</span>
+                    <span className="w-[280px] text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Frequência (Pouco → Muito)</span>
+                 </div>
+
                  {scaleItems.map((text, idx) => (
-                   <div key={idx} className="space-y-4">
-                      <p className="font-bold text-on-surface leading-tight">{text}</p>
-                      <div className="flex gap-2">
+                   <div key={idx} className="grid grid-cols-1 md:grid-cols-[40px_1fr_auto] items-center gap-6 p-4 md:p-6 rounded-[32px] border border-transparent hover:border-slate-100 hover:bg-slate-50/50 transition-all group">
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-400 group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
+                         {idx + 1}
+                      </div>
+
+                      <p className="font-bold text-on-surface text-lg leading-snug pr-4">{text}</p>
+
+                      <div className="flex gap-2 bg-white p-2 rounded-2xl border border-slate-100 shadow-sm w-fit md:w-[280px] justify-between">
                          {[1, 2, 3, 4, 5].map((num) => (
                            <button
                              key={num}
                              onClick={() => setScaleValues({ ...scaleValues, [idx]: num })}
                              className={cn(
-                               "w-12 h-12 rounded-xl border-2 flex items-center justify-center font-black transition-all active:scale-90",
+                               "w-10 h-10 rounded-xl font-black text-sm transition-all active:scale-90",
                                scaleValues[idx] === num 
-                                 ? "bg-primary text-white border-primary shadow-lg shadow-primary/20" 
-                                 : "bg-white text-slate-400 border-slate-100 hover:border-primary/30"
+                                 ? "bg-primary text-white shadow-lg shadow-primary/20 scale-110" 
+                                 : "text-slate-300 hover:bg-slate-50 hover:text-primary"
                              )}
                            >
                               {num}
