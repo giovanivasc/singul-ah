@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  ClipboardList, User, GraduationCap, 
+  ClipboardList, User as UserIcon, GraduationCap, 
   Star, Target, AlertCircle, Plus, 
   Trash2, Send, CheckCircle2, ChevronRight, ChevronLeft,
   Sparkles, Brain, Trophy, Heart, Activity
