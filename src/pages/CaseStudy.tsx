@@ -6,7 +6,7 @@ import {
   Clock, User as UserIcon, Plus, 
   Sparkles, ShieldCheck, LayoutGrid,
   FileText, Activity, Users, Info,
-  MessageSquare, History, Wand2
+  MessageSquare, History, Wand2, TrendingUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TopBar } from '../components/Navigation';
@@ -163,21 +163,56 @@ export default function CaseStudy() {
                                <Clock size={12} /> {inst.lastUpdate}
                             </span>
                             <span className="text-xs font-bold text-on-surface-variant truncate w-full">Por: {inst.lastPerson}</span>
-                            <div className="mt-2 text-[10px] font-black text-primary uppercase">{inst.versions} versões disponíveis</div>
+                            <div className="mt-2 text-[10px] font-black text-primary uppercase">
+                               {inst.id === 'IF-SAHS' ? 'Pronto para Evolução' : `${inst.versions} versões disponíveis`}
+                            </div>
                          </div>
-                         <div className="grid grid-cols-2 gap-3">
-                            <button 
-                              onClick={() => { setActiveInstrumentId(inst.id); setView('versions'); }}
-                              className="py-3 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-primary hover:text-primary transition-all"
-                            >
-                               Histórico
-                            </button>
-                            <button 
-                              onClick={() => { setActiveInstrumentId(inst.id); setView('consolidation'); }}
-                              className="py-3 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
-                            >
-                               <Sparkles size={12} /> Consolidar
-                            </button>
+                         <div className="grid grid-cols-3 gap-2">
+                            {inst.id === 'IF-SAHS' ? (
+                              <>
+                                <button 
+                                  onClick={() => { setActiveInstrumentId(inst.id); setView('filling'); }}
+                                  className="py-3 bg-white border border-slate-200 rounded-xl text-[9px] font-black uppercase tracking-tighter hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-1.5"
+                                >
+                                   <History size={11} /> Atualizar
+                                </button>
+                                <button 
+                                  onClick={() => { 
+                                    if(confirm('CUIDADO: Esta ação excluirá PERMANENTEMENTE os dados deste instrumento. Deseja prosseguir?')) {
+                                      // Logic to delete
+                                    }
+                                  }}
+                                  className="py-3 bg-red-50 text-red-600 rounded-xl text-[9px] font-black uppercase tracking-tighter hover:bg-red-600 hover:text-white transition-all border border-red-100"
+                                >
+                                   Excluir
+                                </button>
+                                <button 
+                                  onClick={() => { 
+                                    if(confirm('Tem certeza que deseja arquivar este instrumento? Os pais precisarão preencher um novo do zero.')) {
+                                      // Logic to archive
+                                    }
+                                  }}
+                                  className="py-3 bg-slate-50 text-slate-400 rounded-xl text-[9px] font-black uppercase tracking-tighter hover:bg-slate-900 hover:text-white transition-all border border-slate-200"
+                                >
+                                   Arquivar
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button 
+                                  onClick={() => { setActiveInstrumentId(inst.id); setView('versions'); }}
+                                  className="py-3 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-primary hover:text-primary transition-all"
+                                >
+                                   Histórico
+                                </button>
+                                <button 
+                                  onClick={() => { setActiveInstrumentId(inst.id); setView('consolidation'); }}
+                                  className="py-3 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
+                                >
+                                   <Sparkles size={12} /> Consolidar
+                                </button>
+                              </>
+                            )}
                          </div>
                       </div>
                     ) : (
@@ -327,15 +362,27 @@ export default function CaseStudy() {
                   <div className="space-y-12">
                      {activeInstrumentId === 'IF-SAHS' ? (
                        <div className="space-y-12">
-                          {[
-                            { id: 'q1', label: '01. O que o(a) estudante gosta de fazer ou apresenta facilidade para realizar?' },
-                            { id: 'q2', label: '02. Como é a interação do seu filho com outras pessoas? Relate exemplo(s).' },
-                          ].map(q => (
-                            <div key={q.id} className="space-y-4">
-                               <p className="text-xl font-black text-on-surface leading-tight tracking-tight">{q.label}</p>
-                               <MultimodalInput value="" onChange={() => {}} placeholder="Grave ou digite a resposta..." />
-                            </div>
-                          ))}
+                          <div className="bg-primary/5 p-8 rounded-[32px] border border-primary/10 flex items-start gap-4">
+                             <TrendingUp className="text-primary mt-1" size={24} />
+                             <div className="space-y-1">
+                                <p className="font-black text-on-surface uppercase tracking-tight">Evolução de Caso</p>
+                                <p className="text-sm font-medium text-slate-500">Insira as novas informações ou observações recentes. O sistema consolidará estes dados ao documento mestre.</p>
+                             </div>
+                          </div>
+                          
+                          <div className="space-y-4">
+                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Campo de Atualização</label>
+                             <MultimodalInput 
+                                value="" 
+                                onChange={() => {}} 
+                                placeholder="Descreva aqui as mudanças ou novas informações coletadas..." 
+                             />
+                          </div>
+
+                          <div className="p-8 bg-slate-50 rounded-3xl border border-slate-100 italic text-sm text-slate-400 flex items-center gap-4">
+                             <Sparkles size={18} className="text-primary opacity-40" />
+                             "Ao salvar, a IA atualizará automaticamente os eixos de análise do Estudo de Caso."
+                          </div>
                        </div>
                      ) : (
                        <div className="py-20 text-center bg-slate-50 rounded-3xl border border-dashed border-slate-200">
