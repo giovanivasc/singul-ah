@@ -195,15 +195,16 @@ export default function StudentNILS() {
       updated_at: new Date().toISOString()
     };
 
-    const { data: newResult, error } = await supabase
+    const { error } = await supabase
       .from('nils_results')
-      .insert({ student_id: studentId, ...processedToSave })
-      .select()
-      .single();
+      .insert({ student_id: studentId, ...processedToSave });
 
-    if (!error && newResult) {
+    if (error) {
+       console.error("Erro ao salvar no banco:", error);
+       alert("Ocorreu um erro ao salvar (Verifique se a coluna 'status' foi criada no seu banco de dados Supabase).\n\nErro: " + error.message);
+    } else {
        setHasResult(true);
-       setActiveResult(newResult);
+       setActiveResult({ student_id: studentId, ...processedToSave });
        processResultsFromDB(processedToSave);
     }
   };
