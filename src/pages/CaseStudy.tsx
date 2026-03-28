@@ -171,7 +171,14 @@ export default function CaseStudy() {
                             {inst.id === 'IF-SAHS' ? (
                               <>
                                 <button 
-                                  onClick={() => { setActiveInstrumentId(inst.id); setView('filling'); }}
+                                  onClick={() => { 
+                                    if (inst.id === 'IP-SAHS') {
+                                      navigate(`/students/${studentId}/ip-sahs`);
+                                    } else {
+                                      setActiveInstrumentId(inst.id); 
+                                      setView('filling'); 
+                                    }
+                                  }}
                                   className="py-3 bg-white border border-slate-200 rounded-xl text-[9px] font-black uppercase tracking-tighter hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-1.5"
                                 >
                                    <History size={11} /> Atualizar
@@ -231,7 +238,7 @@ export default function CaseStudy() {
                             <Plus size={16} /> Preencher agora
                          </button>
                          <button className="w-full py-4 bg-slate-50 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary/5 hover:text-primary transition-all flex items-center justify-center gap-3">
-                            <Send size={16} /> Enviar link aos pais
+                            <Send size={16} /> Enviar link
                          </button>
                       </div>
                     )}
