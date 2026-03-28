@@ -228,6 +228,8 @@ export default function CaseStudy() {
                            onClick={() => { 
                              if (inst.id === 'IP-SAHS') {
                                navigate(`/students/${studentId}/ip-sahs`);
+                             } else if (inst.id === 'ENTREVISTA') {
+                               navigate(`/students/${studentId}/interview`);
                              } else {
                                setActiveInstrumentId(inst.id); 
                                setView('filling'); 

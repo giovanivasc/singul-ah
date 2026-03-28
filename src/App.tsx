@@ -10,6 +10,7 @@ import ConvergenceEditor from './pages/ConvergenceEditor';
 import PEIBuilder from './pages/PEIBuilder';
 import FamilyCollection from './pages/FamilyCollection';
 import TeacherCollection from './pages/TeacherCollection';
+import StudentInterview from './pages/StudentInterview';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
@@ -50,6 +51,7 @@ export default function App() {
             <Route path="/students/:studentId" element={<StudentHub />} />
             <Route path="/students/:studentId/case-study" element={<CaseStudy />} />
             <Route path="/students/:studentId/ip-sahs" element={<TeacherCollection />} />
+            <Route path="/students/:studentId/interview" element={<StudentInterview />} />
             <Route path="/students/:studentId/mapping" element={<ConvergenceEditor />} />
             <Route path="/students/:studentId/builder" element={<PEIBuilder />} />
             <Route path="/students/:studentId/evaluation" element={<StudentHub />} />
