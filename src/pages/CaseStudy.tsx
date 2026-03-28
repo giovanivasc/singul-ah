@@ -230,6 +230,8 @@ export default function CaseStudy() {
                                navigate(`/students/${studentId}/ip-sahs`);
                              } else if (inst.id === 'ENTREVISTA') {
                                navigate(`/students/${studentId}/interview`);
+                             } else if (inst.id === 'N-ILS') {
+                               navigate(`/students/${studentId}/n-ils`);
                              } else {
                                setActiveInstrumentId(inst.id); 
                                setView('filling'); 
