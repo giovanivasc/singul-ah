@@ -164,7 +164,7 @@ export default function CaseStudy() {
                             </span>
                             <span className="text-xs font-bold text-on-surface-variant truncate w-full">Por: {inst.lastPerson}</span>
                             <div className="mt-2 text-[10px] font-black text-primary uppercase">
-                               {inst.id === 'IF-SAHS' ? 'Pronto para Evolução' : `${inst.versions} versões disponíveis`}
+                               {inst.id === 'IF-SAHS' ? 'Pronto para Evolução' : inst.id === 'N-ILS' ? '1 Versão Ativa' : `${inst.versions} versões disponíveis`}
                             </div>
                          </div>
                          <div className="grid grid-cols-3 gap-2">
@@ -204,6 +204,34 @@ export default function CaseStudy() {
                                    Arquivar
                                 </button>
                               </>
+                            ) : inst.id === 'N-ILS' ? (
+                              <>
+                                <button 
+                                  onClick={() => navigate(`/students/${studentId}/n-ils`)}
+                                  className="col-span-2 py-3 bg-primary text-white border border-primary rounded-xl text-[10px] font-black uppercase tracking-widest hover:brightness-110 shadow-lg shadow-primary/20 transition-all"
+                                >
+                                   Ver Resultado
+                                </button>
+                                <button 
+                                  onClick={async () => { 
+                                    if(confirm('Tem certeza que deseja arquivar o teste atual? Isso permitirá uma nova coleta.')) {
+                                      try {
+                                        await supabase
+                                          .from('nils_results')
+                                          .update({ status: 'archived', updated_at: new Date().toISOString() })
+                                          .eq('student_id', studentId)
+                                          .neq('status', 'archived');
+                                        window.location.reload();
+                                      } catch (err) {
+                                        console.error(err);
+                                      }
+                                    }
+                                  }}
+                                  className="col-span-1 py-3 bg-white border border-slate-200 text-slate-400 rounded-xl text-[9px] font-black uppercase tracking-widest hover:border-slate-400 hover:text-slate-600 transition-all"
+                                >
+                                   Arquivar
+                                </button>
+                              </>
                             ) : (
                               <>
                                 <button 
@@ -214,7 +242,7 @@ export default function CaseStudy() {
                                 </button>
                                 <button 
                                   onClick={() => { setActiveInstrumentId(inst.id); setView('consolidation'); }}
-                                  className="py-3 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
+                                  className="col-span-2 py-3 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:brightness-110 transition-all"
                                 >
                                    <Sparkles size={12} /> Consolidar
                                 </button>

@@ -3,7 +3,7 @@ import {
   Brain, Rocket, Trash2, Send, 
   ChevronLeft, Sparkles, History,
   LayoutGrid, ChevronRight, Activity,
-  Info, BarChart, Zap, Target
+  Info, BarChart, Zap, Target, Archive
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -68,6 +68,9 @@ export default function StudentNILS() {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [isGeneratingIA, setIsGeneratingIA] = useState(false);
+  const [activeResult, setActiveResult] = useState<any>(null);
+  const [archivedTests, setArchivedTests] = useState<any[]>([]);
+  const [showArchived, setShowArchived] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -83,15 +86,23 @@ export default function StudentNILS() {
       if (studentData) setStudent(studentData);
 
       // Verifica se já existe resultado N-ILS
-      const { data: resultData } = await supabase
+      const { data: resultDataList } = await supabase
         .from('nils_results')
         .select('*')
         .eq('student_id', studentId)
-        .single();
+        .order('updated_at', { ascending: false });
 
-      if (resultData) {
-        setHasResult(true);
-        processResults(resultData);
+      if (resultDataList && resultDataList.length > 0) {
+        // Encontra o resultado ativo
+        const active = resultDataList.find(r => r.status !== 'archived');
+        const archived = resultDataList.filter(r => r.status === 'archived');
+        
+        if (active) {
+          setHasResult(true);
+          setActiveResult(active);
+          processResults(active);
+        }
+        setArchivedTests(archived);
       }
       setLoading(false);
     }
@@ -121,27 +132,51 @@ export default function StudentNILS() {
       sen_val: 3, int_val: 7, vis_val: 10, ver_val: 2, seq_val: 8, glo_val: 4
     };
 
-    const { error } = await supabase
+    const { data: newResult, error } = await supabase
       .from('nils_results')
-      .upsert({ 
+      .insert({ 
         student_id: studentId, 
         ...processed,
+        status: 'active',
         updated_at: new Date().toISOString()
-      });
+      })
+      .select()
+      .single();
 
-    if (!error) {
+    if (!error && newResult) {
        setHasResult(true);
+       setActiveResult(newResult);
        processResults(processed);
     }
   };
 
-  const handleReset = async () => {
-    if (confirm('Deseja realmente excluir este teste e refazê-lo?')) {
-      await supabase.from('nils_results').delete().eq('student_id', studentId);
+  const handleArchive = async () => {
+    if (!activeResult) return;
+    if (confirm('Deseja realmente arquivar este teste? A tela será liberada para um novo teste.')) {
+      await supabase
+        .from('nils_results')
+        .update({ status: 'archived', updated_at: new Date().toISOString() })
+        .eq('id', activeResult.id);
+      
       setHasResult(false);
       setResultsData([]);
       setCurrentStep(0);
       setAnswers({});
+      setActiveResult(null);
+      // Reload is optimal to refresh the active tests completely
+      window.location.reload();
+    }
+  };
+
+  const handleReset = async () => {
+    if (!activeResult) return;
+    if (confirm('Deseja realmente excluir este teste? Essa ação não pode ser desfeita.')) {
+      await supabase.from('nils_results').delete().eq('id', activeResult.id);
+      setHasResult(false);
+      setResultsData([]);
+      setCurrentStep(0);
+      setAnswers({});
+      setActiveResult(null);
     }
   };
 
@@ -254,19 +289,27 @@ export default function StudentNILS() {
               className="space-y-12"
             >
               {/* Results Header */}
-              <div className="flex justify-between items-center mb-12">
+              <div className="flex justify-between items-center mb-12 flex-wrap gap-4">
                  <div className="space-y-2">
                     <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 rounded-full text-primary font-black text-[10px] uppercase tracking-widest">
                        <Brain size={12} /> Resultado Consolidado
                     </div>
                     <h1 className="text-5xl font-black text-on-surface tracking-tight">Seu Estilo de Aprendizagem</h1>
                  </div>
-                 <button 
-                   onClick={handleReset}
-                   className="p-4 bg-red-50 text-red-600 rounded-2xl hover:bg-red-600 hover:text-white transition-all border border-red-100 shadow-sm flex items-center gap-2 text-xs font-black uppercase tracking-widest"
-                 >
-                    <Trash2 size={16} /> Refazer Teste
-                 </button>
+                 <div className="flex items-center gap-3">
+                    <button 
+                      onClick={handleArchive}
+                      className="p-4 bg-slate-50 text-slate-500 rounded-2xl hover:bg-slate-200 hover:text-slate-800 transition-all border border-slate-200 shadow-sm flex items-center gap-2 text-xs font-black uppercase tracking-widest"
+                    >
+                       <Archive size={16} /> Arquivar Teste
+                    </button>
+                    <button 
+                      onClick={handleReset}
+                      className="p-4 bg-red-50 text-red-600 rounded-2xl hover:bg-red-600 hover:text-white transition-all border border-red-100 shadow-sm flex items-center gap-2 text-xs font-black uppercase tracking-widest"
+                    >
+                       <Trash2 size={16} /> Excluir
+                    </button>
+                 </div>
               </div>
 
               {/* Results Grid */}
@@ -375,6 +418,55 @@ export default function StudentNILS() {
                     </AnimatePresence>
                  </div>
               </div>
+
+              {/* Arquivados Accordion */}
+              {archivedTests.length > 0 && (
+                <div className="mt-16">
+                   <button 
+                     onClick={() => setShowArchived(!showArchived)}
+                     className="w-full bg-slate-100/50 hover:bg-slate-100 border border-slate-200 rounded-[32px] p-6 flex items-center justify-between transition-all"
+                   >
+                     <div className="flex items-center gap-4">
+                       <History className="text-slate-400" />
+                       <span className="font-black text-slate-500 uppercase tracking-widest text-sm">Ver Histórico Arquivado ({archivedTests.length})</span>
+                     </div>
+                     <ChevronRight className={cn("text-slate-400 transition-transform", showArchived && "rotate-90")} />
+                   </button>
+                   
+                   <AnimatePresence>
+                     {showArchived && (
+                       <motion.div 
+                         initial={{ opacity: 0, height: 0 }}
+                         animate={{ opacity: 1, height: 'auto' }}
+                         exit={{ opacity: 0, height: 0 }}
+                         className="overflow-hidden"
+                       >
+                         <div className="pt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {archivedTests.map(test => (
+                               <div key={test.id} className="bg-slate-50 border border-slate-200 rounded-3xl p-6 opacity-70 grayscale hover:grayscale-0 hover:opacity-100 transition-all flex flex-col gap-4">
+                                  <div className="flex justify-between items-start">
+                                    <div className="bg-slate-200 text-slate-500 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-2">
+                                       <Archive size={12} /> Arquivado
+                                    </div>
+                                    <span className="text-[10px] font-bold text-slate-400">{new Date(test.updated_at).toLocaleDateString()}</span>
+                                  </div>
+                                  <div>
+                                    <p className="font-black text-on-surface text-lg">Estatísticas Antigas</p>
+                                    <div className="grid grid-cols-2 gap-2 mt-4 text-xs font-bold text-slate-500">
+                                       <span className="bg-white px-3 py-2 rounded-xl">Ativo: {test.ati_val}</span>
+                                       <span className="bg-white px-3 py-2 rounded-xl">Reflexivo: {test.ref_val}</span>
+                                       <span className="bg-white px-3 py-2 rounded-xl">Visual: {test.vis_val}</span>
+                                       <span className="bg-white px-3 py-2 rounded-xl">Verbal: {test.ver_val}</span>
+                                    </div>
+                                  </div>
+                               </div>
+                            ))}
+                         </div>
+                       </motion.div>
+                     )}
+                   </AnimatePresence>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
