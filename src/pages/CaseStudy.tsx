@@ -54,7 +54,7 @@ export default function CaseStudy() {
   const instruments: InstrumentStatus[] = [
     { 
       id: 'IF-SAHS', 
-      name: 'Inventário Familiar', 
+      name: 'Inventário Familiar para Suplementação de Estudantes com AH/SD - IF-SAHS', 
       description: 'Coleta de dados biopsicossociais com a família.', 
       icon: Users,
       versions: 1,
@@ -64,7 +64,7 @@ export default function CaseStudy() {
     },
     { 
       id: 'IP-SAHS', 
-      name: 'Perfil do Estudante', 
+      name: 'Inventário Pedagógico para Suplementação em AH/SD - IP-SAHS', 
       description: 'Observação pedagógica e funcional do professor.', 
       icon: Activity,
       versions: 0,
@@ -72,7 +72,7 @@ export default function CaseStudy() {
     },
     { 
       id: 'ENTREVISTA', 
-      name: 'Entrevista Inicial', 
+      name: 'Entrevista com estudantes com AH/SD', 
       description: 'Escuta especializada das demandas do estudante.', 
       icon: MessageSquare,
       versions: 0,
@@ -80,7 +80,7 @@ export default function CaseStudy() {
     },
     { 
       id: 'N-ILS', 
-      name: 'Inventário N-ILS', 
+      name: 'N-ILS Adaptado para crianças e Adolescentes', 
       description: 'Mapeamento de estilos e habilidades de aprendizagem.', 
       icon: Brain,
       versions: 2,
