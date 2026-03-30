@@ -141,28 +141,29 @@ export default function CaseStudy() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 xl:gap-8"
             >
                {instruments.map((inst) => (
                  <motion.div 
                    key={inst.id}
                    whileHover={{ y: -8 }}
-                   className="bg-white rounded-[40px] p-8 atmospheric-shadow border border-slate-100 flex flex-col items-center text-center relative overflow-hidden group"
+                   className="bg-white rounded-[32px] p-8 atmospheric-shadow border border-slate-100 flex flex-col relative overflow-hidden group"
                  >
-                    {/* Status Badge */}
-                    <div className={cn(
-                      "absolute top-6 right-6 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest",
-                      inst.status === 'completed' ? "bg-green-100 text-green-600" : "bg-slate-100 text-slate-400"
-                    )}>
-                       {inst.status === 'completed' ? 'Concluído' : 'Pendente'}
+                    <div className="flex items-start justify-between mb-6">
+                       <div className="w-16 h-16 rounded-[24px] bg-primary/5 text-primary flex items-center justify-center group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-500 shrink-0">
+                          <inst.icon size={28} strokeWidth={2} />
+                       </div>
+                       
+                       <div className={cn(
+                         "px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest",
+                         inst.status === 'completed' ? "bg-green-100 text-green-600" : "bg-slate-100 text-slate-400"
+                       )}>
+                          {inst.status === 'completed' ? 'Concluído' : 'Pendente'}
+                       </div>
                     </div>
 
-                    <div className="w-20 h-20 rounded-[32px] bg-primary/5 text-primary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
-                       <inst.icon size={36} strokeWidth={1.5} />
-                    </div>
-
-                    <h3 className="text-xl font-black text-on-surface mb-2 leading-tight">{inst.name}</h3>
-                    <p className="text-sm font-medium text-slate-400 mb-8 min-h-[40px]">{inst.description}</p>
+                    <h3 className="text-xl font-black text-on-surface mb-3 leading-tight pr-4">{inst.name}</h3>
+                    <p className="text-sm font-medium text-slate-400 mb-8 flex-1">{inst.description}</p>
 
                     {inst.versions > 0 ? (
                       <div className="w-full space-y-4">
