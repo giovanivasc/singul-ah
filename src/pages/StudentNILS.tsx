@@ -707,7 +707,7 @@ function BipolarRadarChart({ data }: { data: any[] }) {
 
   useEffect(() => {
     let frame = 0;
-    const totalFrames = 60; // 1 second roughly at 60fps
+    const totalFrames = 15; // 0.25 second roughly at 60fps
 
     const animate = () => {
       frame++;
@@ -832,13 +832,26 @@ function BipolarRadarChart({ data }: { data: any[] }) {
               // Se a barra é negativa, o centro é no limite direito da barra
               // Se for positiva, o centro é no limite esquerdo da barra
               const centerX = isNegative ? x + width : x;
+              const barY = props.y + props.height / 2 - 6;
 
               return (
                 <g>
+                   {/* Fundo branco para não sobrepor o pontilhado */}
+                   <text 
+                     x={centerX} 
+                     y={barY - 16} 
+                     textAnchor="middle" 
+                     stroke="white"
+                     strokeWidth={6}
+                     strokeLinejoin="round"
+                     className="text-[10px] font-black uppercase tracking-widest pointer-events-none"
+                   >
+                     {d.dimensao}
+                   </text>
                    {/* Título da Dimensão Absolutamente no Topo, Centralizado no Eixo 0 */}
                    <text 
                      x={centerX} 
-                     y={props.y - 12} 
+                     y={barY - 16} 
                      textAnchor="middle" 
                      className="text-[10px] font-black fill-slate-800 uppercase tracking-widest pointer-events-none"
                    >
