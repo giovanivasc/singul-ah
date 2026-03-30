@@ -7,9 +7,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Radar, RadarChart, PolarGrid, 
-  PolarAngleAxis, PolarRadiusAxis, 
-  ResponsiveContainer, Tooltip 
+  ResponsiveContainer
 } from 'recharts';
 import { TopBar } from '../components/Navigation';
 import { supabase } from '../lib/supabase';
@@ -122,14 +120,34 @@ export default function StudentNILS() {
     };
 
     const chartData = [
-      { subject: 'Ativo (+)', A: dif_ati_ref > 0 ? dif_ati_ref : 0, fullLabel: 'Processamento', polarity: 'Ativo', realValue: dif_ati_ref, intensity: getIntensityText(dif_ati_ref) },
-      { subject: 'Sensorial (+)', A: dif_sen_int > 0 ? dif_sen_int : 0, fullLabel: 'Percepção', polarity: 'Sensorial', realValue: dif_sen_int, intensity: getIntensityText(dif_sen_int) },
-      { subject: 'Visual (+)', A: dif_vis_ver > 0 ? dif_vis_ver : 0, fullLabel: 'Entrada', polarity: 'Visual', realValue: dif_vis_ver, intensity: getIntensityText(dif_vis_ver) },
-      { subject: 'Sequencial (+)', A: dif_seq_glo > 0 ? dif_seq_glo : 0, fullLabel: 'Entendimento', polarity: 'Sequencial', realValue: dif_seq_glo, intensity: getIntensityText(dif_seq_glo) },
-      { subject: 'Reflexivo (-)', A: dif_ati_ref <= 0 ? Math.abs(dif_ati_ref) : 0, fullLabel: 'Processamento', polarity: 'Reflexivo', realValue: dif_ati_ref, intensity: getIntensityText(dif_ati_ref) },
-      { subject: 'Intuitivo (-)', A: dif_sen_int <= 0 ? Math.abs(dif_sen_int) : 0, fullLabel: 'Percepção', polarity: 'Intuitivo', realValue: dif_sen_int, intensity: getIntensityText(dif_sen_int) },
-      { subject: 'Verbal (-)', A: dif_vis_ver <= 0 ? Math.abs(dif_vis_ver) : 0, fullLabel: 'Entrada', polarity: 'Verbal', realValue: dif_vis_ver, intensity: getIntensityText(dif_vis_ver) },
-      { subject: 'Global (-)', A: dif_seq_glo <= 0 ? Math.abs(dif_seq_glo) : 0, fullLabel: 'Entendimento', polarity: 'Global', realValue: dif_seq_glo, intensity: getIntensityText(dif_seq_glo) }
+      {
+        dimensao: 'Processamento',
+        poloPositivo: 'Ativo (+)',
+        poloNegativo: 'Reflexivo (-)',
+        value: dif_ati_ref,
+        intensity: getIntensityText(dif_ati_ref)
+      },
+      {
+        dimensao: 'Percepção',
+        poloPositivo: 'Sensorial (+)',
+        poloNegativo: 'Intuitivo (-)',
+        value: dif_sen_int,
+        intensity: getIntensityText(dif_sen_int)
+      },
+      {
+        dimensao: 'Entrada',
+        poloPositivo: 'Visual (+)',
+        poloNegativo: 'Verbal (-)',
+        value: dif_vis_ver,
+        intensity: getIntensityText(dif_vis_ver)
+      },
+      {
+        dimensao: 'Entendimento',
+        poloPositivo: 'Sequencial (+)',
+        poloNegativo: 'Global (-)',
+        value: dif_seq_glo,
+        intensity: getIntensityText(dif_seq_glo)
+      }
     ];
 
     const profiles = [];
@@ -378,42 +396,10 @@ export default function StudentNILS() {
 
               {/* Results Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                 {/* Radar Chart Card */}
-                 <section className="bg-white rounded-[40px] p-10 atmospheric-shadow border border-slate-100 flex flex-col items-center">
-                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-10">Mapeamento Dimensional</h3>
-                    <div className="w-full h-[400px]">
-                       <ResponsiveContainer width="100%" height="100%">
-                         <RadarChart cx="50%" cy="50%" outerRadius="70%" data={resultsData}>
-                           <PolarGrid stroke="#E2E8F0" />
-                           <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748B', fontSize: 10, fontWeight: 700 }} />
-                           <PolarRadiusAxis angle={90} domain={[0, 5]} tick={false} axisLine={false} />
-                           <Radar
-                             name="Estudante"
-                             dataKey="A"
-                             stroke="#2563EB"
-                             fill="#2563EB"
-                             fillOpacity={0.5}
-                           />
-                           <Tooltip 
-                             content={({ active, payload }) => {
-                               if (active && payload && payload.length) {
-                                  const d = payload[0].payload;
-                                  if (d.A === 0 && d.realValue !== 0) return null; // hide tooltip if hovered on the phantom (loser) axis
-                                  const signVal = d.realValue > 0 ? `+${d.realValue}` : d.realValue;
-                                  return (
-                                     <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-xl max-w-[250px] z-50">
-                                        <p className="font-black text-slate-400 uppercase tracking-widest text-[10px] mb-1">{d.fullLabel}</p>
-                                        <p className="font-bold text-on-surface text-sm mb-1">{d.polarity} {d.realValue === 0 ? '' : `(${signVal})`}</p>
-                                        <p className="font-semibold text-primary text-xs">{d.intensity}</p>
-                                     </div>
-                                  );
-                               }
-                               return null;
-                             }}
-                           />
-                         </RadarChart>
-                       </ResponsiveContainer>
-                    </div>
+                  {/* Radar Chart Card */}
+                 <section className="bg-white rounded-[40px] p-10 atmospheric-shadow border border-slate-100 flex flex-col items-center overflow-x-auto">
+                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-10 w-full text-center">Mapeamento Bipolar Dimensional</h3>
+                    <BipolarRadarChart data={resultsData} />
                  </section>
 
                  {/* Information Column */}
@@ -557,4 +543,133 @@ function ProfileSubCard({ title, value, desc, icon: Icon }: any) {
        </div>
     </div>
   );
+}
+
+function BipolarRadarChart({ data }: { data: any[] }) {
+  const [hoveredPoint, setHoveredPoint] = useState<any>(null);
+  
+  const size = 400;
+  const center = size / 2;
+  const maxRadius = 130; 
+  const scale = maxRadius / 5;
+
+  const angles = [
+    -Math.PI / 2,     // Axis 0: Processamento (Vertical). Pos -> Top
+    -Math.PI / 4,     // Axis 1: Percepção (Diagonal Top-Right). Pos -> Top-Right
+    0,                // Axis 2: Entrada (Horizontal). Pos -> Right
+    Math.PI / 4       // Axis 3: Entendimento (Diagonal Bottom-Right). Pos -> Bottom-Right
+  ];
+
+  const gridLevels = [1, 2, 3, 4, 5];
+
+  const getPoint = (val: number, angleIndex: number) => {
+    const angle = angles[angleIndex];
+    const r = val * scale;
+    return {
+      x: center + r * Math.cos(angle),
+      y: center + r * Math.sin(angle)
+    };
+  };
+
+  const pointsStr = data.map((d, i) => {
+     const p = getPoint(d.value, i);
+     return `${p.x},${p.y}`;
+  }).join(' ');
+
+  return (
+    <div className="relative flex justify-center items-center w-full max-w-[500px]">
+      <svg width="100%" viewBox={`0 0 ${size} ${size}`} className="overflow-visible">
+        {gridLevels.map((level) => (
+          <circle 
+            key={level} 
+            cx={center} 
+            cy={center} 
+            r={level * scale} 
+            fill="none" 
+            stroke={level === 0 ? "#94A3B8" : "#E2E8F0"} 
+            strokeWidth="1" 
+            strokeDasharray={level % 2 === 0 ? "4 4" : "none"}
+          />
+        ))}
+
+        {data.map((d, i) => {
+           const pPos = getPoint(5, i);
+           const pNeg = getPoint(-5, i);
+           const pPosLabel = getPoint(6.5, i);
+           const pNegLabel = getPoint(-6.5, i);
+
+           return (
+             <g key={`axis-${i}`}>
+               <line x1={pNeg.x} y1={pNeg.y} x2={pPos.x} y2={pPos.y} stroke="#CBD5E1" strokeWidth="1.5" />
+               
+               <text x={pPosLabel.x} y={pPosLabel.y} textAnchor="middle" dominantBaseline="middle" className="text-[10px] font-black fill-slate-400 uppercase">
+                 {d.dimensao}
+                 <tspan x={pPosLabel.x} dy="14" className="fill-primary">{d.poloPositivo}</tspan>
+               </text>
+
+               <text x={pNegLabel.x} y={pNegLabel.y} textAnchor="middle" dominantBaseline="middle" className="text-[10px] font-black fill-slate-400 uppercase">
+                 {d.dimensao}
+                 <tspan x={pNegLabel.x} dy="14" className="fill-rose-500">{d.poloNegativo}</tspan>
+               </text>
+             </g>
+           )
+        })}
+
+        <circle cx={center} cy={center} r="4" fill="#64748B" />
+
+        <polygon 
+          points={pointsStr} 
+          fill="#2563EB" 
+          fillOpacity={0.3} 
+          stroke="#2563EB" 
+          strokeWidth="2.5" 
+          strokeLinejoin="round"
+        />
+
+        {data.map((d, i) => {
+           const p = getPoint(d.value, i);
+           return (
+             <circle 
+               key={`point-${i}`}
+               cx={p.x} 
+               cy={p.y} 
+               r="6" 
+               fill="#FFFFFF" 
+               stroke="#2563EB"
+               strokeWidth="3"
+               className="cursor-pointer transition-all hover:stroke-[4px]"
+               onMouseEnter={() => setHoveredPoint({ ...d, x: p.x, y: p.y })}
+               onMouseLeave={() => setHoveredPoint(null)}
+             />
+           )
+        })}
+      </svg>
+
+      <AnimatePresence>
+        {hoveredPoint && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 10 }}
+            className="absolute z-50 bg-white p-5 rounded-3xl shadow-2xl border border-slate-100 pointer-events-none min-w-[220px]"
+            style={{ 
+              left: `${(hoveredPoint.x / size) * 100}%`, 
+              top: `${(hoveredPoint.y / size) * 100}%`,
+              transform: 'translate(-50%, -120%)'
+            }}
+          >
+            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white rotate-45 border-b border-r border-slate-100" />
+            <p className="font-black text-slate-400 uppercase tracking-widest text-[9px] mb-1">{hoveredPoint.dimensao}</p>
+            <p className="font-bold text-on-surface text-sm leading-tight mb-1">
+              {hoveredPoint.value > 0 ? hoveredPoint.poloPositivo : hoveredPoint.value < 0 ? hoveredPoint.poloNegativo : 'Equilíbrio'} 
+              <span className={hoveredPoint.value > 0 ? "text-primary ml-1" : hoveredPoint.value < 0 ? "text-rose-500 ml-1" : "text-slate-500 ml-1"}>
+                ({hoveredPoint.value > 0 ? '+' : ''}{hoveredPoint.value})
+              </span>
+            </p>
+            <p className="font-semibold text-primary/80 text-xs">{hoveredPoint.intensity}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
 }
