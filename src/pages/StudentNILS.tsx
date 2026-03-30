@@ -396,14 +396,14 @@ export default function StudentNILS() {
 
               {/* Results Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                  {/* Radar Chart Card */}
-                 <section className="bg-white rounded-[40px] p-10 atmospheric-shadow border border-slate-100 flex flex-col items-center overflow-x-auto">
-                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-10 w-full text-center">Mapeamento Bipolar Dimensional</h3>
+                  {/* Linear Bipolar Scales */}
+                 <section className="bg-white rounded-[40px] p-10 atmospheric-shadow border border-slate-100 flex flex-col items-center overflow-x-auto lg:col-span-2">
+                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-10 w-full text-center">Escalas Dimensionais Contínuas (Bipolar)</h3>
                     <BipolarRadarChart data={resultsData} />
                  </section>
 
                  {/* Information Column */}
-                 <div className="space-y-6">
+                 <div className="space-y-6 lg:col-span-2">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                        {profileCards.map((p, i) => (
                          <ProfileSubCard 
@@ -546,130 +546,107 @@ function ProfileSubCard({ title, value, desc, icon: Icon }: any) {
 }
 
 function BipolarRadarChart({ data }: { data: any[] }) {
-  const [hoveredPoint, setHoveredPoint] = useState<any>(null);
+  // Configurações do gráfico linear bipolar
+  const width = 600;
+  const height = 350;
+  const margin = { top: 40, bottom: 40, left: 120, right: 120 };
   
-  const size = 400;
-  const center = size / 2;
-  const maxRadius = 130; 
-  const scale = maxRadius / 5;
+  const innerWidth = width - margin.left - margin.right;
+  const zeroX = margin.left + innerWidth / 2;
+  const rowHeight = (height - margin.top - margin.bottom) / data.length;
 
-  const angles = [
-    -Math.PI / 2,     // Axis 0: Processamento (Vertical). Pos -> Top
-    -Math.PI / 4,     // Axis 1: Percepção (Diagonal Top-Right). Pos -> Top-Right
-    0,                // Axis 2: Entrada (Horizontal). Pos -> Right
-    Math.PI / 4       // Axis 3: Entendimento (Diagonal Bottom-Right). Pos -> Bottom-Right
-  ];
-
-  const gridLevels = [1, 2, 3, 4, 5];
-
-  const getPoint = (val: number, angleIndex: number) => {
-    const angle = angles[angleIndex];
-    const r = val * scale;
-    return {
-      x: center + r * Math.cos(angle),
-      y: center + r * Math.sin(angle)
-    };
+  const scaleX = (val: number) => {
+    // val vai de -5 a +5. Math: (val+5)/10 converte para 0 a 1.
+    return margin.left + ((val + 5) / 10) * innerWidth;
   };
 
-  const pointsStr = data.map((d, i) => {
-     const p = getPoint(d.value, i);
-     return `${p.x},${p.y}`;
-  }).join(' ');
-
   return (
-    <div className="relative flex justify-center items-center w-full max-w-[500px]">
-      <svg width="100%" viewBox={`0 0 ${size} ${size}`} className="overflow-visible">
-        {gridLevels.map((level) => (
-          <circle 
-            key={level} 
-            cx={center} 
-            cy={center} 
-            r={level * scale} 
-            fill="none" 
-            stroke={level === 0 ? "#94A3B8" : "#E2E8F0"} 
-            strokeWidth="1" 
-            strokeDasharray={level % 2 === 0 ? "4 4" : "none"}
-          />
+    <div className="relative w-full overflow-x-auto flex justify-center py-4">
+      <svg width="100%" viewBox={`0 0 ${width} ${height}`} className="min-w-[600px] visible">
+        
+        {/* Eixo central (0) */}
+        <line 
+          x1={zeroX} y1={margin.top - 20} 
+          x2={zeroX} y2={height - margin.bottom + 20} 
+          stroke="#94A3B8" strokeWidth="2" strokeDasharray="6 4" 
+        />
+        <text x={zeroX} y={margin.top - 30} textAnchor="middle" className="text-[10px] font-black fill-slate-400">EQUILÍBRIO (0)</text>
+
+        {/* Eixos Guia (Tick marks) */}
+        {[-5, -3, -1, 1, 3, 5].map(tick => (
+          <g key={tick}>
+            <line 
+              x1={scaleX(tick)} y1={margin.top - 10} 
+              x2={scaleX(tick)} y2={height - margin.bottom + 10} 
+              stroke="#E2E8F0" strokeWidth="1" opacity={0.5} 
+            />
+            <text x={scaleX(tick)} y={height - margin.bottom + 25} textAnchor="middle" className="text-[8px] font-bold fill-slate-300">
+              {tick > 0 ? `+${tick}` : tick}
+            </text>
+          </g>
         ))}
 
         {data.map((d, i) => {
-           const pPos = getPoint(5, i);
-           const pNeg = getPoint(-5, i);
-           const pPosLabel = getPoint(6.5, i);
-           const pNegLabel = getPoint(-6.5, i);
+          const y = margin.top + i * rowHeight + rowHeight / 2;
+          const xVal = scaleX(d.value);
+          const isNegative = d.value < 0;
 
-           return (
-             <g key={`axis-${i}`}>
-               <line x1={pNeg.x} y1={pNeg.y} x2={pPos.x} y2={pPos.y} stroke="#CBD5E1" strokeWidth="1.5" />
-               
-               <text x={pPosLabel.x} y={pPosLabel.y} textAnchor="middle" dominantBaseline="middle" className="text-[10px] font-black fill-slate-400 uppercase">
-                 {d.dimensao}
-                 <tspan x={pPosLabel.x} dy="14" className="fill-primary">{d.poloPositivo}</tspan>
-               </text>
+          return (
+            <g key={i}>
+              {/* Linha do Eixo Real da Dimensão */}
+              <line 
+                x1={margin.left} y1={y} 
+                x2={width - margin.right} y2={y} 
+                stroke="#E2E8F0" strokeWidth="4" rx="2" 
+                className="opacity-70"
+              />
 
-               <text x={pNegLabel.x} y={pNegLabel.y} textAnchor="middle" dominantBaseline="middle" className="text-[10px] font-black fill-slate-400 uppercase">
-                 {d.dimensao}
-                 <tspan x={pNegLabel.x} dy="14" className="fill-rose-500">{d.poloNegativo}</tspan>
-               </text>
-             </g>
-           )
-        })}
+              {/* Rótulo Polo Negativo (Esquerda) */}
+              <text x={margin.left - 15} y={y} textAnchor="end" dominantBaseline="middle" className="text-xs font-black fill-slate-600 uppercase">
+                {d.poloNegativo}
+              </text>
 
-        <circle cx={center} cy={center} r="4" fill="#64748B" />
+              {/* Rótulo Polo Positivo (Direita) */}
+              <text x={width - margin.right + 15} y={y} textAnchor="start" dominantBaseline="middle" className="text-xs font-black fill-slate-600 uppercase">
+                {d.poloPositivo}
+              </text>
 
-        <polygon 
-          points={pointsStr} 
-          fill="#2563EB" 
-          fillOpacity={0.3} 
-          stroke="#2563EB" 
-          strokeWidth="2.5" 
-          strokeLinejoin="round"
-        />
+              {/* Título da Dimensão Acima do Eixo */}
+              <text x={zeroX} y={y - 18} textAnchor="middle" className="text-[10px] font-bold fill-slate-400 uppercase tracking-widest">
+                {d.dimensao}
+              </text>
 
-        {data.map((d, i) => {
-           const p = getPoint(d.value, i);
-           return (
-             <circle 
-               key={`point-${i}`}
-               cx={p.x} 
-               cy={p.y} 
-               r="6" 
-               fill="#FFFFFF" 
-               stroke="#2563EB"
-               strokeWidth="3"
-               className="cursor-pointer transition-all hover:stroke-[4px]"
-               onMouseEnter={() => setHoveredPoint({ ...d, x: p.x, y: p.y })}
-               onMouseLeave={() => setHoveredPoint(null)}
-             />
-           )
+              {/* Barra Preenchida de Magnitude (Colorida conforme o lado) */}
+              <line 
+                x1={zeroX} y1={y} 
+                x2={xVal} y2={y} 
+                stroke={isNegative ? "#F43F5E" : "#2563EB"} 
+                strokeWidth="10" 
+                strokeLinecap="round"
+              />
+
+              {/* O Ponto (Vértice do Score) */}
+              <circle 
+                cx={xVal} cy={y} 
+                r="8" 
+                fill="#FFFFFF" 
+                stroke={isNegative ? "#F43F5E" : "#2563EB"} 
+                strokeWidth="4" 
+              />
+              
+              {/* Tooltip Estático no Ponto */}
+              <text 
+                x={xVal} y={y - 15} 
+                textAnchor="middle" 
+                className="text-xs font-black"
+                fill={isNegative ? "#F43F5E" : "#2563EB"}
+              >
+                {d.value > 0 ? `+${d.value}` : d.value === 0 ? '0' : d.value}
+              </text>
+            </g>
+          );
         })}
       </svg>
-
-      <AnimatePresence>
-        {hoveredPoint && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 10 }}
-            className="absolute z-50 bg-white p-5 rounded-3xl shadow-2xl border border-slate-100 pointer-events-none min-w-[220px]"
-            style={{ 
-              left: `${(hoveredPoint.x / size) * 100}%`, 
-              top: `${(hoveredPoint.y / size) * 100}%`,
-              transform: 'translate(-50%, -120%)'
-            }}
-          >
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white rotate-45 border-b border-r border-slate-100" />
-            <p className="font-black text-slate-400 uppercase tracking-widest text-[9px] mb-1">{hoveredPoint.dimensao}</p>
-            <p className="font-bold text-on-surface text-sm leading-tight mb-1">
-              {hoveredPoint.value > 0 ? hoveredPoint.poloPositivo : hoveredPoint.value < 0 ? hoveredPoint.poloNegativo : 'Equilíbrio'} 
-              <span className={hoveredPoint.value > 0 ? "text-primary ml-1" : hoveredPoint.value < 0 ? "text-rose-500 ml-1" : "text-slate-500 ml-1"}>
-                ({hoveredPoint.value > 0 ? '+' : ''}{hoveredPoint.value})
-              </span>
-            </p>
-            <p className="font-semibold text-primary/80 text-xs">{hoveredPoint.intensity}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
-  )
+  );
 }
