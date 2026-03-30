@@ -334,12 +334,18 @@ Com base EXCLUSIVAMENTE nas regras do seu sistema, gere a interpretação e as e
       });
 
       const data = await response.json();
+      if (!response.ok) {
+        console.error("Gemini erro de resposta:", data);
+        alert(`Erro da API Gemini:\n\n${data.error?.message || response.statusText}\n\nVerifique se a sua VITE_GEMINI_API_KEY do arquivo .env é realmente válida.`);
+        return;
+      }
+
       if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
         let text = data.candidates[0].content.parts[0].text;
         text = text.replace(/```html/g, "").replace(/```/g, "");
         setIaAdvice(text);
       } else {
-        alert("Houve um erro no retorno da IA.");
+        alert("Ocorreu um erro ao processar o retorno da IA. Detalhes: Formato de mensagem inesperado.");
       }
     } catch (err) {
       console.error(err);
