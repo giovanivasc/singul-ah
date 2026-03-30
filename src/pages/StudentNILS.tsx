@@ -73,6 +73,7 @@ export default function StudentNILS() {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<number, 'a' | 'b'>>({});
   const [isGeneratingIA, setIsGeneratingIA] = useState(false);
+  const [iaAdvice, setIaAdvice] = useState<string | null>(null);
   const [activeResult, setActiveResult] = useState<any>(null);
   const [archivedTests, setArchivedTests] = useState<any[]>([]);
   const [showArchived, setShowArchived] = useState(false);
@@ -262,6 +263,92 @@ export default function StudentNILS() {
     }
   };
 
+  const handleGenerateIA = async () => {
+    if (iaAdvice) return;
+    setIsGeneratingIA(true);
+
+    const valProc = resultsData.find(d => d.dimensao === 'Processamento')?.value || 0;
+    const valPerc = resultsData.find(d => d.dimensao === 'Percepção')?.value || 0;
+    const valEntr = resultsData.find(d => d.dimensao === 'Entrada')?.value || 0;
+    const valEnte = resultsData.find(d => d.dimensao === 'Entendimento')?.value || 0;
+
+    const systemPrompt = `# ONTOLOGIA DO SISTEMA N-ILS E MOTOR DE INFERÊNCIA
+
+Você é um motor de inferência pedagógica baseado estritamente no modelo N-ILS (New Index of Learning Styles).
+É PROIBIDO utilizar conhecimentos externos ou inventar características fora deste JSON de regras.
+
+## 1. MATRIZ DE DADOS (DATASET)
+O modelo avalia 4 dimensões bipolares com valores de -5 a +5.
+Intensidade: |0| (Equilíbrio perfeito), |1| (Equilibrado/Leve), |2 a 3| (Preferência Leve/Moderada), |4 a 5| (Preferência Forte).
+
+* PROCESSAMENTO (+Ativo / -Reflexivo)
+  - ATIVO (+): Aprende fazendo, interage. Comportamento: Trabalho em grupo. Forças: Engajamento experiencial. Fragilidade: Impulsividade. Estratégia: Projetos práticos.
+  - REFLEXIVO (-): Aprende pensando. Comportamento: Observa antes de agir. Forças: Profundidade cognitiva. Fragilidade: Lentidão em ambientes dinâmicos. Estratégia: Tempo para reflexão individual.
+
+* PERCEPÇÃO (+Sensorial / -Intuitivo)
+  - SENSORIAL (+): Foco em fatos e dados. Comportamento: Prefere exemplos reais. Forças: Precisão, memória factual. Fragilidade: Dificuldade com abstração. Estratégia: Demonstrações concretas.
+  - INTUITIVO (-): Foco em conceitos. Comportamento: Explora possibilidades. Forças: Pensamento estratégico, criatividade. Fragilidade: Erros por descuido. Estratégia: Problemas complexos abertos.
+
+* ENTRADA (+Visual / -Verbal)
+  - VISUAL (+): Aprende por imagens. Comportamento: Usa mapas mentais. Forças: Retenção visual, compreensão espacial. Fragilidade: Dificuldade com texto puro. Estratégia: Infográficos, diagramas.
+  - VERBAL (-): Aprende por palavras. Comportamento: Prefere leitura e explicações. Forças: Comunicação, interpretação textual. Fragilidade: Menor aproveitamento visual. Estratégia: Debates, textos.
+
+* ENTENDIMENTO (+Sequencial / -Global)
+  - SEQUENCIAL (+): Aprendizagem linear. Comportamento: Segue lógica progressiva. Forças: Clareza, estruturação. Fragilidade: Dificuldade com visão sistêmica. Estratégia: Roteiros passo a passo.
+  - GLOBAL (-): Aprendizagem por insight. Comportamento: Faz conexões amplas. Forças: Visão sistêmica, integração. Fragilidade: Confusão inicial. Estratégia: Visão geral antes do detalhe.
+
+## 2. INSTRUÇÕES DE PROCESSAMENTO
+Ao receber a entrada dinâmica ({processamento, percepcao, entrada, entendimento}):
+1. Determine o polo dominante e a intensidade matemática de cada dimensão.
+2. Identifique o Perfil Composto (Ex: "Sensorial-Visual-Ativo-Sequencial").
+3. Estruture a saída em HTML (<h3>, <h4>, <ul>):
+   - Resumo do Perfil Composto (Máximo de 3 linhas em itálico).
+   - Análise Dimensional (Polo e Intensidade).
+   - Contexto de Sala de Aula (Forças e Riscos/Fragilidades cruzadas).
+   - Plano de Estratégias Docentes Recomendadas.`;
+
+    const userQuery = `O estudante tem os seguintes resultados tabulados:
+Processamento: ${valProc}
+Percepção: ${valPerc}
+Entrada: ${valEntr}
+Entendimento: ${valEnte}
+
+Com base EXCLUSIVAMENTE nas regras do seu sistema, gere a interpretação e as estratégias pedagógicas.`;
+
+    try {
+      const apiKey = (import.meta as any).env.VITE_GEMINI_API_KEY;
+      if (!apiKey) {
+        alert("Chave VITE_GEMINI_API_KEY não localizada.");
+        setIsGeneratingIA(false);
+        return;
+      }
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ parts: [{ text: userQuery }] }],
+          generationConfig: { temperature: 0.7 }
+        })
+      });
+
+      const data = await response.json();
+      if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+        let text = data.candidates[0].content.parts[0].text;
+        text = text.replace(/```html/g, "").replace(/```/g, "");
+        setIaAdvice(text);
+      } else {
+        alert("Houve um erro no retorno da IA.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Falha na comunicação com a API Gemini.");
+    } finally {
+      setIsGeneratingIA(false);
+    }
+  };
+
   if (loading) return <div>Carregando...</div>;
 
   return (
@@ -278,7 +365,6 @@ export default function StudentNILS() {
               exit={{ opacity: 0, y: -20 }}
               className="space-y-12"
             >
-              {/* Game Phase Header */}
               <div className="bg-white rounded-[40px] p-10 atmospheric-shadow border border-slate-100 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
                  <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-[100px] -z-0" />
                  <div className="w-20 h-20 rounded-[32px] bg-primary text-white flex items-center justify-center shadow-xl shadow-primary/20 shrink-0">
@@ -294,7 +380,6 @@ export default function StudentNILS() {
                  </div>
               </div>
 
-              {/* Game Card */}
               <section className="max-w-5xl mx-auto bg-white rounded-[48px] p-8 md:p-12 atmospheric-shadow border border-slate-100 min-h-[500px] w-full relative">
                  <motion.div 
                    key={currentStep}
@@ -377,7 +462,6 @@ export default function StudentNILS() {
               animate={{ opacity: 1 }}
               className="space-y-12"
             >
-              {/* Results Header */}
               <div className="flex justify-between items-center mb-12 flex-wrap gap-4">
                  <div className="space-y-2">
                     <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 rounded-full text-primary font-black text-[10px] uppercase tracking-widest">
@@ -401,21 +485,14 @@ export default function StudentNILS() {
                  </div>
               </div>
 
-              {/* Results Grid - 2 Colunas */}
               <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
-                  
-                 {/* Linear Animated Bipolar Scales (Left: 60-70%) */}
                  <section className="bg-white rounded-[40px] p-8 md:p-10 atmospheric-shadow border border-slate-100 flex flex-col items-center overflow-x-auto xl:col-span-8 min-h-[550px]">
                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 w-full text-center">Escalas Dimensionais Contínuas (Bipolar)</h3>
                     <BipolarRadarChart data={resultsData} />
                  </section>
 
-                 {/* Information Column (Right: 30-40%) */}
                  <div className="space-y-4 xl:col-span-4 flex flex-col h-full">
-                    
                     <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest pt-4 pb-2 px-2">Interpretação das Dimensões</h3>
-                    
-                    {/* Accordions Container */}
                     <div className="flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar">
                        {profileCards.map((p, i) => (
                          <ProfileAccordionCard 
@@ -428,7 +505,6 @@ export default function StudentNILS() {
                        ))}
                     </div>
 
-                    {/* Estudo IA Section (Movido para baixo) */}
                     <section className="bg-gradient-to-br from-slate-900 to-primary rounded-[32px] p-8 shadow-2xl shadow-primary/20 text-white relative overflow-hidden flex-shrink-0 mt-4">
                        <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
                        <div className="relative z-10 flex items-center justify-between gap-6">
@@ -437,44 +513,49 @@ export default function StudentNILS() {
                              <p className="text-white/70 font-medium text-xs">Maximize seu potencial.</p>
                           </div>
                           <button 
-                            onClick={() => setIsGeneratingIA(true)}
-                            className="bg-white text-primary w-14 h-14 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl shrink-0"
-                          >
-                             <Sparkles size={24} />
-                          </button>
+                             onClick={handleGenerateIA}
+                             disabled={isGeneratingIA || iaAdvice !== null}
+                             className="bg-white text-primary w-14 h-14 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl shrink-0 disabled:opacity-50 disabled:hover:scale-100"
+                           >
+                              {isGeneratingIA && !iaAdvice ? (
+                                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <Sparkles size={24} />
+                              )}
+                           </button>
                        </div>
                     </section>
 
                     <AnimatePresence>
-                       {isGeneratingIA && (
+                       {(isGeneratingIA || iaAdvice) && (
                          <motion.div 
                            initial={{ opacity: 0, height: 0 }}
                            animate={{ opacity: 1, height: 'auto' }}
-                           className="bg-white rounded-[40px] p-10 atmospheric-shadow border border-slate-100"
+                           className="bg-white rounded-[40px] p-8 md:p-10 atmospheric-shadow border border-slate-100 overflow-hidden mt-4"
                          >
-                            <div className="flex items-center gap-3 mb-8">
-                               <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                                  <Info size={20} />
+                            <div className="flex items-center gap-3 mb-6">
+                               <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                  <Sparkles size={20} />
                                </div>
-                               <h3 className="text-xl font-black text-on-surface">Sugestão do Singul-AH AI</h3>
+                               <h3 className="text-xl font-black text-on-surface">Laudo Pedagógico (Singul-AH AI)</h3>
                             </div>
-                            <div className="space-y-6 text-on-surface-variant font-medium leading-relaxed">
-                               <p>Com base no seu perfil, aqui estão dicas adaptadas:</p>
-                               <ul className="space-y-4">
-                                  <li className="flex gap-4">
-                                     <div className="w-6 h-6 rounded-full bg-primary/5 flex items-center justify-center text-primary font-black text-[10px] shrink-0 mt-1">1</div>
-                                     <span>Use materiais que se alinhem à sua dimensão vencedora (ex: recursos visuais se Visual).</span>
-                                  </li>
-                                  <li className="flex gap-4">
-                                     <div className="w-6 h-6 rounded-full bg-primary/5 flex items-center justify-center text-primary font-black text-[10px] shrink-0 mt-1">2</div>
-                                     <span>Mantenha anotações coerentes com a sua forma de aprender.</span>
-                                  </li>
-                               </ul>
-                            </div>
+                            
+                            {!iaAdvice ? (
+                              <div className="space-y-4 animate-pulse">
+                                 <div className="h-4 bg-slate-100 rounded w-3/4"></div>
+                                 <div className="h-4 bg-slate-100 rounded w-full"></div>
+                                 <div className="h-4 bg-slate-100 rounded w-5/6"></div>
+                              </div>
+                            ) : (
+                              <div 
+                                className="prose prose-sm md:prose-base prose-slate max-w-none prose-headings:font-black prose-h3:text-lg prose-h4:text-base prose-h4:text-primary prose-a:text-primary"
+                                dangerouslySetInnerHTML={{ __html: iaAdvice }}
+                              />
+                            )}
                          </motion.div>
                        )}
                     </AnimatePresence>
-                 </div>
+                  </div>
               </div>
 
               {/* Arquivados Accordion */}
@@ -759,7 +840,7 @@ function BipolarRadarChart({ data }: { data: any[] }) {
                      x={centerX} 
                      y={props.y - 12} 
                      textAnchor="middle" 
-                     className="text-[10px] font-black fill-slate-500 uppercase tracking-widest pointer-events-none"
+                     className="text-[10px] font-black fill-slate-800 uppercase tracking-widest pointer-events-none"
                    >
                      {d.dimensao}
                    </text>
