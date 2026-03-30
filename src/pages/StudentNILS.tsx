@@ -539,7 +539,7 @@ export default function StudentNILS() {
 
 function ProfileAccordionCard({ title, value, desc, icon: Icon }: any) {
   return (
-    <details className="group bg-slate-50 border border-slate-200 rounded-[28px] overflow-hidden shadow-sm hover:border-slate-300 open:bg-white open:ring-1 open:ring-primary/20 open:shadow-lg transition-all" open>
+    <details className="group bg-slate-50 border border-slate-200 rounded-[28px] overflow-hidden shadow-sm hover:border-slate-300 open:bg-white open:ring-1 open:ring-primary/20 open:shadow-lg transition-all">
       <summary className="p-5 cursor-pointer list-none flex items-center justify-between gap-4 font-black text-slate-800 hover:bg-slate-100 group-open:bg-transparent transition-all">
         <div className="flex items-center gap-4">
            <div className="w-10 h-10 shrink-0 rounded-[16px] bg-white text-primary flex items-center justify-center shadow-sm group-open:bg-primary group-open:text-white transition-all">
@@ -600,14 +600,19 @@ const CustomBarShape = (props: any) => {
   );
 };
 
-// Customized Tick Label for Y Axis
-const YAxisTick = (props: any) => {
-  const { x, y, payload } = props;
-  // payload.value will be the dimensao 
-  // We need to look it up in data array but we can just parse it 
+// Customized Tick Label for Y Axis (Esquerda e Direita)
+const YAxisCustomTick = (props: any) => {
+  const { x, y, payload, align = "end" } = props;
   return (
     <g transform={`translate(${x},${y})`}>
-      <text x={0} y={0} dy={4} textAnchor="end" fill="#64748b" className="text-xs font-black uppercase tracking-widest">
+      <text 
+        x={0} 
+        y={0} 
+        dy={4} 
+        textAnchor={align} 
+        fill="#64748b" 
+        className="text-[10px] font-black uppercase tracking-widest"
+      >
         {payload.value}
       </text>
     </g>
@@ -650,7 +655,7 @@ function BipolarRadarChart({ data }: { data: any[] }) {
         <ComposedChart
           layout="vertical"
           data={animatedData}
-          margin={{ top: 30, right: 90, left: 10, bottom: 20 }}
+          margin={{ top: 40, right: 10, left: 10, bottom: 20 }}
         >
           {/* Eixo X com labels do extremo */}
           <XAxis
@@ -675,16 +680,31 @@ function BipolarRadarChart({ data }: { data: any[] }) {
             tickLine={false}
           />
 
+          {/* Eixo Y da Esquerda (Pólo Negativo) */}
           <YAxis
+            yAxisId="left"
             type="category"
-            dataKey="dimensao"
-            tick={<YAxisTick />}
+            dataKey="poloNegativo"
+            tick={<YAxisCustomTick align="end" />}
             axisLine={false}
             tickLine={false}
-            width={120}
+            width={100}
+            orientation="left"
           />
 
-          <ReferenceLine x={0} stroke="#94A3B8" strokeDasharray="4 4" strokeWidth={2} />
+          {/* Eixo Y da Direita (Pólo Positivo) */}
+          <YAxis
+            yAxisId="right"
+            type="category"
+            dataKey="poloPositivo"
+            tick={<YAxisCustomTick align="start" />}
+            axisLine={false}
+            tickLine={false}
+            width={100}
+            orientation="right"
+          />
+
+          <ReferenceLine yAxisId="left" x={0} stroke="#94A3B8" strokeDasharray="4 4" strokeWidth={2} />
 
           <Tooltip
             cursor={{ fill: '#F1F5F9', fillOpacity: 0.5, radius: 10 }}
@@ -714,9 +734,11 @@ function BipolarRadarChart({ data }: { data: any[] }) {
           />
 
           <Bar
+            yAxisId="left"
             dataKey="valorAnimado"
             isAnimationActive={false}
             shape={(props: any) => {
+              const { x, width } = props;
               const d = animatedData[props.index];
               const isNegative = d.valorAnimado < 0;
               const absVal = Math.abs(d.value);
@@ -725,23 +747,24 @@ function BipolarRadarChart({ data }: { data: any[] }) {
               if (absVal >= 4) intensityLevel = "forte";
               else if (absVal >= 2) intensityLevel = "moderada";
 
-              // custom labels per bar on the edges
-              const leftLabel = d.poloNegativo;
-              const rightLabel = d.poloPositivo;
+              // Ponto X do centro do gráfico (linha 0)
+              // Se a barra é negativa, o centro é no limite direito da barra
+              // Se for positiva, o centro é no limite esquerdo da barra
+              const centerX = isNegative ? x + width : x;
 
               return (
                 <g>
+                   {/* Título da Dimensão Absolutamente no Topo, Centralizado no Eixo 0 */}
+                   <text 
+                     x={centerX} 
+                     y={props.y - 12} 
+                     textAnchor="middle" 
+                     className="text-[10px] font-black fill-slate-500 uppercase tracking-widest pointer-events-none"
+                   >
+                     {d.dimensao}
+                   </text>
+
                    <CustomBarShape {...props} isNegative={isNegative} intensityLevel={intensityLevel} />
-                   
-                   {/* Left Polarity Label */}
-                   <text x={props.background?.x ?? 0} y={props.y + props.height / 2} dy={4} textAnchor="start" className="text-[10px] font-black fill-slate-400 uppercase tracking-widest pointer-events-none">
-                     {leftLabel}
-                   </text>
-                   
-                   {/* Right Polarity Label */}
-                   <text x={(props.background?.width ?? 0) + (props.background?.x ?? 0)} y={props.y + props.height / 2} dy={4} textAnchor="end" className="text-[10px] font-black fill-slate-400 uppercase tracking-widest pointer-events-none">
-                     {rightLabel}
-                   </text>
                 </g>
               );
             }}
