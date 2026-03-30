@@ -7,7 +7,14 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  ResponsiveContainer
+  ResponsiveContainer,
+  ComposedChart,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Bar,
+  ReferenceLine,
+  Cell
 } from 'recharts';
 import { TopBar } from '../components/Navigation';
 import { supabase } from '../lib/supabase';
@@ -394,19 +401,41 @@ export default function StudentNILS() {
                  </div>
               </div>
 
-              {/* Results Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                  {/* Linear Bipolar Scales */}
-                 <section className="bg-white rounded-[40px] p-10 atmospheric-shadow border border-slate-100 flex flex-col items-center overflow-x-auto lg:col-span-2">
-                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-10 w-full text-center">Escalas Dimensionais Contínuas (Bipolar)</h3>
+              {/* Results Grid - 2 Colunas */}
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+                  
+                 {/* Linear Animated Bipolar Scales (Left: 60-70%) */}
+                 <section className="bg-white rounded-[40px] p-8 md:p-10 atmospheric-shadow border border-slate-100 flex flex-col items-center overflow-x-auto xl:col-span-8 min-h-[550px]">
+                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 w-full text-center">Escalas Dimensionais Contínuas (Bipolar)</h3>
                     <BipolarRadarChart data={resultsData} />
                  </section>
 
-                 {/* Information Column */}
-                 <div className="space-y-6 lg:col-span-2">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 {/* Information Column (Right: 30-40%) */}
+                 <div className="space-y-4 xl:col-span-4 flex flex-col h-full">
+                    
+                    {/* Estudo IA Section (Compactado pro topo) */}
+                    <section className="bg-gradient-to-br from-slate-900 to-primary rounded-[32px] p-8 shadow-2xl shadow-primary/20 text-white relative overflow-hidden flex-shrink-0">
+                       <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+                       <div className="relative z-10 flex items-center justify-between gap-6">
+                          <div>
+                             <h2 className="text-xl font-black mb-1">Dicas Singul-AH AI</h2>
+                             <p className="text-white/70 font-medium text-xs">Maximize seu potencial.</p>
+                          </div>
+                          <button 
+                            onClick={() => setIsGeneratingIA(true)}
+                            className="bg-white text-primary w-14 h-14 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl shrink-0"
+                          >
+                             <Sparkles size={24} />
+                          </button>
+                       </div>
+                    </section>
+                    
+                    <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest pt-4 pb-2 px-2">Interpretação das Dimensões</h3>
+                    
+                    {/* Accordions Container */}
+                    <div className="flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar">
                        {profileCards.map((p, i) => (
-                         <ProfileSubCard 
+                         <ProfileAccordionCard 
                            key={i}
                            title={p.title}
                            value={p.value}
@@ -415,26 +444,6 @@ export default function StudentNILS() {
                          />
                        ))}
                     </div>
-                    
-                    {/* Estudo IA Section */}
-                    <section className="bg-gradient-to-br from-slate-900 to-primary rounded-[40px] p-10 shadow-2xl shadow-primary/20 text-white relative overflow-hidden">
-                       <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-                       <div className="relative z-10 flex flex-col items-center text-center gap-6">
-                          <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
-                             <Sparkles className="text-white" size={32} />
-                          </div>
-                          <div>
-                             <h2 className="text-2xl font-black mb-2">Maximize seu Potencial</h2>
-                             <p className="text-white/60 font-medium">A IA do Singul-AH pode analisar seu perfil e sugerir como estudar de forma épica para as próximas provas.</p>
-                          </div>
-                          <button 
-                            onClick={() => setIsGeneratingIA(true)}
-                            className="bg-white text-primary px-10 py-5 rounded-3xl font-black uppercase text-xs tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl"
-                          >
-                             ✨ Gerar Dicas Personalizadas
-                          </button>
-                       </div>
-                    </section>
 
                     <AnimatePresence>
                        {isGeneratingIA && (
@@ -528,125 +537,217 @@ export default function StudentNILS() {
   );
 }
 
-function ProfileSubCard({ title, value, desc, icon: Icon }: any) {
+function ProfileAccordionCard({ title, value, desc, icon: Icon }: any) {
   return (
-    <div className="bg-white p-6 rounded-[32px] border border-slate-100 atmospheric-shadow-sm flex flex-col gap-4">
-       <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center">
-             <Icon size={20} />
-          </div>
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{title}</span>
-       </div>
-       <div className="space-y-1">
-          <p className="text-lg font-black text-on-surface tracking-tight leading-tight">{value}</p>
-          <p className="text-xs text-on-surface-variant/60 font-medium leading-relaxed">{desc}</p>
-       </div>
-    </div>
+    <details className="group bg-slate-50 border border-slate-200 rounded-[28px] overflow-hidden shadow-sm hover:border-slate-300 open:bg-white open:ring-1 open:ring-primary/20 open:shadow-lg transition-all" open>
+      <summary className="p-5 cursor-pointer list-none flex items-center justify-between gap-4 font-black text-slate-800 hover:bg-slate-100 group-open:bg-transparent transition-all">
+        <div className="flex items-center gap-4">
+           <div className="w-10 h-10 shrink-0 rounded-[16px] bg-white text-primary flex items-center justify-center shadow-sm group-open:bg-primary group-open:text-white transition-all">
+             <Icon size={18} />
+           </div>
+           <div className="text-left flex-1 min-w-0">
+             <span className="block text-[9px] uppercase tracking-widest text-slate-400 font-bold mb-0.5 truncate">{title}</span>
+             <span className="block text-sm sm:text-base leading-tight truncate">{value}</span>
+           </div>
+        </div>
+        <ChevronRight size={18} className="text-slate-400 group-open:rotate-90 transition-transform shrink-0" />
+      </summary>
+      <div className="px-5 pb-6 pt-1 text-slate-500 font-medium text-xs leading-relaxed border-t border-slate-100 mx-5">
+        {desc}
+      </div>
+    </details>
   );
 }
 
-function BipolarRadarChart({ data }: { data: any[] }) {
-  // Configurações do gráfico linear bipolar
-  const width = 600;
-  const height = 350;
-  const margin = { top: 40, bottom: 40, left: 120, right: 120 };
+// Customized Recharts Shape to draw the line and circle
+const CustomBarShape = (props: any) => {
+  const { x, y, width, height, isNegative, intensityLevel } = props;
   
-  const innerWidth = width - margin.left - margin.right;
-  const zeroX = margin.left + innerWidth / 2;
-  const rowHeight = (height - margin.top - margin.bottom) / data.length;
-
-  const scaleX = (val: number) => {
-    // val vai de -5 a +5. Math: (val+5)/10 converte para 0 a 1.
-    return margin.left + ((val + 5) / 10) * innerWidth;
+  // Colors logic
+  const colors = {
+    forte: { fill: "#1D4ED8", stroke: "#1E3A8A", endFill: "#FFFFFF" },
+    moderada: { fill: "#3B82F6", stroke: "#2563EB", endFill: "#FFFFFF" },
+    leve: { fill: "#93C5FD", stroke: "#60A5FA", endFill: "#EFF6FF" }
   };
+  const theme = colors[intensityLevel as keyof typeof colors] || colors.leve;
+
+  // We draw a capsule and a circle at the end
+  const barY = y + height / 2 - 6;
+  const barHeight = 12;
+
+  // Determine circle X specifically taking into account animation progress
+  const circleX = isNegative ? x : x + width;
+  
+  return (
+    <g>
+      <rect 
+        x={x} 
+        y={barY} 
+        width={width} 
+        height={barHeight} 
+        fill={theme.fill}
+        rx={6}
+      />
+      <circle 
+        cx={circleX} 
+        cy={barY + 6} 
+        r={10} 
+        fill={theme.endFill} 
+        stroke={theme.fill} 
+        strokeWidth={4} 
+      />
+    </g>
+  );
+};
+
+// Customized Tick Label for Y Axis
+const YAxisTick = (props: any) => {
+  const { x, y, payload } = props;
+  // payload.value will be the dimensao 
+  // We need to look it up in data array but we can just parse it 
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text x={0} y={0} dy={4} textAnchor="end" fill="#64748b" className="text-xs font-black uppercase tracking-widest">
+        {payload.value}
+      </text>
+    </g>
+  );
+};
+
+function BipolarRadarChart({ data }: { data: any[] }) {
+  const [animatedData, setAnimatedData] = useState(
+    data.map((d) => ({ ...d, valorAnimado: 0 }))
+  );
+
+  useEffect(() => {
+    let frame = 0;
+    const totalFrames = 60; // 1 second roughly at 60fps
+
+    const animate = () => {
+      frame++;
+      const progress = frame / totalFrames;
+      // Easing suave cubic-out
+      const easeOut = 1 - Math.pow(1 - progress, 3);
+
+      setAnimatedData(
+        data.map((d) => ({
+          ...d,
+          valorAnimado: d.realValue * easeOut,
+        }))
+      );
+
+      if (frame < totalFrames) {
+        requestAnimationFrame(animate);
+      }
+    };
+
+    requestAnimationFrame(animate);
+  }, [data]);
 
   return (
-    <div className="relative w-full overflow-x-auto flex justify-center py-4">
-      <svg width="100%" viewBox={`0 0 ${width} ${height}`} className="min-w-[600px] visible">
-        
-        {/* Eixo central (0) */}
-        <line 
-          x1={zeroX} y1={margin.top - 20} 
-          x2={zeroX} y2={height - margin.bottom + 20} 
-          stroke="#94A3B8" strokeWidth="2" strokeDasharray="6 4" 
-        />
-        <text x={zeroX} y={margin.top - 30} textAnchor="middle" className="text-[10px] font-black fill-slate-400">EQUILÍBRIO (0)</text>
+    <div className="w-full h-full min-h-[400px]">
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart
+          layout="vertical"
+          data={animatedData}
+          margin={{ top: 30, right: 90, left: 10, bottom: 20 }}
+        >
+          {/* Eixo X com labels do extremo */}
+          <XAxis
+            type="number"
+            domain={[-5.5, 5.5]}
+            tick={(props) => {
+               // Renderizar os ticks -5, -3, -1, 1, 3, 5
+               const { x, y, payload } = props;
+               if (![-5, -3, -1, 0, 1, 3, 5].includes(payload.value)) return null;
+               
+               let display = payload.value.toString();
+               if (payload.value > 0) display = `+${payload.value}`;
+               if (payload.value === 0) display = "0";
 
-        {/* Eixos Guia (Tick marks) */}
-        {[-5, -3, -1, 1, 3, 5].map(tick => (
-          <g key={tick}>
-            <line 
-              x1={scaleX(tick)} y1={margin.top - 10} 
-              x2={scaleX(tick)} y2={height - margin.bottom + 10} 
-              stroke="#E2E8F0" strokeWidth="1" opacity={0.5} 
-            />
-            <text x={scaleX(tick)} y={height - margin.bottom + 25} textAnchor="middle" className="text-[8px] font-bold fill-slate-300">
-              {tick > 0 ? `+${tick}` : tick}
-            </text>
-          </g>
-        ))}
+               return (
+                 <text x={x} y={y + 15} textAnchor="middle" fill={payload.value === 0 ? "#94A3B8" : "#CBD5E1"} className="text-[10px] font-bold">
+                   {display}
+                 </text>
+               );
+            }}
+            axisLine={false}
+            tickLine={false}
+          />
 
-        {data.map((d, i) => {
-          const y = margin.top + i * rowHeight + rowHeight / 2;
-          const xVal = scaleX(d.value);
-          const isNegative = d.value < 0;
+          <YAxis
+            type="category"
+            dataKey="dimensao"
+            tick={<YAxisTick />}
+            axisLine={false}
+            tickLine={false}
+            width={120}
+          />
 
-          return (
-            <g key={i}>
-              {/* Linha do Eixo Real da Dimensão */}
-              <line 
-                x1={margin.left} y1={y} 
-                x2={width - margin.right} y2={y} 
-                stroke="#E2E8F0" strokeWidth="4" rx="2" 
-                className="opacity-70"
-              />
+          <ReferenceLine x={0} stroke="#94A3B8" strokeDasharray="4 4" strokeWidth={2} />
 
-              {/* Rótulo Polo Negativo (Esquerda) */}
-              <text x={margin.left - 15} y={y} textAnchor="end" dominantBaseline="middle" className="text-xs font-black fill-slate-600 uppercase">
-                {d.poloNegativo}
-              </text>
+          <Tooltip
+            cursor={{ fill: '#F1F5F9', fillOpacity: 0.5, radius: 10 }}
+            content={({ active, payload }) => {
+              if (active && payload && payload.length) {
+                const d = payload[0].payload;
+                const v = Math.round(d.valorAnimado * 10) / 10; // keep it readable during anim
+                const fullV = d.realValue;
+                const signVal = fullV > 0 ? `+${fullV}` : fullV;
+                const isNeg = d.valorAnimado < 0;
 
-              {/* Rótulo Polo Positivo (Direita) */}
-              <text x={width - margin.right + 15} y={y} textAnchor="start" dominantBaseline="middle" className="text-xs font-black fill-slate-600 uppercase">
-                {d.poloPositivo}
-              </text>
+                return (
+                   <div className="bg-white p-4 rounded-xl shadow-2xl border border-slate-100 z-50 pointer-events-none min-w-[200px]">
+                      <p className="font-black text-slate-400 uppercase tracking-widest text-[9px] mb-1">{d.dimensao}</p>
+                      <p className="font-bold text-on-surface text-sm leading-tight mb-1">
+                        {isNeg ? d.poloNegativo : d.poloPositivo} 
+                        <span className={isNeg ? "text-rose-500 ml-1" : "text-primary ml-1"}>
+                          ({signVal})
+                        </span>
+                      </p>
+                      <p className="font-semibold text-primary/80 text-xs">{d.intensity}</p>
+                   </div>
+                );
+              }
+              return null;
+            }}
+          />
 
-              {/* Título da Dimensão Acima do Eixo */}
-              <text x={zeroX} y={y - 18} textAnchor="middle" className="text-[10px] font-bold fill-slate-400 uppercase tracking-widest">
-                {d.dimensao}
-              </text>
-
-              {/* Barra Preenchida de Magnitude (Colorida conforme o lado) */}
-              <line 
-                x1={zeroX} y1={y} 
-                x2={xVal} y2={y} 
-                stroke={isNegative ? "#F43F5E" : "#2563EB"} 
-                strokeWidth="10" 
-                strokeLinecap="round"
-              />
-
-              {/* O Ponto (Vértice do Score) */}
-              <circle 
-                cx={xVal} cy={y} 
-                r="8" 
-                fill="#FFFFFF" 
-                stroke={isNegative ? "#F43F5E" : "#2563EB"} 
-                strokeWidth="4" 
-              />
+          <Bar
+            dataKey="valorAnimado"
+            isAnimationActive={false}
+            shape={(props: any) => {
+              const d = animatedData[props.index];
+              const isNegative = d.valorAnimado < 0;
+              const absVal = Math.abs(d.realValue);
               
-              {/* Tooltip Estático no Ponto */}
-              <text 
-                x={xVal} y={y - 15} 
-                textAnchor="middle" 
-                className="text-xs font-black"
-                fill={isNegative ? "#F43F5E" : "#2563EB"}
-              >
-                {d.value > 0 ? `+${d.value}` : d.value === 0 ? '0' : d.value}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
+              let intensityLevel = "leve";
+              if (absVal >= 4) intensityLevel = "forte";
+              else if (absVal >= 2) intensityLevel = "moderada";
+
+              // custom labels per bar on the edges
+              const leftLabel = d.poloNegativo;
+              const rightLabel = d.poloPositivo;
+
+              return (
+                <g>
+                   <CustomBarShape {...props} isNegative={isNegative} intensityLevel={intensityLevel} />
+                   
+                   {/* Left Polarity Label */}
+                   <text x={props.background?.x ?? 0} y={props.y + props.height / 2} dy={4} textAnchor="start" className="text-[10px] font-black fill-slate-400 uppercase tracking-widest pointer-events-none">
+                     {leftLabel}
+                   </text>
+                   
+                   {/* Right Polarity Label */}
+                   <text x={(props.background?.width ?? 0) + (props.background?.x ?? 0)} y={props.y + props.height / 2} dy={4} textAnchor="end" className="text-[10px] font-black fill-slate-400 uppercase tracking-widest pointer-events-none">
+                     {rightLabel}
+                   </text>
+                </g>
+              );
+            }}
+          />
+        </ComposedChart>
+      </ResponsiveContainer>
     </div>
   );
 }
