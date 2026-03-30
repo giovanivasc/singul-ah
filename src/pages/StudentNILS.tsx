@@ -413,23 +413,6 @@ export default function StudentNILS() {
                  {/* Information Column (Right: 30-40%) */}
                  <div className="space-y-4 xl:col-span-4 flex flex-col h-full">
                     
-                    {/* Estudo IA Section (Compactado pro topo) */}
-                    <section className="bg-gradient-to-br from-slate-900 to-primary rounded-[32px] p-8 shadow-2xl shadow-primary/20 text-white relative overflow-hidden flex-shrink-0">
-                       <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-                       <div className="relative z-10 flex items-center justify-between gap-6">
-                          <div>
-                             <h2 className="text-xl font-black mb-1">Dicas Singul-AH AI</h2>
-                             <p className="text-white/70 font-medium text-xs">Maximize seu potencial.</p>
-                          </div>
-                          <button 
-                            onClick={() => setIsGeneratingIA(true)}
-                            className="bg-white text-primary w-14 h-14 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl shrink-0"
-                          >
-                             <Sparkles size={24} />
-                          </button>
-                       </div>
-                    </section>
-                    
                     <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest pt-4 pb-2 px-2">Interpretação das Dimensões</h3>
                     
                     {/* Accordions Container */}
@@ -444,6 +427,23 @@ export default function StudentNILS() {
                          />
                        ))}
                     </div>
+
+                    {/* Estudo IA Section (Movido para baixo) */}
+                    <section className="bg-gradient-to-br from-slate-900 to-primary rounded-[32px] p-8 shadow-2xl shadow-primary/20 text-white relative overflow-hidden flex-shrink-0 mt-4">
+                       <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+                       <div className="relative z-10 flex items-center justify-between gap-6">
+                          <div>
+                             <h2 className="text-xl font-black mb-1">Dicas Singul-AH AI</h2>
+                             <p className="text-white/70 font-medium text-xs">Maximize seu potencial.</p>
+                          </div>
+                          <button 
+                            onClick={() => setIsGeneratingIA(true)}
+                            className="bg-white text-primary w-14 h-14 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl shrink-0"
+                          >
+                             <Sparkles size={24} />
+                          </button>
+                       </div>
+                    </section>
 
                     <AnimatePresence>
                        {isGeneratingIA && (
@@ -632,7 +632,7 @@ function BipolarRadarChart({ data }: { data: any[] }) {
       setAnimatedData(
         data.map((d) => ({
           ...d,
-          valorAnimado: d.realValue * easeOut,
+          valorAnimado: d.value * easeOut,
         }))
       );
 
@@ -645,7 +645,7 @@ function BipolarRadarChart({ data }: { data: any[] }) {
   }, [data]);
 
   return (
-    <div className="w-full h-full min-h-[400px]">
+    <div className="w-full h-[450px]">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart
           layout="vertical"
@@ -692,7 +692,7 @@ function BipolarRadarChart({ data }: { data: any[] }) {
               if (active && payload && payload.length) {
                 const d = payload[0].payload;
                 const v = Math.round(d.valorAnimado * 10) / 10; // keep it readable during anim
-                const fullV = d.realValue;
+                const fullV = d.value;
                 const signVal = fullV > 0 ? `+${fullV}` : fullV;
                 const isNeg = d.valorAnimado < 0;
 
@@ -719,7 +719,7 @@ function BipolarRadarChart({ data }: { data: any[] }) {
             shape={(props: any) => {
               const d = animatedData[props.index];
               const isNegative = d.valorAnimado < 0;
-              const absVal = Math.abs(d.realValue);
+              const absVal = Math.abs(d.value);
               
               let intensityLevel = "leve";
               if (absVal >= 4) intensityLevel = "forte";
