@@ -87,6 +87,14 @@ export default function CaseStudy() {
       lastUpdate: 'Ontem',
       lastPerson: 'Sistema (IA)',
       status: 'completed'
+    },
+    {
+      id: 'DOC-ANALISE',
+      name: 'Análise de Documentos e Pareceres',
+      description: 'Envie laudos, pareceres e relatórios (PDF, DOC, Imagem) para processamento da inteligência artificial.',
+      icon: FileText,
+      versions: 0,
+      status: 'pending'
     }
   ];
 
@@ -430,7 +438,26 @@ export default function CaseStudy() {
                              "Ao salvar, a IA atualizará automaticamente os eixos de análise do Estudo de Caso."
                           </div>
                        </div>
-                     ) : (
+                     ) : activeInstrumentId === 'DOC-ANALISE' ? (
+                        <div className="space-y-12">
+                           <div className="bg-primary/5 p-8 rounded-[32px] border border-primary/10 flex items-start gap-4">
+                              <FileText className="text-primary mt-1" size={24} />
+                              <div className="space-y-1">
+                                 <p className="font-black text-on-surface uppercase tracking-tight">Análise Automática de Documentos</p>
+                                 <p className="text-sm font-medium text-slate-500">Faça o upload de laudos médicos, avaliações multi-profissionais ou relatórios escolares.  O sistema lerá os arquivos e extrairá as informações relevantes para a construção do PEI do estudante de forma automatizada.</p>
+                              </div>
+                           </div>
+                           
+                           <div className="space-y-4">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Anexar Aquivos (Laudos, PDF, Imagens)</label>
+                              <div className="w-full h-48 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[32px] flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-primary/5 hover:scale-[1.01] transition-all group">
+                                 <Plus size={36} className="text-slate-300 group-hover:text-primary transition-colors mb-4" />
+                                 <p className="text-base font-bold text-slate-500 group-hover:text-primary mb-1 text-center px-4">Clique aqui para enviar seus arquivos ou arraste-os para cá</p>
+                                 <p className="text-xs font-medium text-slate-400/60 uppercase tracking-widest">Suporta .PDF, .DOCX, .JPG, .PNG</p>
+                              </div>
+                           </div>
+                        </div>
+                      ) : (
                        <div className="py-20 text-center bg-slate-50 rounded-3xl border border-dashed border-slate-200">
                           <Plus className="mx-auto text-slate-200 mb-4" size={48} />
                           <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Módulo de preenchimento para {activeInstrumentId}</p>
@@ -438,8 +465,8 @@ export default function CaseStudy() {
                      )}
 
                      <div className="pt-10 border-t border-slate-100 flex gap-4">
-                        <button className="flex-1 bg-primary text-white py-6 rounded-3xl font-black text-base uppercase tracking-widest shadow-xl shadow-primary/20">
-                           Salvar como Nova Versão
+                        <button className="flex-1 bg-primary text-white py-6 rounded-3xl font-black text-base uppercase tracking-widest shadow-xl shadow-primary/20 flex items-center justify-center gap-3 hover:brightness-110 active:scale-95 transition-all">
+                           {activeInstrumentId === 'DOC-ANALISE' ? <><Sparkles size={20} /> Analisar Documentos e Salvar</> : 'Salvar como Nova Versão'}
                         </button>
                      </div>
                   </div>
