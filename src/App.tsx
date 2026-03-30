@@ -47,6 +47,7 @@ export default function App() {
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/students" element={<StudentsList />} />
+            <Route path="/students/" element={<StudentsList />} />
             
             {/* Student Contextual Routes */}
             <Route path="/students/:studentId" element={<StudentHub />} />
