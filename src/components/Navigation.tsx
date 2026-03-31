@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { 
   Home, Users, Settings, Search, Bell, LogOut, 
   ClipboardList, Brain, PencilRuler, FolderArchive, TrendingUp,
-  Compass, ChevronLeft
+  Compass, ChevronLeft, LayoutDashboard, ClipboardCheck
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
@@ -38,6 +38,8 @@ export function Sidebar() {
   const baseNavItems = [
     { icon: Home, label: 'Visão Geral', path: '/dashboard' },
     { icon: Users, label: 'Alunos', path: '/students' },
+    { icon: LayoutDashboard, label: 'Portal', path: '/student-portal' },
+    { icon: ClipboardCheck, label: 'Check-in', path: '/daily-checkin' },
   ];
 
   const contextualNavItems = studentId ? [
@@ -138,6 +140,8 @@ export function BottomNav() {
   const navItems = [
     { icon: Home, label: 'Início', path: '/dashboard' },
     { icon: Users, label: 'Alunos', path: '/students' },
+    { icon: LayoutDashboard, label: 'Portal', path: '/student-portal' },
+    { icon: ClipboardCheck, label: 'Check-in', path: '/daily-checkin' },
   ];
 
   return (

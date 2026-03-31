@@ -12,6 +12,8 @@ import FamilyCollection from './pages/FamilyCollection';
 import TeacherCollection from './pages/TeacherCollection';
 import StudentInterview from './pages/StudentInterview';
 import StudentNILS from './pages/StudentNILS';
+import StudentPortal from './pages/StudentPortal';
+import DailyCheckin from './pages/DailyCheckin';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
@@ -48,6 +50,8 @@ export default function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/students" element={<StudentsList />} />
             <Route path="/students/" element={<StudentsList />} />
+            <Route path="/student-portal" element={<StudentPortal />} />
+            <Route path="/daily-checkin" element={<DailyCheckin />} />
             
             {/* Student Contextual Routes */}
             <Route path="/students/:studentId" element={<StudentHub />} />

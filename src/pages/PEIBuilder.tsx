@@ -2,6 +2,7 @@ import React from 'react';
 import { Save, FileText, ChevronRight, Bold, Italic, Underline, List, ListOrdered, AlignLeft, AlignCenter, History, Wand2, CheckCircle, Lightbulb } from 'lucide-react';
 import { motion } from 'motion/react';
 import { TopBar } from '../components/Navigation';
+import { AICopilotButton } from '../components/AICopilotButton';
 
 export default function PEIBuilder() {
   return (
@@ -77,10 +78,7 @@ export default function PEIBuilder() {
               <div className="relative group">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-xl font-bold text-slate-800 tracking-tight">Objetivos de Desenvolvimento</h3>
-                  <button className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-primary rounded-full text-xs font-bold hover:bg-blue-100 transition-colors opacity-40 hover:opacity-100">
-                    <Wand2 size={14} />
-                    Sugerir Objetivos
-                  </button>
+                  <AICopilotButton studentId="lucas-almeida" />
                 </div>
                 <div className="p-6 bg-surface-container-low/30 rounded-2xl border-2 border-dashed border-slate-200 transition-all hover:border-primary/20">
                   <p className="text-slate-400 italic text-center py-4">Clique para adicionar objetivos personalizados ou utilize a IA para gerar baseados nas potencialidades.</p>
