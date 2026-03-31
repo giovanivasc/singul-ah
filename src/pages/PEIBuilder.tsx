@@ -86,10 +86,7 @@ export default function PEIBuilder() {
               <div className="relative group">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-xl font-bold text-slate-800 tracking-tight">3. Organização do Atendimento (Art. 12, § 2º)</h3>
-                  <button className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-primary rounded-full text-xs font-bold hover:bg-blue-100 transition-colors" title="Sugerir Estratégias (IA)" aria-label="Sugerir Estratégias (IA)">
-                    <Wand2 size={14} />
-                    Sugerir Estratégias (IA)
-                  </button>
+                  <AICopilotButton studentId="lucas-almeida" />
                 </div>
                 
                 <div className="space-y-4">
