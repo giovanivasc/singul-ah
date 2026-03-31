@@ -58,30 +58,68 @@ export default function PEIBuilder() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-10 space-y-12 no-scrollbar">
+              {/* ART. 11: Síntese do Estudo de Caso */}
               <EditorSection 
-                title="Caracterização e Potencialidades"
-                content="O aluno apresenta um perfil cognitivo com destaque para o processamento visual e memória de longo prazo para temas de interesse específico (astronomia e mecânica). Manifesta autonomia em atividades de vida diária, porém requer mediação constante em contextos de interação social não estruturada. Demonstra excelente engajamento em tarefas que envolvem sistematização e lógica sequencial."
+                title="1. Síntese do Estudo de Caso (Art. 11, § 1º)"
+                content={
+                  <div className="space-y-4">
+                    <div><strong className="text-primary">I. Demandas Individuais e Barreiras:</strong> Desmotivação com o currículo regular de exatas; barreira atitudinal relacionada à repetição de conteúdos já dominados.</div>
+                    <div><strong className="text-primary">II. Contexto Escolar:</strong> Turma de 6º ano numerosa, dificultando o atendimento individualizado contínuo pelo professor regente.</div>
+                    <div><strong className="text-primary">III. Potencialidades e Apoio:</strong> Alto desempenho lógico-matemático (Estilo Visual/Ativo N-ILS). Necessita de apoio para tolerância à frustração em trabalhos em grupo.</div>
+                    <div><strong className="text-primary">IV. Estratégias de Acessibilidade:</strong> Acesso a dispositivos digitais portáteis (Art. 12, § 4º) para desenvolvimento de projetos autônomos de programação.</div>
+                  </div>
+                }
               />
-              
+
+              {/* Metas Pedagógicas */}
               <EditorSection 
-                title="Estratégias de Suplementação Sugeridas"
+                title="2. Metas de Desenvolvimento (Acadêmicas e Socioemocionais)"
                 content={
                   <ul className="list-disc pl-5 space-y-2">
-                    <li>Implementação de antecipadores visuais para transições de rotina acadêmica.</li>
-                    <li>Uso de metodologias baseadas em projetos vinculados ao interesse por Astronomia para ensino de conceitos matemáticos.</li>
-                    <li>Fragmentação de comandos complexos em etapas sequenciais curtas.</li>
-                    <li>Utilização de reforçadores positivos intermitentes baseados em tempo de tela educativo.</li>
+                    <li><strong>Meta Acadêmica:</strong> Desenvolver um projeto de jogo educativo ao longo do semestre, aplicando conceitos da BNCC Computação.</li>
+                    <li><strong>Meta Socioemocional:</strong> Exercer liderança colaborativa e escuta ativa durante as atividades em grupo na sala regular.</li>
                   </ul>
                 }
               />
 
+              {/* ART. 12: Organização do Atendimento */}
               <div className="relative group">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-bold text-slate-800 tracking-tight">Objetivos de Desenvolvimento</h3>
-                  <AICopilotButton studentId="lucas-almeida" />
+                  <h3 className="text-xl font-bold text-slate-800 tracking-tight">3. Organização do Atendimento (Art. 12, § 2º)</h3>
+                  <button className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-primary rounded-full text-xs font-bold hover:bg-blue-100 transition-colors" title="Sugerir Estratégias (IA)" aria-label="Sugerir Estratégias (IA)">
+                    <Wand2 size={14} />
+                    Sugerir Estratégias (IA)
+                  </button>
                 </div>
-                <div className="p-6 bg-surface-container-low/30 rounded-2xl border-2 border-dashed border-slate-200 transition-all hover:border-primary/20">
-                  <p className="text-slate-400 italic text-center py-4">Clique para adicionar objetivos personalizados ou utilize a IA para gerar baseados nas potencialidades.</p>
+                
+                <div className="space-y-4">
+                  <div className="p-5 bg-surface-container-low rounded-xl border border-slate-200">
+                    <h4 className="text-sm font-bold text-primary uppercase mb-2">I. Trabalho na Sala de Aula Comum</h4>
+                    <div className="prose prose-sm text-slate-600 outline-none" contentEditable="true">
+                      <strong>Compactação Curricular:</strong> Substituição de exercícios repetitivos de matemática por tempo de estudo independente no Portal do Estudante, mediante validação formativa (acertos {'>'}90%).
+                    </div>
+                  </div>
+
+                  <div className="p-5 bg-surface-container-low rounded-xl border border-slate-200">
+                    <h4 className="text-sm font-bold text-primary uppercase mb-2">II. Trabalho no AEE (Suplementação)</h4>
+                    <div className="prose prose-sm text-slate-600 outline-none" contentEditable="true">
+                      <strong>Tríade de Renzulli:</strong> 2h semanais na Sala de Recursos. Foco no treinamento metodológico (Tipo II) para estruturação lógica e acompanhamento do projeto principal de software (Tipo III).
+                    </div>
+                  </div>
+
+                  <div className="p-5 bg-surface-container-low rounded-xl border border-slate-200">
+                    <h4 className="text-sm font-bold text-primary uppercase mb-2">III. Atividades Colaborativas</h4>
+                    <div className="prose prose-sm text-slate-600 outline-none" contentEditable="true">
+                      Atuação do estudante como "monitor tutor" nas aulas de introdução à tecnologia para os colegas, fomentando a interação social e a validação de seus conhecimentos.
+                    </div>
+                  </div>
+
+                  <div className="p-5 bg-surface-container-low rounded-xl border border-slate-200">
+                    <h4 className="text-sm font-bold text-primary uppercase mb-2">IV. Articulação Intersetorial</h4>
+                    <div className="prose prose-sm text-slate-600 outline-none" contentEditable="true">
+                      Parceria com o projeto de extensão universitária de tecnologia para avaliação externa do código do aplicativo desenvolvido pelo estudante.
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
