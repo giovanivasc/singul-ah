@@ -7,7 +7,7 @@ import {
   Sparkles, ShieldCheck, LayoutGrid,
   FileText, Activity, Users, Info,
   MessageSquare, History, Wand2, TrendingUp,
-  Percent, Eye, Trash2, Archive
+  Percent, Eye, Trash2, Archive, AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TopBar } from '../components/Navigation';
@@ -144,6 +144,9 @@ export default function CaseStudy() {
   const [ifSahsRecords, setIfSahsRecords] = useState<IfSahsRecord[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<IfSahsRecord | null>(null);
   const [fillingType, setFillingType] = useState<'nova_versao' | 'atualizacao' | 'edit'>('nova_versao');
+
+  // Controle de Áudio Global
+  const [pendingAudioReviews, setPendingAudioReviews] = useState(false);
 
   // Evolução Inline 
   const [isAddingUpdate, setIsAddingUpdate] = useState(false);
@@ -623,6 +626,7 @@ export default function CaseStudy() {
                                           value={ifSahsAnswers[q.id] || ''} 
                                           onChange={(val) => handleIfSahsChange(q.id, val)}
                                           placeholder="Descreva aqui ou utilize o áudio para transcrever a resposta..." 
+                                          onReviewPending={(isPending) => setPendingAudioReviews(isPending)}
                                        />
                                      </div>
                                    ))}
@@ -672,10 +676,25 @@ export default function CaseStudy() {
                         </div>
                       )}
                       
-                      <div className="pt-10 border-t border-slate-100 flex gap-4">
-                         <button onClick={handleSave} className="flex-1 bg-primary text-white py-6 rounded-3xl font-black text-base uppercase tracking-widest shadow-xl shadow-primary/20 flex items-center justify-center gap-3 hover:brightness-110 active:scale-95 transition-all">
-                            {activeInstrumentId === 'DOC-ANALISE' ? <><Sparkles size={20} /> Salvar e Analisar</> : fillingType === 'edit' ? 'Salvar Edição' : 'Salvar como Nova Versão'}
-                         </button>
+                      <div className="pt-10 border-t border-slate-100 flex flex-col gap-4">
+                         {pendingAudioReviews && (
+                            <div className="p-4 bg-red-50 text-red-600 border border-red-200 rounded-2xl text-[11px] font-black uppercase tracking-widest flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2">
+                               <AlertTriangle size={18} className="shrink-0" /> 
+                               Você possui transcrições de áudio pendentes. Confirme-as e exclua as gravações originais para liberar o salvamento.
+                            </div>
+                         )}
+                         <div className="flex gap-4">
+                            <button 
+                               onClick={handleSave} 
+                               disabled={pendingAudioReviews}
+                               className={cn(
+                                 "flex-1 py-6 rounded-3xl font-black text-base uppercase tracking-widest flex items-center justify-center gap-3 transition-all",
+                                 pendingAudioReviews ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "bg-primary text-white shadow-xl shadow-primary/20 hover:brightness-110 active:scale-95"
+                               )}
+                            >
+                               {activeInstrumentId === 'DOC-ANALISE' ? <><Sparkles size={20} /> Salvar e Analisar</> : fillingType === 'edit' ? 'Salvar Edição' : 'Salvar como Nova Versão'}
+                            </button>
+                         </div>
                       </div>
                    </div>
                 </div>
@@ -859,22 +878,24 @@ export default function CaseStudy() {
                                   <h4 className="font-black text-slate-700 text-sm tracking-widest uppercase flex items-center gap-2 ml-2">
                                      <TrendingUp size={16} className="text-primary" /> Nova Evolução
                                   </h4>
-                                  <textarea 
+                                  <MultimodalInput 
                                      value={updateText}
-                                     onChange={(e) => setUpdateText(e.target.value)}
+                                     onChange={(val) => setUpdateText(val)}
                                      placeholder="Descreva aqui o novo episódio, observação ou alteração no contexto familiar..."
-                                     className="w-full h-32 bg-slate-50 px-6 py-4 rounded-2xl border border-slate-200 outline-none focus:border-primary resize-none text-sm text-slate-700 transition-all font-medium"
+                                     onReviewPending={(isPending) => setPendingAudioReviews(isPending)}
                                   />
                                   <div className="flex items-center gap-3 justify-end pt-2">
-                                     <button onClick={() => { setIsAddingUpdate(false); setUpdateText(''); }} className="px-5 py-2.5 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-red-500 transition-all">Cancelar</button>
-                                     <button onClick={() => {
+                                     <button onClick={() => { setIsAddingUpdate(false); setUpdateText(''); setPendingAudioReviews(false); }} className="px-5 py-2.5 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-red-500 transition-all">Cancelar</button>
+                                     <button 
+                                        disabled={pendingAudioReviews}
+                                        onClick={() => {
                                         if (!updateText.trim()) return;
                                         const novaEvo = { date: new Date().toLocaleDateString('pt-BR'), person: 'Você', text: updateText };
                                         setIfSahsRecords(prev => prev.map(r => r.id === selectedRecord.id ? { ...r, updates: [...(r.updates || []), novaEvo] } : r));
                                         setSelectedRecord(prev => prev ? { ...prev, updates: [...(prev.updates || []), novaEvo] } : null);
                                         setUpdateText('');
                                         setIsAddingUpdate(false);
-                                     }} className="px-6 py-3 bg-primary text-white font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-primary/90 transition-all shadow-md shadow-primary/20">Salvar Atualização</button>
+                                     }} className={cn("px-6 py-3 font-black text-[10px] uppercase tracking-widest rounded-xl transition-all shadow-md", pendingAudioReviews ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none" : "bg-primary text-white shadow-primary/20 hover:bg-primary/90")}>Salvar Atualização</button>
                                   </div>
                                </div>
                             ) : (
