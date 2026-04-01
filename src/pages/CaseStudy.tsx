@@ -28,6 +28,7 @@ type IfSahsRecord = {
   respondentRole: string;
   respondentRelation?: string;
   answers: Record<string, string>;
+  updates?: { date: string; person: string; text: string; }[];
 };
 
 interface InstrumentStatus {
@@ -142,7 +143,11 @@ export default function CaseStudy() {
 
   const [ifSahsRecords, setIfSahsRecords] = useState<IfSahsRecord[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<IfSahsRecord | null>(null);
-  const [fillingType, setFillingType] = useState<'nova_versao' | 'atualizacao'>('nova_versao');
+  const [fillingType, setFillingType] = useState<'nova_versao' | 'atualizacao' | 'edit'>('nova_versao');
+
+  // Evolução Inline 
+  const [isAddingUpdate, setIsAddingUpdate] = useState(false);
+  const [updateText, setUpdateText] = useState('');
 
   // Formulário do IF-SAHS
   const [respondentName, setRespondentName] = useState('');
@@ -196,16 +201,39 @@ export default function CaseStudy() {
     if (!activeInstrumentId) return;
 
     if (activeInstrumentId === 'IF-SAHS') {
+      if (fillingType === 'edit' && selectedRecord) {
+        setIfSahsRecords(prev => prev.map(r => r.id === selectedRecord.id ? {
+          ...r,
+          respondentName,
+          respondentRole,
+          respondentRelation,
+          answers: ifSahsAnswers
+        } : r));
+        
+        setSelectedRecord(prev => prev ? {
+          ...prev,
+          respondentName,
+          respondentRole,
+          respondentRelation,
+          answers: ifSahsAnswers
+        } : null);
+        
+        alert('IF-SAHS editado com sucesso!');
+        setView('versions');
+        return;
+      }
+
       const newRecord: IfSahsRecord = {
          id: Date.now().toString(),
-         type: fillingType,
+         type: fillingType === 'atualizacao' ? 'atualizacao' : 'versao_inicial',
          status: 'ativo',
          date: new Date().toLocaleDateString('pt-BR'),
          person: 'Prof. Local',
          respondentName,
          respondentRole,
          respondentRelation,
-         answers: ifSahsAnswers
+         answers: ifSahsAnswers,
+         updates: []
       };
       setIfSahsRecords(prev => [newRecord, ...prev]);
       alert('IF-SAHS salvo com sucesso!');
@@ -544,7 +572,7 @@ export default function CaseStudy() {
                            <div className="bg-primary/5 p-8 rounded-[32px] border border-primary/10 flex items-start gap-4">
                               <TrendingUp className="text-primary mt-1" size={24} />
                               <div className="space-y-1">
-                                 <p className="font-black text-on-surface uppercase tracking-tight">{fillingType === 'nova_versao' ? 'Questionário de Avaliação Familiar' : 'Atualização de Entrevista'}</p>
+                                 <p className="font-black text-on-surface uppercase tracking-tight">{fillingType === 'edit' ? 'Edição de Inventário Familiar' : fillingType === 'nova_versao' ? 'Questionário de Avaliação Familiar' : 'Atualização de Entrevista'}</p>
                                  <p className="text-sm font-medium text-slate-500">Preencha as informações detalhadas durante a entrevista com a família.</p>
                               </div>
                            </div>
@@ -646,7 +674,7 @@ export default function CaseStudy() {
                       
                       <div className="pt-10 border-t border-slate-100 flex gap-4">
                          <button onClick={handleSave} className="flex-1 bg-primary text-white py-6 rounded-3xl font-black text-base uppercase tracking-widest shadow-xl shadow-primary/20 flex items-center justify-center gap-3 hover:brightness-110 active:scale-95 transition-all">
-                            {activeInstrumentId === 'DOC-ANALISE' ? <><Sparkles size={20} /> Salvar e Analisar</> : 'Salvar como Nova Versão'}
+                            {activeInstrumentId === 'DOC-ANALISE' ? <><Sparkles size={20} /> Salvar e Analisar</> : fillingType === 'edit' ? 'Salvar Edição' : 'Salvar como Nova Versão'}
                          </button>
                       </div>
                    </div>
@@ -771,9 +799,21 @@ export default function CaseStudy() {
                             <p className="text-slate-500 font-bold text-sm mt-1">{selectedRecord.respondentRole} {selectedRecord.respondentRelation ? `- ${selectedRecord.respondentRelation}` : ''}</p>
                             <p className="text-xs text-slate-400 font-bold mt-2 flex items-center gap-2"><Clock size={12} /> {selectedRecord.type === 'versao_inicial' ? 'Versão Inicial' : 'Atualização'} registrada em: {selectedRecord.date}</p>
                          </div>
-                         {selectedRecord.status === 'arquivado' && (
-                            <button onClick={() => { setIfSahsRecords(prev => prev.map(r => r.id === selectedRecord.id ? { ...r, status: 'ativo' } : r)); alert('Voltou a ficar ativo!'); setView('details'); }} className="px-6 py-3 bg-primary text-white font-black text-[10px] uppercase rounded-xl tracking-widest shadow-lg shadow-primary/20 hover:scale-105 transition-all">Desarquivar Registro</button>
-                         )}
+                         <div className="flex items-center gap-3">
+                            <button onClick={() => { 
+                               setRespondentName(selectedRecord.respondentName);
+                               setRespondentRole(selectedRecord.respondentRole);
+                               setRespondentRelation(selectedRecord.respondentRelation || '');
+                               setIfSahsAnswers(selectedRecord.answers);
+                               setFillingType('edit');
+                               setView('filling');
+                            }} className="px-4 py-3 border border-slate-200 bg-slate-50 text-slate-500 font-black text-[10px] uppercase rounded-xl tracking-widest hover:border-primary hover:text-primary hover:bg-white transition-all flex items-center gap-2">
+                               <PencilRuler size={14} /> Editar
+                            </button>
+                            {selectedRecord.status === 'arquivado' && (
+                               <button onClick={() => { setIfSahsRecords(prev => prev.map(r => r.id === selectedRecord.id ? { ...r, status: 'ativo' } : r)); alert('Voltou a ficar ativo!'); setView('details'); }} className="px-6 py-3 bg-primary text-white font-black text-[10px] uppercase rounded-xl tracking-widest shadow-lg shadow-primary/20 hover:scale-105 transition-all">Desarquivar Registro</button>
+                            )}
+                         </div>
                       </div>
                       
                       {IF_SAHS_QUESTIONS.map(sec => (
@@ -792,11 +832,59 @@ export default function CaseStudy() {
                          </div>
                       ))}
 
+                      {selectedRecord.updates && selectedRecord.updates.length > 0 && (
+                         <>
+                            <hr className="my-8 border-slate-200" />
+                            <div className="space-y-6">
+                               <h4 className="font-black text-on-surface text-lg flex items-center gap-2"><History className="text-primary" /> Evolução do Caso</h4>
+                               <div className="space-y-4">
+                                  {selectedRecord.updates.map((upd, i) => (
+                                     <div key={i} className="bg-slate-50 p-6 rounded-2xl border border-slate-200 w-full space-y-4 atmospheric-shadow">
+                                        <div className="flex items-center justify-between">
+                                           <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><UserIcon size={12}/>{upd.person}</span>
+                                           <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1"><Clock size={12}/>{upd.date}</span>
+                                        </div>
+                                        <p className="text-slate-700 font-medium whitespace-pre-wrap">{upd.text}</p>
+                                     </div>
+                                  ))}
+                               </div>
+                            </div>
+                         </>
+                      )}
+
                       {selectedRecord.status === 'ativo' && (
                          <div className="pt-8">
-                            <button onClick={() => { setFillingType('atualizacao'); setRespondentName(''); setRespondentRole(''); setRespondentRelation(''); setIfSahsAnswers({}); setView('filling'); }} className="w-full bg-slate-100 text-slate-500 py-6 rounded-3xl font-black text-xs uppercase tracking-widest border-2 border-slate-200 border-dashed hover:bg-primary/5 hover:text-primary hover:border-primary transition-all flex items-center justify-center gap-3">
-                               <Plus size={20} /> Adicionar Atualização aos Fatos
-                            </button>
+                            {isAddingUpdate ? (
+                               <div className="bg-white p-6 rounded-[32px] border border-slate-200 atmospheric-shadow space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                                  <h4 className="font-black text-slate-700 text-sm tracking-widest uppercase flex items-center gap-2 ml-2">
+                                     <TrendingUp size={16} className="text-primary" /> Nova Evolução
+                                  </h4>
+                                  <textarea 
+                                     value={updateText}
+                                     onChange={(e) => setUpdateText(e.target.value)}
+                                     placeholder="Descreva aqui o novo episódio, observação ou alteração no contexto familiar..."
+                                     className="w-full h-32 bg-slate-50 px-6 py-4 rounded-2xl border border-slate-200 outline-none focus:border-primary resize-none text-sm text-slate-700 transition-all font-medium"
+                                  />
+                                  <div className="flex items-center gap-3 justify-end pt-2">
+                                     <button onClick={() => { setIsAddingUpdate(false); setUpdateText(''); }} className="px-5 py-2.5 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-red-500 transition-all">Cancelar</button>
+                                     <button onClick={() => {
+                                        if (!updateText.trim()) return;
+                                        const novaEvo = { date: new Date().toLocaleDateString('pt-BR'), person: 'Você', text: updateText };
+                                        setIfSahsRecords(prev => prev.map(r => r.id === selectedRecord.id ? { ...r, updates: [...(r.updates || []), novaEvo] } : r));
+                                        setSelectedRecord(prev => prev ? { ...prev, updates: [...(prev.updates || []), novaEvo] } : null);
+                                        setUpdateText('');
+                                        setIsAddingUpdate(false);
+                                     }} className="px-6 py-3 bg-primary text-white font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-primary/90 transition-all shadow-md shadow-primary/20">Salvar Atualização</button>
+                                  </div>
+                               </div>
+                            ) : (
+                               <button 
+                                 onClick={() => setIsAddingUpdate(true)} 
+                                 className="w-full bg-slate-50 text-slate-500 py-6 rounded-3xl font-black text-xs uppercase tracking-widest border-2 border-slate-200 border-dashed hover:bg-primary/5 hover:text-primary hover:border-primary/50 transition-all flex items-center justify-center gap-3"
+                               >
+                                  <Plus size={20} /> Adicionar Atualização aos Fatos
+                               </button>
+                            )}
                          </div>
                       )}
                    </div>
