@@ -31,6 +31,63 @@ interface InstrumentStatus {
   allowExternalLink?: boolean;
 }
 
+const initialInstruments: InstrumentStatus[] = [
+  { 
+    id: 'IF-SAHS', 
+    name: 'Inventário Familiar para Suplementação (IF-SAHS)', 
+    description: 'Coleta de dados biopsicossociais com a família.', 
+    icon: Users,
+    versions: 1,
+    lastUpdate: '25/03/2024',
+    lastPerson: 'Prof. Maria Silva',
+    completionPercentage: 100,
+    status: 'completed',
+    allowExternalLink: true
+  },
+  { 
+    id: 'IP-SAHS', 
+    name: 'Inventário Pedagógico (IP-SAHS)', 
+    description: 'Observação pedagógica e funcional do professor.', 
+    icon: Activity,
+    versions: 0,
+    completionPercentage: 0,
+    status: 'pending',
+    allowExternalLink: false
+  },
+  { 
+    id: 'ENTREVISTA', 
+    name: 'Entrevista com Estudante', 
+    description: 'Escuta especializada das demandas do estudante.', 
+    icon: MessageSquare,
+    versions: 0,
+    completionPercentage: 0,
+    status: 'pending',
+    allowExternalLink: false
+  },
+  { 
+    id: 'N-ILS', 
+    name: 'N-ILS (Estilos de Aprendizagem)', 
+    description: 'Mapeamento de estilos e habilidades de aprendizagem.', 
+    icon: Brain,
+    versions: 1,
+    lastUpdate: 'Ontem',
+    lastPerson: 'Sistema (IA)',
+    completionPercentage: 100,
+    status: 'completed',
+    allowExternalLink: true
+  },
+  {
+    id: 'DOC-ANALISE',
+    name: 'Análise de Pareceres (IA)',
+    description: 'Envie laudos e relatórios para processamento da inteligência artificial.',
+    icon: FileText,
+    versions: 0,
+    completionPercentage: 0,
+    status: 'pending',
+    allowExternalLink: false
+  }
+];
+
 export default function CaseStudy() {
   const { studentId } = useParams();
   const navigate = useNavigate();
@@ -38,6 +95,11 @@ export default function CaseStudy() {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<ViewState>('hub');
   const [activeInstrumentId, setActiveInstrumentId] = useState<string | null>(null);
+  
+  const [instrumentsData, setInstrumentsData] = useState<InstrumentStatus[]>(initialInstruments);
+  const [inputText, setInputText] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [docName, setDocName] = useState('');
 
   useEffect(() => {
     async function fetchStudent() {
@@ -54,64 +116,7 @@ export default function CaseStudy() {
     fetchStudent();
   }, [studentId]);
 
-  const instruments: InstrumentStatus[] = [
-    { 
-      id: 'IF-SAHS', 
-      name: 'Inventário Familiar para Suplementação (IF-SAHS)', 
-      description: 'Coleta de dados biopsicossociais com a família.', 
-      icon: Users,
-      versions: 1,
-      lastUpdate: '25/03/2024',
-      lastPerson: 'Prof. Maria Silva',
-      completionPercentage: 100,
-      status: 'completed',
-      allowExternalLink: true
-    },
-    { 
-      id: 'IP-SAHS', 
-      name: 'Inventário Pedagógico (IP-SAHS)', 
-      description: 'Observação pedagógica e funcional do professor.', 
-      icon: Activity,
-      versions: 0,
-      completionPercentage: 0,
-      status: 'pending',
-      allowExternalLink: false
-    },
-    { 
-      id: 'ENTREVISTA', 
-      name: 'Entrevista com Estudante', 
-      description: 'Escuta especializada das demandas do estudante.', 
-      icon: MessageSquare,
-      versions: 0,
-      completionPercentage: 0,
-      status: 'pending',
-      allowExternalLink: false
-    },
-    { 
-      id: 'N-ILS', 
-      name: 'N-ILS (Estilos de Aprendizagem)', 
-      description: 'Mapeamento de estilos e habilidades de aprendizagem.', 
-      icon: Brain,
-      versions: 2,
-      lastUpdate: 'Ontem',
-      lastPerson: 'Sistema (IA)',
-      completionPercentage: 100,
-      status: 'completed',
-      allowExternalLink: true
-    },
-    {
-      id: 'DOC-ANALISE',
-      name: 'Análise de Pareceres (IA)',
-      description: 'Envie laudos e relatórios para processamento da inteligência artificial.',
-      icon: FileText,
-      versions: 0,
-      completionPercentage: 0,
-      status: 'pending',
-      allowExternalLink: false
-    }
-  ];
-
-  const activeInstrument = instruments.find(i => i.id === activeInstrumentId);
+  const activeInstrument = instrumentsData.find(i => i.id === activeInstrumentId);
 
   const handleInstrumentAction = (action: 'fill' | 'view') => {
     if (!activeInstrument) return;
@@ -130,9 +135,39 @@ export default function CaseStudy() {
       return;
     }
 
-    // Rotas internas deste componente
     if (action === 'fill') setView('filling');
     if (action === 'view') setView('versions');
+  };
+
+  const handleSave = () => {
+    if (!activeInstrumentId) return;
+    
+    setInstrumentsData(prev => 
+      prev.map(inst => inst.id === activeInstrumentId ? {
+        ...inst,
+        versions: inst.versions + 1,
+        lastUpdate: new Date().toLocaleDateString('pt-BR'),
+        lastPerson: 'Você',
+        status: 'completed',
+        completionPercentage: 100
+      } : inst)
+    );
+    alert('Dados salvos com sucesso!');
+    setInputText('');
+    setDocName('');
+    setSelectedFile(null);
+    setView('details');
+  };
+
+  const handleDelete = () => {
+    if (!activeInstrumentId) return;
+    if (!confirm('CUIDADO: Isso excluirá permanentemente os dados. Prosseguir?')) return;
+    
+    setInstrumentsData(prev => 
+      prev.map(inst => inst.id === activeInstrumentId ? { ...inst, versions: 0, completionPercentage: 0, status: 'pending' } : inst)
+    );
+    alert('Dados excluídos com sucesso.');
+    setView('details');
   };
 
   if (loading) return null;
@@ -142,14 +177,13 @@ export default function CaseStudy() {
       <TopBar />
       
       <main className="max-w-7xl mx-auto px-8 py-10">
-        {/* Header Dinâmico */}
         <div className="flex items-center justify-between mb-12">
            <div className="flex items-center gap-6">
               <button 
                 onClick={() => {
                   if (view === 'hub') navigate(`/students/${studentId}`);
                   else if (view === 'details') setView('hub');
-                  else setView('details'); // Volta para detalhes a partir das telas de ação
+                  else setView('details');
                 }}
                 className="w-12 h-12 rounded-2xl bg-white atmospheric-shadow flex items-center justify-center text-slate-400 hover:text-primary transition-all"
               >
@@ -174,7 +208,6 @@ export default function CaseStudy() {
         </div>
 
         <AnimatePresence mode="wait">
-
           {view === 'hub' && (
             <motion.div 
               key="hub"
@@ -183,16 +216,16 @@ export default function CaseStudy() {
               exit={{ opacity: 0, scale: 0.95 }}
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 xl:gap-8"
             >
-               {instruments.map((inst) => (
+               {instrumentsData.map((inst) => (
                  <motion.div 
                    key={inst.id}
                    onClick={() => { setActiveInstrumentId(inst.id); setView('details'); }}
                    whileHover={{ y: -4 }}
-                   className="bg-white rounded-[32px] p-8 atmospheric-shadow border border-slate-100 flex flex-col relative overflow-hidden group cursor-pointer hover:border-primary/30 transition-all"
+                   className="bg-white rounded-[32px] p-5 md:p-6 atmospheric-shadow border border-slate-100 flex flex-col relative overflow-hidden group cursor-pointer hover:border-primary/30 transition-all"
                  >
-                    <div className="flex items-start justify-between mb-6">
-                       <div className="w-16 h-16 rounded-[24px] bg-primary/5 text-primary flex items-center justify-center group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-500 shrink-0">
-                          <inst.icon size={28} strokeWidth={2} />
+                    <div className="flex items-start justify-between mb-5">
+                       <div className="w-12 h-12 rounded-[20px] bg-primary/5 text-primary flex items-center justify-center group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-500 shrink-0">
+                          <inst.icon size={24} strokeWidth={2} />
                        </div>
                        
                        <div className={cn(
@@ -203,18 +236,16 @@ export default function CaseStudy() {
                        </div>
                     </div>
 
-                    <h3 className="text-xl font-black text-on-surface mb-3 leading-tight pr-4">{inst.name}</h3>
-                    <p className="text-sm font-medium text-slate-400 mb-8 flex-1">{inst.description}</p>
+                    <h3 className="text-lg font-black text-on-surface mb-2 leading-tight pr-4">{inst.name}</h3>
+                    <p className="text-[13px] font-medium text-slate-400 mb-6 flex-1">{inst.description}</p>
 
-                    {/* Resumo visual do status */}
                     {inst.versions > 0 && (
-                       <div className="flex items-center gap-2 mb-4 text-xs font-bold text-slate-500">
-                          <Clock size={14} className="text-primary" />
+                       <div className="flex items-center gap-2 mb-4 text-[11px] font-bold text-slate-500">
+                          <Clock size={12} className="text-primary" />
                           Última mod: {inst.lastUpdate}
                        </div>
                     )}
 
-                    {/* Botão Externo Isolado */}
                     {inst.allowExternalLink && (
                       <div className="mt-auto pt-4 border-t border-slate-50">
                         <button 
@@ -222,9 +253,9 @@ export default function CaseStudy() {
                             e.stopPropagation();
                             alert('Link copiado para a área de transferência!');
                           }}
-                          className="w-full py-3 bg-slate-50 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary/10 hover:text-primary transition-all flex items-center justify-center gap-2"
+                          className="w-full py-2.5 bg-slate-50 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary/10 hover:text-primary transition-all flex items-center justify-center gap-2"
                         >
-                          <Send size={14} /> Enviar Link Externo
+                          <Send size={14} /> Link Externo
                         </button>
                       </div>
                     )}
@@ -241,7 +272,6 @@ export default function CaseStudy() {
               exit={{ opacity: 0, x: -20 }}
               className="max-w-5xl mx-auto space-y-8"
             >
-               {/* Painel de Histórico */}
                <div className="bg-white rounded-[32px] p-10 atmospheric-shadow border border-slate-100">
                   <div className="flex items-center gap-4 mb-8">
                      <History className="text-primary" size={28} />
@@ -261,7 +291,6 @@ export default function CaseStudy() {
                                   <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mt-1">Por: {activeInstrument.lastPerson}</p>
                                </div>
                             </div>
-                            
                             <div className="flex items-center gap-6">
                                <div className="text-right">
                                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Conclusão</p>
@@ -272,9 +301,7 @@ export default function CaseStudy() {
                                      <span className="text-sm font-black text-slate-700">{activeInstrument.completionPercentage}%</span>
                                   </div>
                                </div>
-
                                <div className="h-10 w-px bg-slate-200 hidden md:block"></div>
-
                                <button 
                                  onClick={() => handleInstrumentAction('view')}
                                  className="px-6 py-3 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase text-primary hover:border-primary hover:bg-primary/5 transition-all tracking-widest flex items-center gap-2 shadow-sm"
@@ -293,7 +320,6 @@ export default function CaseStudy() {
                   )}
                </div>
 
-               {/* Ações do Instrumento */}
                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <button 
                      onClick={() => handleInstrumentAction('fill')}
@@ -323,7 +349,9 @@ export default function CaseStudy() {
                      <button 
                         disabled={activeInstrument.versions === 0}
                         onClick={() => {
-                          if(confirm('Tem certeza que deseja arquivar? O instrumento sairá da visão principal.')) { /* Logic */ }
+                          if(confirm('Tem certeza que deseja arquivar? O instrumento sairá da visão principal.')) { 
+                             alert('Arquivado com sucesso.');
+                          }
                         }}
                         className={cn(
                           "flex-1 p-6 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all",
@@ -335,9 +363,7 @@ export default function CaseStudy() {
                      </button>
                      <button 
                         disabled={activeInstrument.versions === 0}
-                        onClick={() => {
-                          if(confirm('CUIDADO: Isso excluirá permanentemente os dados. Prosseguir?')) { /* Logic */ }
-                        }}
+                        onClick={handleDelete}
                         className={cn(
                           "flex-1 p-6 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all",
                           activeInstrument.versions > 0 ? "bg-red-50 border border-red-100 text-red-500 hover:bg-red-500 hover:text-white" : "bg-slate-50 text-slate-300 cursor-not-allowed"
@@ -351,225 +377,228 @@ export default function CaseStudy() {
             </motion.div>
           )}
 
-          {view === 'consolidation' && (
-            <motion.div 
-              key="consolidation"
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -50 }}
-              className="space-y-8"
-            >
-               <div className="bg-white rounded-[48px] atmospheric-shadow border border-slate-100 overflow-hidden">
-                  <div className="bg-primary/5 p-10 flex items-center justify-between border-b border-primary/10">
-                     <div className="flex items-center gap-6">
-                        <div className="w-16 h-16 rounded-[28px] bg-primary text-white flex items-center justify-center shadow-xl shadow-primary/20">
-                           <Sparkles size={32} />
-                        </div>
-                        <div>
-                           <h2 className="text-3xl font-black text-on-surface tracking-tight">Consolidação: {activeInstrumentId}</h2>
-                           <p className="text-on-surface-variant font-medium">Análise conjunta baseada na Política de Ed. Inclusiva.</p>
-                        </div>
-                     </div>
-                     <button onClick={() => setView('hub')} className="p-4 rounded-full hover:bg-black/5 text-slate-400">
-                        <LayoutGrid size={24} />
-                     </button>
-                  </div>
-
-                  <div className="p-10 grid grid-cols-1 lg:grid-cols-2 gap-12">
-                     {/* Coluna de Fontes */}
-                     <div className="space-y-8">
-                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                           <History size={14} /> Seleção de Versões para Convergência
-                        </h3>
-                        <div className="space-y-4">
-                           {[
-                             { id: 'v1', date: '25/03/24', by: 'Prof. Maria', meta: 'Manual' },
-                             { id: 'v2', date: 'Ontem', by: 'Família (Externo)', meta: 'Via Link' },
-                           ].map(v => (
-                             <div key={v.id} className="flex items-center gap-4 p-6 rounded-3xl border-2 border-primary/20 bg-primary/5 hover:border-primary transition-all cursor-pointer">
-                                <div className="w-6 h-6 rounded-md bg-primary text-white flex items-center justify-center shadow-md">
-                                   <CheckCircle2 size={16} />
-                                </div>
-                                <div className="flex-1">
-                                   <p className="font-black text-on-surface tracking-tight">Versão em {v.date}</p>
-                                   <p className="text-xs font-bold text-slate-500 uppercase tracking-tighter opacity-70">{v.by} • {v.meta}</p>
-                                </div>
-                                <FileText className="text-primary opacity-40" />
-                             </div>
-                           ))}
-                        </div>
-
-                        <div className="bg-slate-50 rounded-[32px] p-8 border border-slate-200 border-dashed relative">
-                           <div className="absolute -top-3 left-8 bg-white border border-slate-200 px-3 py-1 rounded-full text-[10px] font-black text-primary uppercase">Sugestão IA</div>
-                           <div className="flex items-start gap-4">
-                              <Brain className="text-primary shrink-0" />
-                              <div className="space-y-2">
-                                 <p className="text-sm font-semibold text-on-surface-variant leading-relaxed opacity-70">
-                                   "As fontes apresentam convergência em 85%. Destaque para barreiras arquitetônicas e alta motivação intrínseca."
-                                 </p>
-                              </div>
-                           </div>
-                        </div>
-                     </div>
-
-                     {/* Coluna de Eixos */}
-                     <div className="space-y-8">
-                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                           <ShieldCheck size={14} /> Eixos de Análise Técnica
-                        </h3>
-                        
-                        <div className="space-y-6 max-h-[600px] overflow-y-auto pr-4 custom-scrollbar">
-                           {[
-                             { id: 'I', label: 'Eixo I: Diferenciação de demandas e barreiras', desc: 'Identificação inicial das barreiras individuais.' },
-                             { id: 'II', label: 'Eixo II: Análise do Contexto Escolar', desc: 'Barreiras e facilitadores no ambiente físico/social.' },
-                             { id: 'III', label: 'Eixo III: Potencialidades e Apoios', desc: 'Identificação de talentos e demandas de apoio.' },
-                             { id: 'IV', label: 'Eixo IV: Definição de Estratégias', desc: 'Recursos de acessibilidade e suplementação.' },
-                           ].map((eixo) => (
-                             <div key={eixo.id} className="p-8 pb-12 bg-white rounded-3xl border border-slate-100 atmospheric-shadow relative">
-                                <div className="flex items-center gap-4 mb-4">
-                                   <span className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-lg shadow-lg">{eixo.id}</span>
-                                   <p className="font-black text-on-surface text-lg leading-tight">{eixo.label}</p>
-                                </div>
-                                <MultimodalInput 
-                                   value=""
-                                   onChange={() => {}}
-                                   placeholder={`A IA pré-análisou este campo... ${eixo.desc}`}
-                                />
-                                <div className="absolute bottom-4 right-8 flex items-center gap-3">
-                                   <ShieldCheck size={14} className="text-green-500" />
-                                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Validado</span>
-                                </div>
-                             </div>
-                           ))}
-                        </div>
-
-                        <div className="pt-6">
-                           <button className="w-full bg-[#1DB954] text-white py-7 rounded-[28px] font-black text-base uppercase tracking-[0.2em] shadow-xl shadow-green-500/20 hover:brightness-105 active:scale-[0.98] transition-all flex items-center justify-center gap-4">
-                              <span>Finalizar Consolidação</span>
-                              <CheckCircle2 size={24} />
-                           </button>
-                        </div>
-                     </div>
-                  </div>
-               </div>
-            </motion.div>
-          )}
-
           {view === 'filling' && (
             <motion.div 
-              key="filling"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.05 }}
-              className="max-w-4xl mx-auto"
-            >
-               <div className="bg-white rounded-[48px] p-12 atmospheric-shadow border border-slate-100">
-                  <div className="flex items-center justify-between mb-12">
-                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
-                           <FileText size={24} />
-                        </div>
-                        <div>
-                           <h2 className="text-2xl font-black text-on-surface">Novo Preenchimento: {activeInstrumentId}</h2>
-                           <p className="text-sm font-medium text-slate-400">Esta será salva como a versão mais recente.</p>
-                        </div>
-                     </div>
-                     <button onClick={() => setView('hub')} className="text-slate-400 font-black text-[10px] uppercase hover:text-red-500 transition-all">Cancelar</button>
-                  </div>
-
-                  <div className="space-y-12">
-                     {activeInstrumentId === 'IF-SAHS' ? (
-                       <div className="space-y-12">
-                          <div className="bg-primary/5 p-8 rounded-[32px] border border-primary/10 flex items-start gap-4">
-                             <TrendingUp className="text-primary mt-1" size={24} />
-                             <div className="space-y-1">
-                                <p className="font-black text-on-surface uppercase tracking-tight">Evolução de Caso</p>
-                                <p className="text-sm font-medium text-slate-500">Insira as novas informações ou observações recentes. O sistema consolidará estes dados ao documento mestre.</p>
-                             </div>
-                          </div>
-                          
-                          <div className="space-y-4">
-                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Campo de Atualização</label>
-                             <MultimodalInput 
-                                value="" 
-                                onChange={() => {}} 
-                                placeholder="Descreva aqui as mudanças ou novas informações coletadas..." 
-                             />
-                          </div>
-
-                          <div className="p-8 bg-slate-50 rounded-3xl border border-slate-100 italic text-sm text-slate-400 flex items-center gap-4">
-                             <Sparkles size={18} className="text-primary opacity-40" />
-                             "Ao salvar, a IA atualizará automaticamente os eixos de análise do Estudo de Caso."
-                          </div>
-                       </div>
-                     ) : activeInstrumentId === 'DOC-ANALISE' ? (
+               key="filling"
+               initial={{ opacity: 0, scale: 0.95 }}
+               animate={{ opacity: 1, scale: 1 }}
+               exit={{ opacity: 0, scale: 1.05 }}
+               className="max-w-4xl mx-auto"
+             >
+                <div className="bg-white rounded-[48px] p-12 atmospheric-shadow border border-slate-100">
+                   <div className="flex items-center justify-between mb-12">
+                      <div className="flex items-center gap-4">
+                         <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                            <FileText size={24} />
+                         </div>
+                         <div>
+                            <h2 className="text-2xl font-black text-on-surface">Novo Preenchimento: {activeInstrument?.name}</h2>
+                            <p className="text-sm font-medium text-slate-400">Esta será salva como a versão mais recente.</p>
+                         </div>
+                      </div>
+                      <button onClick={() => setView('details')} className="text-slate-400 font-black text-[10px] uppercase hover:text-red-500 transition-all">Cancelar</button>
+                   </div>
+                   
+                   <div className="space-y-12">
+                      {activeInstrumentId === 'IF-SAHS' ? (
                         <div className="space-y-12">
                            <div className="bg-primary/5 p-8 rounded-[32px] border border-primary/10 flex items-start gap-4">
-                              <FileText className="text-primary mt-1" size={24} />
+                              <TrendingUp className="text-primary mt-1" size={24} />
                               <div className="space-y-1">
-                                 <p className="font-black text-on-surface uppercase tracking-tight">Análise Automática de Documentos</p>
-                                 <p className="text-sm font-medium text-slate-500">Faça o upload de laudos médicos, avaliações multi-profissionais ou relatórios escolares.  O sistema lerá os arquivos e extrairá as informações relevantes para a construção do PEI do estudante de forma automatizada.</p>
+                                 <p className="font-black text-on-surface uppercase tracking-tight">Evolução de Caso</p>
+                                 <p className="text-sm font-medium text-slate-500">Insira as novas informações ou observações recentes. O sistema consolidará estes dados ao documento mestre.</p>
                               </div>
                            </div>
-                           
                            <div className="space-y-4">
-                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Anexar Aquivos (Laudos, PDF, Imagens)</label>
-                              <div className="w-full h-48 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[32px] flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-primary/5 hover:scale-[1.01] transition-all group">
-                                 <Plus size={36} className="text-slate-300 group-hover:text-primary transition-colors mb-4" />
-                                 <p className="text-base font-bold text-slate-500 group-hover:text-primary mb-1 text-center px-4">Clique aqui para enviar seus arquivos ou arraste-os para cá</p>
-                                 <p className="text-xs font-medium text-slate-400/60 uppercase tracking-widest">Suporta .PDF, .DOCX, .JPG, .PNG</p>
-                              </div>
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Campo de Atualização</label>
+                              <MultimodalInput 
+                                 value={inputText} 
+                                 onChange={setInputText} 
+                                 placeholder="Descreva aqui as mudanças ou novas informações coletadas..." 
+                              />
+                           </div>
+                           <div className="p-8 bg-slate-50 rounded-3xl border border-slate-100 italic text-sm text-slate-400 flex items-center gap-4">
+                              <Sparkles size={18} className="text-primary opacity-40" />
+                              "Ao salvar, a IA atualizará automaticamente os eixos de análise do Estudo de Caso."
                            </div>
                         </div>
-                      ) : (
-                       <div className="py-20 text-center bg-slate-50 rounded-3xl border border-dashed border-slate-200">
-                          <Plus className="mx-auto text-slate-200 mb-4" size={48} />
-                          <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Módulo de preenchimento para {activeInstrumentId}</p>
-                       </div>
-                     )}
+                      ) : activeInstrumentId === 'DOC-ANALISE' ? (
+                         <div className="space-y-12">
+                            <div className="bg-primary/5 p-8 rounded-[32px] border border-primary/10 flex items-start gap-4">
+                               <FileText className="text-primary mt-1" size={24} />
+                               <div className="space-y-1">
+                                  <p className="font-black text-on-surface uppercase tracking-tight">Análise Automática de Documentos</p>
+                                  <p className="text-sm font-medium text-slate-500">Faça o upload de laudos médicos ou relatórios. O sistema extrairá informações relevantes.</p>
+                               </div>
+                            </div>
+                            <div className="space-y-4">
+                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Nome do Documento</label>
+                               <input 
+                                 type="text" 
+                                 value={docName}
+                                 onChange={e => setDocName(e.target.value)}
+                                 placeholder="Ex: Laudo Neurológico - Dr. João" 
+                                 className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-sm text-slate-700" 
+                               />
+                               
+                               <label className="mt-4 w-full h-48 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[32px] flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-primary/5 hover:scale-[1.01] transition-all group">
+                                  <input type="file" className="hidden" onChange={e => e.target.files && setSelectedFile(e.target.files[0])} />
+                                  <Plus size={36} className="text-slate-300 group-hover:text-primary transition-colors mb-4" />
+                                  <p className="text-base font-bold text-slate-500 group-hover:text-primary mb-1 text-center px-4">
+                                     {selectedFile ? selectedFile.name : 'Clique aqui para enviar seus arquivos ou arraste-os para cá'}
+                                  </p>
+                                  <p className="text-xs font-medium text-slate-400/60 uppercase tracking-widest">Suporta .PDF, .DOCX, .JPG, .PNG</p>
+                               </label>
+                            </div>
+                         </div>
+                       ) : (
+                        <div className="py-20 text-center bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+                           <Plus className="mx-auto text-slate-200 mb-4" size={48} />
+                           <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Módulo de preenchimento para {activeInstrument?.name}</p>
+                        </div>
+                      )}
+                      
+                      <div className="pt-10 border-t border-slate-100 flex gap-4">
+                         <button onClick={handleSave} className="flex-1 bg-primary text-white py-6 rounded-3xl font-black text-base uppercase tracking-widest shadow-xl shadow-primary/20 flex items-center justify-center gap-3 hover:brightness-110 active:scale-95 transition-all">
+                            {activeInstrumentId === 'DOC-ANALISE' ? <><Sparkles size={20} /> Salvar e Analisar</> : 'Salvar como Nova Versão'}
+                         </button>
+                      </div>
+                   </div>
+                </div>
+             </motion.div>
+          )}
 
-                     <div className="pt-10 border-t border-slate-100 flex gap-4">
-                        <button className="flex-1 bg-primary text-white py-6 rounded-3xl font-black text-base uppercase tracking-widest shadow-xl shadow-primary/20 flex items-center justify-center gap-3 hover:brightness-110 active:scale-95 transition-all">
-                           {activeInstrumentId === 'DOC-ANALISE' ? <><Sparkles size={20} /> Analisar Documentos e Salvar</> : 'Salvar como Nova Versão'}
-                        </button>
-                     </div>
-                  </div>
-               </div>
-            </motion.div>
+          {view === 'consolidation' && (
+             <motion.div 
+               key="consolidation"
+               initial={{ opacity: 0, x: 50 }}
+               animate={{ opacity: 1, x: 0 }}
+               exit={{ opacity: 0, x: -50 }}
+               className="space-y-8"
+             >
+                <div className="bg-white rounded-[48px] atmospheric-shadow border border-slate-100 overflow-hidden">
+                   <div className="bg-primary/5 p-10 flex items-center justify-between border-b border-primary/10">
+                      <div className="flex items-center gap-6">
+                         <div className="w-16 h-16 rounded-[28px] bg-primary text-white flex items-center justify-center shadow-xl shadow-primary/20">
+                            <Sparkles size={32} />
+                         </div>
+                         <div>
+                            <h2 className="text-3xl font-black text-on-surface tracking-tight">Consolidação: {activeInstrumentId}</h2>
+                            <p className="text-on-surface-variant font-medium">Análise conjunta baseada na Política de Ed. Inclusiva.</p>
+                         </div>
+                      </div>
+                      <button onClick={() => setView('details')} className="p-4 rounded-full hover:bg-black/5 text-slate-400">
+                         <LayoutGrid size={24} />
+                      </button>
+                   </div>
+                      
+                   <div className="p-10 grid grid-cols-1 lg:grid-cols-2 gap-12">
+                      <div className="space-y-8">
+                         <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                            <History size={14} /> Seleção de Versões para Convergência
+                         </h3>
+                         <div className="space-y-4">
+                            {[
+                              { id: 'v1', date: '25/03/24', by: 'Prof. Maria', meta: 'Manual' },
+                              { id: 'v2', date: 'Ontem', by: 'Família (Externo)', meta: 'Via Link' },
+                            ].map(v => (
+                              <div key={v.id} className="flex items-center gap-4 p-6 rounded-3xl border-2 border-primary/20 bg-primary/5 hover:border-primary transition-all cursor-pointer">
+                                 <div className="w-6 h-6 rounded-md bg-primary text-white flex items-center justify-center shadow-md">
+                                    <CheckCircle2 size={16} />
+                                 </div>
+                                 <div className="flex-1">
+                                    <p className="font-black text-on-surface tracking-tight">Versão em {v.date}</p>
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-tighter opacity-70">{v.by} • {v.meta}</p>
+                                 </div>
+                                 <FileText className="text-primary opacity-40" />
+                              </div>
+                            ))}
+                         </div>
+                         <div className="bg-slate-50 rounded-[32px] p-8 border border-slate-200 border-dashed relative">
+                            <div className="absolute -top-3 left-8 bg-white border border-slate-200 px-3 py-1 rounded-full text-[10px] font-black text-primary uppercase">Sugestão IA</div>
+                            <div className="flex items-start gap-4">
+                               <Brain className="text-primary shrink-0" />
+                               <div className="space-y-2">
+                                  <p className="text-sm font-semibold text-on-surface-variant leading-relaxed opacity-70">
+                                    "As fontes apresentam convergência em 85%. Destaque para barreiras."
+                                  </p>
+                               </div>
+                            </div>
+                         </div>
+                      </div>
+                      <div className="space-y-8">
+                         <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                            <ShieldCheck size={14} /> Eixos de Análise Técnica
+                         </h3>
+                         <div className="space-y-6 max-h-[600px] overflow-y-auto pr-4 custom-scrollbar">
+                            {[
+                              { id: 'I', label: 'Eixo I: Diferenciação de demandas e barreiras', desc: 'Identificação inicial das barreiras individuais.' },
+                              { id: 'II', label: 'Eixo II: Análise do Contexto Escolar', desc: 'Barreiras e facilitadores.' },
+                            ].map((eixo) => (
+                              <div key={eixo.id} className="p-8 pb-12 bg-white rounded-3xl border border-slate-100 atmospheric-shadow relative">
+                                 <div className="flex items-center gap-4 mb-4">
+                                    <span className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-lg shadow-lg">{eixo.id}</span>
+                                    <p className="font-black text-on-surface text-lg leading-tight">{eixo.label}</p>
+                                 </div>
+                                 <MultimodalInput 
+                                    value={inputText}
+                                    onChange={setInputText}
+                                    placeholder={`A IA pré-análisou este campo... ${eixo.desc}`}
+                                 />
+                                 <div className="absolute bottom-4 right-8 flex items-center gap-3">
+                                    <ShieldCheck size={14} className="text-green-500" />
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Validado</span>
+                                 </div>
+                              </div>
+                            ))}
+                         </div>
+                         <div className="pt-6">
+                            <button onClick={() => setView('details')} className="w-full bg-[#1DB954] text-white py-7 rounded-[28px] font-black text-base uppercase tracking-[0.2em] shadow-xl shadow-green-500/20 hover:brightness-105 active:scale-[0.98] transition-all flex items-center justify-center gap-4">
+                               <span>Finalizar Consolidação</span>
+                               <CheckCircle2 size={24} />
+                            </button>
+                         </div>
+                      </div>
+                   </div>
+                </div>
+             </motion.div>
           )}
 
           {view === 'versions' && (
-            <motion.div 
+             <motion.div 
                key="versions"
                className="max-w-4xl mx-auto space-y-8"
-            >
-               <div className="flex items-center justify-between bg-white p-8 rounded-[32px] atmospheric-shadow border border-slate-100">
-                  <div className="flex items-center gap-4">
-                     <History className="text-primary" />
-                     <h3 className="text-xl font-black text-on-surface uppercase tracking-tight">Relatórios de Versões</h3>
-                  </div>
-                  <button onClick={() => setView('hub')} className="text-primary font-black text-xs uppercase underline">Voltar</button>
-               </div>
-               
-               <div className="grid gap-4">
-                 {[1, 2].map(v => (
-                   <div key={v} className="bg-white p-8 rounded-[32px] border border-slate-100 atmospheric-shadow flex items-center justify-between group hover:border-primary transition-all">
-                      <div className="flex items-center gap-6">
-                         <div className="w-14 h-14 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center font-black text-xl">
-                            {v}
-                         </div>
-                         <div>
-                            <p className="font-black text-on-surface text-lg">Versão salva em 25/03/2024</p>
-                            <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">Responsável: Professor Maria Silva</p>
-                         </div>
-                      </div>
-                      <button className="px-6 py-3 bg-slate-50 rounded-xl text-[10px] font-black uppercase text-slate-400 hover:bg-primary/10 hover:text-primary transition-all tracking-widest">
-                         Visualizar Dados
-                      </button>
+             >
+                <div className="flex items-center justify-between bg-white p-8 rounded-[32px] atmospheric-shadow border border-slate-100">
+                   <div className="flex items-center gap-4">
+                      <History className="text-primary" />
+                      <h3 className="text-xl font-black text-on-surface uppercase tracking-tight">Relatórios de Versões</h3>
                    </div>
-                 ))}
-               </div>
-            </motion.div>
+                   <button onClick={() => setView('details')} className="text-primary font-black text-xs uppercase underline">Voltar</button>
+                </div>
+                
+                <div className="grid gap-4">
+                  {[1, 2].map(v => (
+                    <div key={v} className="bg-white p-8 rounded-[32px] border border-slate-100 atmospheric-shadow flex items-center justify-between group hover:border-primary transition-all">
+                       <div className="flex items-center gap-6">
+                          <div className="w-14 h-14 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center font-black text-xl">
+                             {v}
+                          </div>
+                          <div>
+                             <p className="font-black text-on-surface text-lg">Versão salva em {v === 1 ? '25/03/2024' : 'Ontem'}</p>
+                             <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">Responsável: Professor Maria Silva</p>
+                          </div>
+                       </div>
+                       <button 
+                         onClick={() => alert(`Conteúdo: ${inputText || 'Sem dados textuais'}`)}
+                         className="px-6 py-3 bg-slate-50 rounded-xl text-[10px] font-black uppercase text-slate-400 hover:bg-primary/10 hover:text-primary transition-all tracking-widest"
+                       >
+                          Visualizar Dados
+                       </button>
+                    </div>
+                  ))}
+                </div>
+             </motion.div>
           )}
         </AnimatePresence>
       </main>

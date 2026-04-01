@@ -6,6 +6,7 @@ import {
   Sparkles, Brain, Trophy, Heart, Activity
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { TopBar } from '../components/Navigation';
 import { MultimodalInput } from '../components/MultimodalInput';
 import { cn } from '../lib/utils';
@@ -18,6 +19,9 @@ interface Suggestion {
 }
 
 export default function TeacherCollection() {
+  const { studentId } = useParams();
+  const navigate = useNavigate();
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [role, setRole] = useState<'professor' | 'aee' | 'pae' | ''>('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([
     { id: '1', component: '', content: '', methodology: '' }
@@ -65,7 +69,7 @@ export default function TeacherCollection() {
         <div className="mb-12 flex flex-col items-center">
            <div className="flex w-full justify-start mb-8">
               <button 
-                onClick={() => window.history.back()}
+                onClick={() => navigate(-1)}
                 className="flex items-center gap-2 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-primary transition-all"
               >
                  <ChevronLeft size={16} /> Voltar ao Estudo
@@ -231,7 +235,7 @@ export default function TeacherCollection() {
 
                  <div className="space-y-4">
                     <label className="text-lg font-black text-on-surface tracking-tight leading-tight">Quais as potencialidades apresentadas pelo aluno?</label>
-                    <MultimodalInput value="" onChange={() => {}} placeholder="Grave ou digite as virtudes observadas..." />
+                    <MultimodalInput value={answers['comp2'] || ''} onChange={(val) => setAnswers({...answers, comp2: val})} placeholder="Grave ou digite as virtudes observadas..." />
                  </div>
               </div>
            </section>
@@ -248,12 +252,12 @@ export default function TeacherCollection() {
               <div className="space-y-12">
                  <div className="space-y-4">
                     <p className="text-lg font-black text-on-surface tracking-tight leading-tight">O aluno apresenta dificuldades pedagógicas em alguma disciplina ou assunto?</p>
-                    <MultimodalInput value="" onChange={() => {}} placeholder="Descreva aqui..." />
+                    <MultimodalInput value={answers['diff1'] || ''} onChange={(val) => setAnswers({...answers, diff1: val})} placeholder="Descreva aqui..." />
                  </div>
 
                  <div className="space-y-4">
                     <p className="text-lg font-black text-on-surface tracking-tight leading-tight">O aluno demonstra sinais de desmotivação na escola? Como isso se manifesta?</p>
-                    <MultimodalInput value="" onChange={() => {}} placeholder="Ex: falta de participação, tédio..." />
+                    <MultimodalInput value={answers['diff2'] || ''} onChange={(val) => setAnswers({...answers, diff2: val})} placeholder="Ex: falta de participação, tédio..." />
                  </div>
 
                  <div className="pt-8 border-t border-slate-50 space-y-10">
@@ -269,7 +273,7 @@ export default function TeacherCollection() {
                             <n.icon className={n.color} size={20} />
                             <p className="font-black text-on-surface uppercase tracking-widest text-[10px]">{n.title}</p>
                          </div>
-                         <MultimodalInput value="" onChange={() => {}} placeholder="Detalhamento analítico..." />
+                         <MultimodalInput value={answers[n.id] || ''} onChange={(val) => setAnswers({...answers, [n.id]: val})} placeholder="Detalhamento analítico..." />
                       </div>
                     ))}
                  </div>
@@ -313,7 +317,7 @@ export default function TeacherCollection() {
                            className="space-y-4 pt-4"
                          >
                             <label className="text-sm font-bold text-on-surface-variant">Se sim, qual(is) e como foi a experiência?</label>
-                            <MultimodalInput value="" onChange={() => {}} />
+                            <MultimodalInput value={answers['strategy'] || ''} onChange={(val) => setAnswers({...answers, strategy: val})} />
                          </motion.div>
                        )}
                     </AnimatePresence>

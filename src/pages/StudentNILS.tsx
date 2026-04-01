@@ -362,6 +362,16 @@ Com base EXCLUSIVAMENTE nas regras do seu sistema, gere a interpretação e as e
       <TopBar />
       
       <main className="max-w-6xl mx-auto px-6 py-12">
+        {/* Botão Voltar */}
+        <div className="mb-8 flex justify-start">
+           <button 
+             onClick={() => navigate(-1)}
+             className="flex items-center gap-2 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-primary transition-all"
+           >
+              <ChevronLeft size={16} /> Voltar ao Estudo
+           </button>
+        </div>
+
         <AnimatePresence mode="wait">
           {!hasResult ? (
             <motion.div 

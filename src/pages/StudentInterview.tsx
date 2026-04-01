@@ -1,14 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   MessageSquare, User, School, Laptop, 
   Send, ChevronLeft, Sparkles, Heart,
   Brain, Rocket, Smile, Gamepad2
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { TopBar } from '../components/Navigation';
 import { MultimodalInput } from '../components/MultimodalInput';
 
 export default function StudentInterview() {
+  const { studentId } = useParams();
+  const navigate = useNavigate();
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-20">
       <TopBar />
@@ -17,7 +21,7 @@ export default function StudentInterview() {
         {/* Botão Voltar */}
         <div className="mb-8 flex justify-start">
            <button 
-             onClick={() => window.history.back()}
+             onClick={() => navigate(-1)}
              className="flex items-center gap-2 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-primary transition-all"
            >
               <ChevronLeft size={16} /> Voltar ao Estudo
@@ -62,22 +66,22 @@ export default function StudentInterview() {
               <div className="space-y-12">
                  <div className="space-y-4 bg-white p-8 rounded-[36px] atmospheric-shadow border border-slate-50">
                     <p className="text-lg font-black text-on-surface leading-tight tracking-tight">1. Quando você não está na escola o que gosta de fazer?</p>
-                    <MultimodalInput value="" onChange={() => {}} placeholder="Grave ou digite aqui..." />
+                    <MultimodalInput value={answers['q1'] || ''} onChange={(val) => setAnswers({...answers, q1: val})} placeholder="Grave ou digite aqui..." />
                  </div>
 
                  <div className="space-y-4 bg-white p-8 rounded-[36px] atmospheric-shadow border border-slate-50">
                     <p className="text-lg font-black text-on-surface leading-tight tracking-tight">2. Há algo que você aprendeu sozinho(a), pesquisando, vendo vídeos ou só por curiosidade?</p>
-                    <MultimodalInput value="" onChange={() => {}} placeholder="Conte para a gente..." />
+                    <MultimodalInput value={answers['q2'] || ''} onChange={(val) => setAnswers({...answers, q2: val})} placeholder="Conte para a gente..." />
                  </div>
 
                  <div className="space-y-4 bg-white p-8 rounded-[36px] atmospheric-shadow border border-slate-50">
                     <p className="text-lg font-black text-on-surface leading-tight tracking-tight">3. Há algo que você gostaria muito de aprender, mas ainda não teve a oportunidade? O que é?</p>
-                    <MultimodalInput value="" onChange={() => {}} placeholder="O que você sonha em aprender?" />
+                    <MultimodalInput value={answers['q3'] || ''} onChange={(val) => setAnswers({...answers, q3: val})} placeholder="O que você sonha em aprender?" />
                  </div>
 
                  <div className="space-y-4 bg-white p-8 rounded-[36px] atmospheric-shadow border border-slate-50">
                     <p className="text-lg font-black text-on-surface leading-tight tracking-tight">4. Quando você tenta fazer algo e não consegue como você se sente? (Ex.: Tenta até conseguir, pede ajuda, desiste, fica nervoso, tenta entender o erro...)</p>
-                    <MultimodalInput value="" onChange={() => {}} placeholder="Como você reage?" />
+                    <MultimodalInput value={answers['q4'] || ''} onChange={(val) => setAnswers({...answers, q4: val})} placeholder="Como você reage?" />
                  </div>
               </div>
            </section>
@@ -103,20 +107,20 @@ export default function StudentInterview() {
                           <p className="font-bold text-on-surface-variant flex items-center gap-2 italic">
                              <Smile className="text-primary" size={18} /> O que você mais gosta nela?
                           </p>
-                          <MultimodalInput value="" onChange={() => {}} />
+                          <MultimodalInput value={answers['q5a'] || ''} onChange={(val) => setAnswers({...answers, q5a: val})} />
                        </div>
                        <div className="space-y-4">
                           <p className="font-bold text-on-surface-variant flex items-center gap-2 italic">
                              O que você não gosta nela?
                           </p>
-                          <MultimodalInput value="" onChange={() => {}} />
+                          <MultimodalInput value={answers['q5b'] || ''} onChange={(val) => setAnswers({...answers, q5b: val})} />
                        </div>
                     </div>
                  </div>
 
                  <div className="space-y-4 bg-white p-8 rounded-[36px] atmospheric-shadow border border-slate-50">
                     <p className="text-lg font-black text-on-surface leading-tight tracking-tight">6. Se você pudesse mudar alguma coisa na escola o que seria?</p>
-                    <MultimodalInput value="" onChange={() => {}} />
+                    <MultimodalInput value={answers['q6'] || ''} onChange={(val) => setAnswers({...answers, q6: val})} />
                  </div>
 
                  <div className="bg-white p-10 rounded-[40px] atmospheric-shadow border border-slate-50 space-y-10">
@@ -128,11 +132,11 @@ export default function StudentInterview() {
                     <div className="grid gap-10 pl-11 border-l-2 border-slate-100 ml-4">
                        <div className="space-y-4">
                           <p className="font-bold text-on-surface-variant italic">Qual(is) você mais gosta?</p>
-                          <MultimodalInput value="" onChange={() => {}} />
+                          <MultimodalInput value={answers['q7a'] || ''} onChange={(val) => setAnswers({...answers, q7a: val})} />
                        </div>
                        <div className="space-y-4">
                           <p className="font-bold text-on-surface-variant italic">Qual(is) você não gosta muito?</p>
-                          <MultimodalInput value="" onChange={() => {}} />
+                          <MultimodalInput value={answers['q7b'] || ''} onChange={(val) => setAnswers({...answers, q7b: val})} />
                        </div>
                     </div>
                  </div>
@@ -148,18 +152,18 @@ export default function StudentInterview() {
                           <p className="font-bold text-on-surface-variant flex items-center gap-2 italic">
                              O que faz uma atividade/aula muito legal?
                           </p>
-                          <MultimodalInput value="" onChange={() => {}} />
+                          <MultimodalInput value={answers['q8a'] || ''} onChange={(val) => setAnswers({...answers, q8a: val})} />
                        </div>
                        <div className="space-y-4">
                           <p className="font-bold text-on-surface-variant italic">O que faz uma atividade/aula ser chata ou sem graça?</p>
-                          <MultimodalInput value="" onChange={() => {}} />
+                          <MultimodalInput value={answers['q8b'] || ''} onChange={(val) => setAnswers({...answers, q8b: val})} />
                        </div>
                     </div>
                  </div>
 
                  <div className="space-y-4 bg-white p-8 rounded-[36px] atmospheric-shadow border border-slate-50">
                     <p className="text-lg font-black text-on-surface leading-tight tracking-tight">9. Você tem amigos na escola?</p>
-                    <MultimodalInput value="" onChange={() => {}} />
+                    <MultimodalInput value={answers['q9'] || ''} onChange={(val) => setAnswers({...answers, q9: val})} />
                  </div>
               </div>
            </section>
@@ -176,17 +180,17 @@ export default function StudentInterview() {
               <div className="space-y-12">
                  <div className="space-y-4 bg-white p-8 rounded-[36px] atmospheric-shadow border border-slate-50">
                     <p className="text-lg font-black text-on-surface leading-tight tracking-tight">10. Você gosta mais de aprender com tecnologia (computador, celular, internet) ou sem ela (livros, cadernos, jogos físicos)? Por quê?</p>
-                    <MultimodalInput value="" onChange={() => {}} />
+                    <MultimodalInput value={answers['q10'] || ''} onChange={(val) => setAnswers({...answers, q10: val})} />
                  </div>
 
                  <div className="space-y-4 bg-white p-8 rounded-[36px] atmospheric-shadow border border-slate-50">
                     <p className="text-lg font-black text-on-surface leading-tight tracking-tight">11. Quais tecnologias você utiliza em casa? Como e para quê? (Ex.: vídeos no YouTube, jogos, aplicativos, sites, cursos online...)</p>
-                    <MultimodalInput value="" onChange={() => {}} />
+                    <MultimodalInput value={answers['q11'] || ''} onChange={(val) => setAnswers({...answers, q11: val})} />
                  </div>
 
                  <div className="space-y-4 bg-white p-8 rounded-[36px] atmospheric-shadow border border-slate-50">
                     <p className="text-lg font-black text-on-surface leading-tight tracking-tight">12. Se você pudesse usar mais tecnologia nas aulas, para que seria? (Ex.: aprender mais sobre..., fazer..., criar..., pesquisar...)</p>
-                    <MultimodalInput value="" onChange={() => {}} />
+                    <MultimodalInput value={answers['q12'] || ''} onChange={(val) => setAnswers({...answers, q12: val})} />
                  </div>
               </div>
            </section>
