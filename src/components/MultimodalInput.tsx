@@ -11,16 +11,73 @@ interface MultimodalInputProps {
   onReviewPending?: (isPending: boolean) => void;
 }
 
+const HoldToConfirmButton: React.FC<{ onConfirm: () => void }> = ({ onConfirm }) => {
+  const [holding, setHolding] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const startHold = () => {
+    setHolding(true);
+    setProgress(0);
+    const duration = 1500;
+    const tick = 30;
+
+    intervalRef.current = setInterval(() => {
+      setProgress(prev => {
+        const next = prev + (tick / duration) * 100;
+        if (next >= 100) return 100;
+        return next;
+      });
+    }, tick);
+
+    timeoutRef.current = setTimeout(() => {
+      stopHold();
+      onConfirm();
+    }, duration);
+  };
+
+  const stopHold = () => {
+    setHolding(false);
+    setProgress(0);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (intervalRef.current) clearInterval(intervalRef.current);
+  };
+
+  return (
+    <button
+      type="button"
+      onMouseDown={startHold}
+      onMouseUp={stopHold}
+      onMouseLeave={stopHold}
+      onTouchStart={startHold}
+      onTouchEnd={stopHold}
+      className="relative overflow-hidden px-5 py-3 rounded-xl flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-black uppercase tracking-widest transition-all shadow-sm whitespace-nowrap select-none"
+    >
+      <div 
+        className="absolute top-0 left-0 h-full bg-green-500/30 pointer-events-none transition-all duration-75 ease-linear"
+        style={{ width: `${progress}%` }}
+      />
+      <div className="relative z-10 flex items-center gap-2 text-slate-700">
+        <CheckCircle2 size={16} className={holding ? "text-green-700" : "text-green-600/50"} /> 
+        Segure para Confirmar Fidelidade e Excluir Áudio
+      </div>
+    </button>
+  );
+};
+
 export const MultimodalInput: React.FC<MultimodalInputProps> = ({ value, onChange, placeholder, id, onReviewPending }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [reviewPending, setReviewPending] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState('');
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recognitionRef = useRef<any>(null);
 
   // Auto-expand textarea
   useEffect(() => {
@@ -32,15 +89,19 @@ export const MultimodalInput: React.FC<MultimodalInputProps> = ({ value, onChang
 
   useEffect(() => {
     return () => {
-      // Cleanup ObjectURL no unmount
+      // Cleanup
       if (audioUrl) URL.revokeObjectURL(audioUrl);
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
+      }
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
       }
     };
   }, [audioUrl]);
 
   const startRecording = async () => {
+    setLiveTranscript('');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
@@ -67,6 +128,27 @@ export const MultimodalInput: React.FC<MultimodalInputProps> = ({ value, onChang
 
       mediaRecorder.start();
       setIsRecording(true);
+
+      // Transcrição Simultânea (se suportada)
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognitionRef.current = recognition;
+        recognition.lang = 'pt-BR';
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        recognition.onresult = (event: any) => {
+          let transcript = '';
+          for (let i = 0; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript;
+          }
+          setLiveTranscript(transcript.trim());
+        };
+
+        recognition.start();
+      }
+
     } catch (err) {
       console.error("Erro ao acessar o microfone:", err);
       alert("Não foi possível acessar o microfone. Verifique as permissões do navegador.");
@@ -78,19 +160,22 @@ export const MultimodalInput: React.FC<MultimodalInputProps> = ({ value, onChang
       mediaRecorderRef.current.stop();
       setIsRecording(false);
     }
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
   };
 
   const handleTranscribe = () => {
     setIsTranscribing(true);
     
-    // Simulate API Call Time
     setTimeout(() => {
-      const mockText = "Transcrição processada pelo sistema. Por favor, revise e altere o que for necessário.";
       const currentVal = value.trim();
       const prefix = currentVal ? `${currentVal}\n\n` : '';
-      onChange(prefix + mockText);
+      const textToAppend = liveTranscript || "(A transcrição gerou um conteúdo vazio. Verifique o uso de uma IA avançada ou se o áudio não possui voz humana audível.)";
+      
+      onChange(prefix + textToAppend);
       setIsTranscribing(false);
-    }, 2000);
+    }, 1500); // UI delay para respiro
   };
 
   const handleApproveTranscription = () => {
@@ -99,14 +184,14 @@ export const MultimodalInput: React.FC<MultimodalInputProps> = ({ value, onChang
     setAudioBlob(null);
     if (audioUrl) URL.revokeObjectURL(audioUrl);
     setAudioUrl(null);
-    alert("Áudio excluído e espaço liberado!");
+    setLiveTranscript('');
   };
 
   return (
     <div className="space-y-3 w-full">
       {reviewPending && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-[11px] font-black tracking-widest uppercase flex items-center justify-between animate-in fade-in slide-in-from-top-2">
-          <span>Atenção: Revise a transcrição e exclua o áudio original para validar este campo.</span>
+        <div className="bg-orange-50 border border-orange-200 text-orange-700 px-4 py-3 rounded-xl text-[11px] font-black tracking-widest flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+          <span className="uppercase">Revisão Necessária: Por favor, leia a transcrição e confirme a fidelidade à resposta original do respondente.</span>
         </div>
       )}
       
@@ -179,13 +264,7 @@ export const MultimodalInput: React.FC<MultimodalInputProps> = ({ value, onChang
                 </button>
 
                 {value.trim() && reviewPending && (
-                  <button
-                     type="button"
-                     onClick={handleApproveTranscription}
-                     className="px-5 py-3 rounded-xl flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white text-[10px] font-black uppercase tracking-widest transition-all shadow-md shadow-green-500/30 whitespace-nowrap"
-                  >
-                    <CheckCircle2 size={16} /> Confirmar & Excluir
-                  </button>
+                  <HoldToConfirmButton onConfirm={handleApproveTranscription} />
                 )}
               </div>
             </div>

@@ -21,7 +21,7 @@ type ViewState = 'hub' | 'details' | 'filling' | 'consolidation' | 'versions';
 type IfSahsRecord = {
   id: string;
   type: 'versao_inicial' | 'atualizacao';
-  status: 'ativo' | 'arquivado';
+  status: 'ativo' | 'arquivado' | 'rascunho';
   date: string;
   person: string;
   respondentName: string;
@@ -200,13 +200,14 @@ export default function CaseStudy() {
     if (action === 'view') setView('versions');
   };
 
-  const handleSave = () => {
+  const handleSave = (status: 'ativo' | 'rascunho' = 'ativo') => {
     if (!activeInstrumentId) return;
 
     if (activeInstrumentId === 'IF-SAHS') {
       if (fillingType === 'edit' && selectedRecord) {
         setIfSahsRecords(prev => prev.map(r => r.id === selectedRecord.id ? {
           ...r,
+          status,
           respondentName,
           respondentRole,
           respondentRelation,
@@ -215,13 +216,14 @@ export default function CaseStudy() {
         
         setSelectedRecord(prev => prev ? {
           ...prev,
+          status,
           respondentName,
           respondentRole,
           respondentRelation,
           answers: ifSahsAnswers
         } : null);
         
-        alert('IF-SAHS editado com sucesso!');
+        alert(status === 'rascunho' ? 'Rascunho atualizado!' : 'IF-SAHS editado com sucesso!');
         setView('versions');
         return;
       }
@@ -229,7 +231,7 @@ export default function CaseStudy() {
       const newRecord: IfSahsRecord = {
          id: Date.now().toString(),
          type: fillingType === 'atualizacao' ? 'atualizacao' : 'versao_inicial',
-         status: 'ativo',
+         status,
          date: new Date().toLocaleDateString('pt-BR'),
          person: 'Prof. Local',
          respondentName,
@@ -397,6 +399,7 @@ export default function CaseStudy() {
                                       <div className="flex items-center gap-2 mb-1">
                                         <p className="font-black text-on-surface text-lg leading-none">Registrado em {record.date}</p>
                                         {record.status === 'arquivado' && <span className="bg-slate-200 text-slate-500 text-[9px] px-2 py-0.5 rounded-md font-black uppercase tracking-widest">Arquivado</span>}
+                                        {record.status === 'rascunho' && <span className="bg-orange-100 text-orange-600 text-[9px] px-2 py-0.5 rounded-md font-black uppercase tracking-widest">Rascunho Pendente</span>}
                                         {record.type === 'atualizacao' && <span className="bg-blue-100 text-blue-600 text-[9px] px-2 py-0.5 rounded-md font-black uppercase tracking-widest">Atualização</span>}
                                       </div>
                                       <p className="text-slate-500 font-bold text-[10px] uppercase tracking-widest">Respondente: {record.respondentName} ({record.respondentRole})</p>
@@ -406,7 +409,7 @@ export default function CaseStudy() {
                                    <button onClick={() => { setSelectedRecord(record); setView('versions'); }} className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase text-primary hover:border-primary hover:bg-primary/5 transition-all flex items-center gap-2 shadow-sm">
                                       <Eye size={14} /> Visualizar
                                    </button>
-                                   {record.status === 'ativo' && (
+                                   {(record.status === 'ativo' || record.status === 'rascunho') && (
                                      <button onClick={() => setIfSahsRecords(prev => prev.map(r => r.id === record.id ? { ...r, status: 'arquivado' } : r))} className="px-4 py-2 bg-slate-100 text-slate-500 rounded-xl text-[10px] font-black uppercase hover:bg-slate-200 transition-all shadow-sm">
                                         Arquivar
                                      </button>
@@ -468,16 +471,39 @@ export default function CaseStudy() {
 
                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {activeInstrumentId === 'IF-SAHS' ? (() => {
-                     const hasActiveVersion = ifSahsRecords.some(r => r.status === 'ativo');
+                     const activeVersion = ifSahsRecords.find(r => r.status === 'ativo');
+                     const draftVersion = ifSahsRecords.find(r => r.status === 'rascunho');
+
+                     if (draftVersion) {
+                        return (
+                           <button 
+                              onClick={() => { 
+                                setSelectedRecord(draftVersion);
+                                setRespondentName(draftVersion.respondentName);
+                                setRespondentRole(draftVersion.respondentRole);
+                                setRespondentRelation(draftVersion.respondentRelation || '');
+                                setIfSahsAnswers(draftVersion.answers);
+                                setFillingType('edit');
+                                setView('filling'); 
+                              }}
+                              className="col-span-1 p-6 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all border-2 bg-orange-50 border-orange-200 text-orange-600 shadow-xl shadow-orange-500/10 hover:scale-[1.02] active:scale-95"
+                           >
+                              <PencilRuler size={28} />
+                              <span className="font-black text-xs uppercase tracking-widest">Continuar Rascunho</span>
+                              <span className="text-[9px] font-bold text-orange-500">Existem áudios pendentes</span>
+                           </button>
+                        );
+                     }
+
                      return (
                         <button 
-                           disabled={hasActiveVersion}
+                           disabled={!!activeVersion}
                            onClick={() => { setFillingType('nova_versao'); setRespondentName(''); setRespondentRole(''); setRespondentRelation(''); setIfSahsAnswers({}); setView('filling'); }}
-                           className={cn("col-span-1 p-6 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all border-2", hasActiveVersion ? "bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed" : "bg-primary text-white border-transparent shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95")}
-                           title={hasActiveVersion ? "Arquive ou exclua a versão atual para iniciar uma nova" : "Criar uma nova versão a partir do zero"}
+                           className={cn("col-span-1 p-6 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all border-2", activeVersion ? "bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed" : "bg-primary text-white border-transparent shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95")}
+                           title={activeVersion ? "Arquive ou exclua a versão atual para iniciar uma nova" : "Criar uma nova versão a partir do zero"}
                         >
                            <Plus size={28} />
-                           {hasActiveVersion ? (
+                           {activeVersion ? (
                              <>
                                <span className="font-black text-xs uppercase tracking-widest">Nova Versão</span>
                                <span className="text-[9px] font-bold text-slate-400">Arquive a atual para liberar</span>
@@ -499,19 +525,26 @@ export default function CaseStudy() {
                     </button>
                   )}
 
-                  <button 
-                     onClick={() => setView('consolidation')}
-                     disabled={activeInstrument.versions === 0 && ifSahsRecords.length === 0}
-                     className={cn(
-                       "p-6 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all border-2",
-                       activeInstrument.versions > 0 || ifSahsRecords.length > 0
-                         ? "bg-white border-primary/20 text-primary hover:bg-primary/5 cursor-pointer" 
-                         : "bg-slate-50 border-transparent text-slate-300 cursor-not-allowed"
-                     )}
-                  >
-                     <Sparkles size={28} />
-                     <span className="font-black text-xs uppercase tracking-widest">Consolidar Dados (IA)</span>
-                  </button>
+                  {(() => {
+                    const hasDrafts = ifSahsRecords.some(r => r.status === 'rascunho');
+                    const isConsolidationDisabled = (activeInstrument.versions === 0 && ifSahsRecords.length === 0) || hasDrafts;
+                    return (
+                        <button 
+                           onClick={() => setView('consolidation')}
+                           disabled={isConsolidationDisabled}
+                           className={cn(
+                             "p-6 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all border-2",
+                             !isConsolidationDisabled
+                               ? "bg-white border-primary/20 text-primary hover:bg-primary/5 cursor-pointer" 
+                               : "bg-slate-50 border-transparent text-slate-300 cursor-not-allowed"
+                           )}
+                        >
+                           <Sparkles size={28} />
+                           <span className="font-black text-xs uppercase tracking-widest">Consolidar Dados (IA)</span>
+                           {hasDrafts && <span className="text-[9px] font-bold text-red-400 text-center px-4">Bloqueado: Há transcrições pendentes.</span>}
+                        </button>
+                    )
+                  })()}
 
                   {activeInstrumentId !== 'IF-SAHS' && (
                   <div className="flex gap-4">
@@ -683,18 +716,30 @@ export default function CaseStudy() {
                                Você possui transcrições de áudio pendentes. Confirme-as e exclua as gravações originais para liberar o salvamento.
                             </div>
                          )}
-                         <div className="flex gap-4">
-                            <button 
-                               onClick={handleSave} 
-                               disabled={pendingAudioReviews}
-                               className={cn(
-                                 "flex-1 py-6 rounded-3xl font-black text-base uppercase tracking-widest flex items-center justify-center gap-3 transition-all",
-                                 pendingAudioReviews ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "bg-primary text-white shadow-xl shadow-primary/20 hover:brightness-110 active:scale-95"
-                               )}
-                            >
-                               {activeInstrumentId === 'DOC-ANALISE' ? <><Sparkles size={20} /> Salvar e Analisar</> : fillingType === 'edit' ? 'Salvar Edição' : 'Salvar como Nova Versão'}
+                         {activeInstrumentId === 'DOC-ANALISE' ? (
+                            <button onClick={() => handleSave('ativo')} className="w-full bg-primary text-white py-6 rounded-3xl font-black text-base uppercase tracking-widest shadow-xl shadow-primary/20 flex items-center justify-center gap-3 hover:brightness-110 active:scale-95 transition-all">
+                               <Sparkles size={20} /> Salvar e Analisar
                             </button>
-                         </div>
+                         ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                               <button 
+                                  onClick={() => handleSave('rascunho')} 
+                                  className="w-full py-6 rounded-3xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 transition-all bg-orange-50 text-orange-600 border border-orange-200 shadow-sm hover:brightness-95 active:scale-95"
+                               >
+                                  Salvar Provisoriamente (Rascunho)
+                               </button>
+                               <button 
+                                  onClick={() => handleSave('ativo')} 
+                                  disabled={pendingAudioReviews}
+                                  className={cn(
+                                    "w-full py-6 rounded-3xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 transition-all",
+                                    pendingAudioReviews ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "bg-primary text-white shadow-xl shadow-primary/20 hover:brightness-110 active:scale-95"
+                                  )}
+                               >
+                                  {fillingType === 'edit' ? 'Salvar Edição Final' : 'Salvar Documento Ativo'}
+                               </button>
+                            </div>
+                         )}
                       </div>
                    </div>
                 </div>
