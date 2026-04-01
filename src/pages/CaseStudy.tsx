@@ -31,6 +31,7 @@ type IfSahsRecord = {
   updates?: { date: string; person: string; text: string; }[];
   pendingQuestions?: string[];
   audioStorage?: Record<string, string>;
+  transcriptStorage?: Record<string, string>;
 };
 
 interface InstrumentStatus {
@@ -150,6 +151,7 @@ export default function CaseStudy() {
   // Controle de Áudio Global e Rascunhos
   const [currentPendingQuestions, setCurrentPendingQuestions] = useState<string[]>([]);
   const [currentAudioStorage, setCurrentAudioStorage] = useState<Record<string, string>>({});
+  const [pendingTranscripts, setPendingTranscripts] = useState<Record<string, string>>({});
 
   // Evolução Inline 
   const [isAddingUpdate, setIsAddingUpdate] = useState(false);
@@ -216,7 +218,8 @@ export default function CaseStudy() {
           respondentRelation,
           answers: ifSahsAnswers,
           pendingQuestions: currentPendingQuestions,
-          audioStorage: currentAudioStorage
+          audioStorage: currentAudioStorage,
+          transcriptStorage: pendingTranscripts
         } : r));
         
         setSelectedRecord(prev => prev ? {
@@ -227,7 +230,8 @@ export default function CaseStudy() {
           respondentRelation,
           answers: ifSahsAnswers,
           pendingQuestions: currentPendingQuestions,
-          audioStorage: currentAudioStorage
+          audioStorage: currentAudioStorage,
+          transcriptStorage: pendingTranscripts
         } : null);
         
         alert(status === 'rascunho' ? 'Rascunho atualizado!' : 'IF-SAHS editado com sucesso!');
@@ -247,7 +251,8 @@ export default function CaseStudy() {
          answers: ifSahsAnswers,
          updates: [],
          pendingQuestions: currentPendingQuestions,
-         audioStorage: currentAudioStorage
+         audioStorage: currentAudioStorage,
+         transcriptStorage: pendingTranscripts
       };
       setIfSahsRecords(prev => [newRecord, ...prev]);
       alert('IF-SAHS salvo com sucesso!');
@@ -510,6 +515,7 @@ export default function CaseStudy() {
                                 setIfSahsAnswers(draftVersion.answers);
                                 setCurrentPendingQuestions(draftVersion.pendingQuestions || []);
                                 setCurrentAudioStorage(draftVersion.audioStorage || {});
+                                setPendingTranscripts(draftVersion.transcriptStorage || {});
                                 setFillingType('edit');
                                 setView('filling'); 
                               }}
@@ -525,7 +531,7 @@ export default function CaseStudy() {
                      return (
                         <button 
                            disabled={!!activeVersion}
-                           onClick={() => { setFillingType('nova_versao'); setRespondentName(''); setRespondentRole(''); setRespondentRelation(''); setIfSahsAnswers({}); setCurrentPendingQuestions([]); setCurrentAudioStorage({}); setView('filling'); }}
+                           onClick={() => { setFillingType('nova_versao'); setRespondentName(''); setRespondentRole(''); setRespondentRelation(''); setIfSahsAnswers({}); setCurrentPendingQuestions([]); setCurrentAudioStorage({}); setPendingTranscripts({}); setView('filling'); }}
                            className={cn("col-span-1 p-6 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all border-2", activeVersion ? "bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed" : "bg-primary text-white border-transparent shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95")}
                            title={activeVersion ? "Arquive ou exclua a versão atual para iniciar uma nova" : "Criar uma nova versão a partir do zero"}
                         >
@@ -688,6 +694,8 @@ export default function CaseStudy() {
                                           placeholder="Descreva aqui ou utilize o áudio para transcrever a resposta..." 
                                           initialReviewPending={currentPendingQuestions.includes(q.id)}
                                           initialAudio={currentAudioStorage[q.id]}
+                                          initialLiveTranscript={pendingTranscripts[q.id] || ''}
+                                          onLiveTranscriptUpdate={(text) => setPendingTranscripts(prev => ({ ...prev, [q.id]: text }))}
                                           onAudioCaptured={(base64) => {
                                             if (base64) {
                                               setCurrentAudioStorage(prev => ({...prev, [q.id]: base64}));
@@ -966,6 +974,8 @@ export default function CaseStudy() {
                                      value={updateText}
                                      onChange={(val) => setUpdateText(val)}
                                      placeholder="Descreva aqui o novo episódio, observação ou alteração no contexto familiar..."
+                                     initialLiveTranscript={pendingTranscripts['evo_update'] || ''}
+                                     onLiveTranscriptUpdate={(text) => setPendingTranscripts(prev => ({ ...prev, 'evo_update': text }))}
                                      onReviewPending={(isPending) => {
                                         if (isPending) setCurrentPendingQuestions(prev => Array.from(new Set([...prev, 'evo_update'])));
                                         else setCurrentPendingQuestions(prev => prev.filter(id => id !== 'evo_update'));

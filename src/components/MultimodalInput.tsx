@@ -12,6 +12,8 @@ interface MultimodalInputProps {
   onAudioCaptured?: (base64: string | null) => void;
   initialAudio?: string;
   initialReviewPending?: boolean;
+  initialLiveTranscript?: string;
+  onLiveTranscriptUpdate?: (text: string) => void;
 }
 
 const HoldToConfirmButton: React.FC<{ onConfirm: () => void }> = ({ onConfirm }) => {
@@ -69,13 +71,13 @@ const HoldToConfirmButton: React.FC<{ onConfirm: () => void }> = ({ onConfirm })
   );
 };
 
-export const MultimodalInput: React.FC<MultimodalInputProps> = ({ value, onChange, placeholder, id, onReviewPending, onAudioCaptured, initialAudio, initialReviewPending }) => {
+export const MultimodalInput: React.FC<MultimodalInputProps> = ({ value, onChange, placeholder, id, onReviewPending, onAudioCaptured, initialAudio, initialReviewPending, initialLiveTranscript, onLiveTranscriptUpdate }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(initialAudio || null);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [reviewPending, setReviewPending] = useState(initialReviewPending || false);
-  const [liveTranscript, setLiveTranscript] = useState('');
+  const [liveTranscript, setLiveTranscript] = useState(initialLiveTranscript || '');
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -105,6 +107,7 @@ export const MultimodalInput: React.FC<MultimodalInputProps> = ({ value, onChang
 
   const startRecording = async () => {
     setLiveTranscript('');
+    onLiveTranscriptUpdate?.('');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
@@ -152,7 +155,9 @@ export const MultimodalInput: React.FC<MultimodalInputProps> = ({ value, onChang
           for (let i = 0; i < event.results.length; i++) {
             transcript += event.results[i][0].transcript;
           }
-          setLiveTranscript(transcript.trim());
+          const finalTr = transcript.trim();
+          setLiveTranscript(finalTr);
+          onLiveTranscriptUpdate?.(finalTr);
         };
 
         recognition.start();
@@ -180,7 +185,8 @@ export const MultimodalInput: React.FC<MultimodalInputProps> = ({ value, onChang
     setTimeout(() => {
       const currentVal = value.trim();
       const prefix = currentVal ? `${currentVal}\n\n` : '';
-      const textToAppend = liveTranscript || "(A transcrição gerou um conteúdo vazio. Verifique o uso de uma IA avançada ou se o áudio não possui voz humana audível.)";
+      const fallbackText = audioUrl && !isRecording ? "[Áudio recuperado de rascunho. Transcrição não salva na sessão original.]" : "(A transcrição gerou um conteúdo vazio. Verifique o uso de uma IA avançada ou se o áudio não possui voz humana audível.)";
+      const textToAppend = liveTranscript || fallbackText;
       
       onChange(prefix + textToAppend);
       setIsTranscribing(false);
@@ -195,6 +201,7 @@ export const MultimodalInput: React.FC<MultimodalInputProps> = ({ value, onChang
     setAudioUrl(null);
     onAudioCaptured?.(null);
     setLiveTranscript('');
+    onLiveTranscriptUpdate?.('');
   };
 
   return (
