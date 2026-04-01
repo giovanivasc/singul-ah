@@ -40,7 +40,7 @@ interface InstrumentStatus {
   lastUpdate?: string;
   lastPerson?: string;
   completionPercentage?: number;
-  status: 'pending' | 'completed' | 'ongoing';
+  status: 'pending' | 'completed' | 'ongoing' | 'draft';
   allowExternalLink?: boolean;
 }
 
@@ -322,26 +322,42 @@ export default function CaseStudy() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 xl:gap-8"
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
             >
                {instrumentsData.map((inst) => (
                  <motion.div 
                    key={inst.id}
                    onClick={() => { setActiveInstrumentId(inst.id); setView('details'); }}
                    whileHover={{ y: -4 }}
-                   className="bg-white rounded-[32px] p-5 md:p-6 atmospheric-shadow border border-slate-100 flex flex-col relative overflow-hidden group cursor-pointer hover:border-primary/30 transition-all"
+                   className="bg-white rounded-3xl p-5 atmospheric-shadow border border-slate-100 flex flex-col relative overflow-hidden group cursor-pointer hover:border-primary/30 transition-all"
                  >
                     <div className="flex items-start justify-between mb-5">
                        <div className="w-12 h-12 rounded-[20px] bg-primary/5 text-primary flex items-center justify-center group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-500 shrink-0">
-                          <inst.icon size={24} strokeWidth={2} />
+                          <inst.icon size={20} strokeWidth={2} />
                        </div>
                        
-                       <div className={cn(
-                         "px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest",
-                         inst.status === 'completed' ? "bg-green-100 text-green-600" : "bg-slate-100 text-slate-400"
-                       )}>
-                          {inst.status === 'completed' ? 'Concluído' : 'Pendente'}
-                       </div>
+                       {(() => {
+                         let badgeStyle = "bg-slate-100 text-slate-400";
+                         let badgeText = "Pendente";
+
+                         // Lógica dinâmica baseada nos registros reais (IF-SAHS) ou no mock
+                         const hasDraft = inst.id === 'IF-SAHS' ? ifSahsRecords.some(r => r.status === 'rascunho') : inst.status === 'draft';
+                         const isCompleted = inst.id === 'IF-SAHS' ? ifSahsRecords.some(r => r.status === 'ativo') : inst.status === 'completed';
+
+                         if (hasDraft) {
+                           badgeStyle = "bg-red-50 border border-red-200 text-red-600";
+                           badgeText = "Rascunho Pendente";
+                         } else if (isCompleted) {
+                           badgeStyle = "bg-green-100 text-green-600";
+                           badgeText = "Concluído";
+                         }
+
+                         return (
+                           <div className={cn("px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest text-center", badgeStyle)}>
+                             {badgeText}
+                           </div>
+                         );
+                       })()}
                     </div>
 
                     <h3 className="text-lg font-black text-on-surface mb-2 leading-tight pr-4">{inst.name}</h3>
