@@ -9,6 +9,9 @@ interface MultimodalInputProps {
   placeholder?: string;
   id?: string;
   onReviewPending?: (isPending: boolean) => void;
+  onAudioCaptured?: (base64: string | null) => void;
+  initialAudio?: string;
+  initialReviewPending?: boolean;
 }
 
 const HoldToConfirmButton: React.FC<{ onConfirm: () => void }> = ({ onConfirm }) => {
@@ -66,12 +69,12 @@ const HoldToConfirmButton: React.FC<{ onConfirm: () => void }> = ({ onConfirm })
   );
 };
 
-export const MultimodalInput: React.FC<MultimodalInputProps> = ({ value, onChange, placeholder, id, onReviewPending }) => {
+export const MultimodalInput: React.FC<MultimodalInputProps> = ({ value, onChange, placeholder, id, onReviewPending, onAudioCaptured, initialAudio, initialReviewPending }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(initialAudio || null);
   const [isTranscribing, setIsTranscribing] = useState(false);
-  const [reviewPending, setReviewPending] = useState(false);
+  const [reviewPending, setReviewPending] = useState(initialReviewPending || false);
   const [liveTranscript, setLiveTranscript] = useState('');
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -90,7 +93,7 @@ export const MultimodalInput: React.FC<MultimodalInputProps> = ({ value, onChang
   useEffect(() => {
     return () => {
       // Cleanup
-      if (audioUrl) URL.revokeObjectURL(audioUrl);
+      if (audioUrl && audioUrl.startsWith('blob:')) URL.revokeObjectURL(audioUrl);
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
       }
@@ -121,6 +124,12 @@ export const MultimodalInput: React.FC<MultimodalInputProps> = ({ value, onChang
         setAudioUrl(url);
         setReviewPending(true);
         onReviewPending?.(true);
+        
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlobLocal);
+        reader.onloadend = () => {
+          onAudioCaptured?.(reader.result as string);
+        };
         
         // Parar as tracks do microfone 
         stream.getTracks().forEach(track => track.stop());
@@ -182,8 +191,9 @@ export const MultimodalInput: React.FC<MultimodalInputProps> = ({ value, onChang
     setReviewPending(false);
     onReviewPending?.(false);
     setAudioBlob(null);
-    if (audioUrl) URL.revokeObjectURL(audioUrl);
+    if (audioUrl && audioUrl.startsWith('blob:')) URL.revokeObjectURL(audioUrl);
     setAudioUrl(null);
+    onAudioCaptured?.(null);
     setLiveTranscript('');
   };
 
@@ -195,7 +205,10 @@ export const MultimodalInput: React.FC<MultimodalInputProps> = ({ value, onChang
         </div>
       )}
       
-      <div className="relative w-full bg-white rounded-2xl border border-slate-200 shadow-sm transition-all focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/10 flex flex-col overflow-hidden">
+      <div className={cn(
+        "relative w-full bg-white rounded-2xl border transition-all focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/10 flex flex-col overflow-hidden",
+        reviewPending ? "border-red-300 shadow-[0_0_15px_rgba(239,68,68,0.15)] ring-1 ring-red-200" : "border-slate-200 shadow-sm"
+      )}>
         <textarea
           id={id}
           ref={textareaRef}

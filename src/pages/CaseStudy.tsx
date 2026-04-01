@@ -29,6 +29,8 @@ type IfSahsRecord = {
   respondentRelation?: string;
   answers: Record<string, string>;
   updates?: { date: string; person: string; text: string; }[];
+  pendingQuestions?: string[];
+  audioStorage?: Record<string, string>;
 };
 
 interface InstrumentStatus {
@@ -145,8 +147,9 @@ export default function CaseStudy() {
   const [selectedRecord, setSelectedRecord] = useState<IfSahsRecord | null>(null);
   const [fillingType, setFillingType] = useState<'nova_versao' | 'atualizacao' | 'edit'>('nova_versao');
 
-  // Controle de Áudio Global
-  const [pendingAudioReviews, setPendingAudioReviews] = useState(false);
+  // Controle de Áudio Global e Rascunhos
+  const [currentPendingQuestions, setCurrentPendingQuestions] = useState<string[]>([]);
+  const [currentAudioStorage, setCurrentAudioStorage] = useState<Record<string, string>>({});
 
   // Evolução Inline 
   const [isAddingUpdate, setIsAddingUpdate] = useState(false);
@@ -211,7 +214,9 @@ export default function CaseStudy() {
           respondentName,
           respondentRole,
           respondentRelation,
-          answers: ifSahsAnswers
+          answers: ifSahsAnswers,
+          pendingQuestions: currentPendingQuestions,
+          audioStorage: currentAudioStorage
         } : r));
         
         setSelectedRecord(prev => prev ? {
@@ -220,7 +225,9 @@ export default function CaseStudy() {
           respondentName,
           respondentRole,
           respondentRelation,
-          answers: ifSahsAnswers
+          answers: ifSahsAnswers,
+          pendingQuestions: currentPendingQuestions,
+          audioStorage: currentAudioStorage
         } : null);
         
         alert(status === 'rascunho' ? 'Rascunho atualizado!' : 'IF-SAHS editado com sucesso!');
@@ -238,7 +245,9 @@ export default function CaseStudy() {
          respondentRole,
          respondentRelation,
          answers: ifSahsAnswers,
-         updates: []
+         updates: [],
+         pendingQuestions: currentPendingQuestions,
+         audioStorage: currentAudioStorage
       };
       setIfSahsRecords(prev => [newRecord, ...prev]);
       alert('IF-SAHS salvo com sucesso!');
@@ -499,6 +508,8 @@ export default function CaseStudy() {
                                 setRespondentRole(draftVersion.respondentRole);
                                 setRespondentRelation(draftVersion.respondentRelation || '');
                                 setIfSahsAnswers(draftVersion.answers);
+                                setCurrentPendingQuestions(draftVersion.pendingQuestions || []);
+                                setCurrentAudioStorage(draftVersion.audioStorage || {});
                                 setFillingType('edit');
                                 setView('filling'); 
                               }}
@@ -514,7 +525,7 @@ export default function CaseStudy() {
                      return (
                         <button 
                            disabled={!!activeVersion}
-                           onClick={() => { setFillingType('nova_versao'); setRespondentName(''); setRespondentRole(''); setRespondentRelation(''); setIfSahsAnswers({}); setView('filling'); }}
+                           onClick={() => { setFillingType('nova_versao'); setRespondentName(''); setRespondentRole(''); setRespondentRelation(''); setIfSahsAnswers({}); setCurrentPendingQuestions([]); setCurrentAudioStorage({}); setView('filling'); }}
                            className={cn("col-span-1 p-6 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all border-2", activeVersion ? "bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed" : "bg-primary text-white border-transparent shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95")}
                            title={activeVersion ? "Arquive ou exclua a versão atual para iniciar uma nova" : "Criar uma nova versão a partir do zero"}
                         >
@@ -671,11 +682,23 @@ export default function CaseStudy() {
                                          <span className="text-primary mt-1 select-none">•</span> 
                                          {q.text}
                                        </label>
-                                       <MultimodalInput 
+                                        <MultimodalInput 
                                           value={ifSahsAnswers[q.id] || ''} 
                                           onChange={(val) => handleIfSahsChange(q.id, val)}
                                           placeholder="Descreva aqui ou utilize o áudio para transcrever a resposta..." 
-                                          onReviewPending={(isPending) => setPendingAudioReviews(isPending)}
+                                          initialReviewPending={currentPendingQuestions.includes(q.id)}
+                                          initialAudio={currentAudioStorage[q.id]}
+                                          onAudioCaptured={(base64) => {
+                                            if (base64) {
+                                              setCurrentAudioStorage(prev => ({...prev, [q.id]: base64}));
+                                            } else {
+                                              setCurrentAudioStorage(prev => { const n = {...prev}; delete n[q.id]; return n; });
+                                            }
+                                          }}
+                                          onReviewPending={(isPending) => {
+                                             if (isPending) setCurrentPendingQuestions(prev => Array.from(new Set([...prev, q.id])));
+                                             else setCurrentPendingQuestions(prev => prev.filter(id => id !== q.id));
+                                          }}
                                        />
                                      </div>
                                    ))}
@@ -726,10 +749,10 @@ export default function CaseStudy() {
                       )}
                       
                       <div className="pt-10 border-t border-slate-100 flex flex-col gap-4">
-                         {pendingAudioReviews && (
-                            <div className="p-4 bg-red-50 text-red-600 border border-red-200 rounded-2xl text-[11px] font-black uppercase tracking-widest flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2">
+                         {currentPendingQuestions.length > 0 && (
+                            <div className="p-4 bg-orange-50 text-orange-600 border border-orange-200 rounded-2xl text-[11px] font-black uppercase tracking-widest flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2">
                                <AlertTriangle size={18} className="shrink-0" /> 
-                               Você possui transcrições de áudio pendentes. Confirme-as e exclua as gravações originais para liberar o salvamento.
+                               Você possui transcrições de áudio pendentes. Confirme-as e exclua as gravações originais para liberar o salvamento definitivo.
                             </div>
                          )}
                          {activeInstrumentId === 'DOC-ANALISE' ? (
@@ -746,10 +769,10 @@ export default function CaseStudy() {
                                </button>
                                <button 
                                   onClick={() => handleSave('ativo')} 
-                                  disabled={pendingAudioReviews}
+                                  disabled={currentPendingQuestions.length > 0}
                                   className={cn(
                                     "w-full py-6 rounded-3xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 transition-all",
-                                    pendingAudioReviews ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "bg-primary text-white shadow-xl shadow-primary/20 hover:brightness-110 active:scale-95"
+                                    currentPendingQuestions.length > 0 ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "bg-primary text-white shadow-xl shadow-primary/20 hover:brightness-110 active:scale-95"
                                   )}
                                >
                                   {fillingType === 'edit' ? 'Salvar Edição Final' : 'Salvar Documento Ativo'}
@@ -943,12 +966,15 @@ export default function CaseStudy() {
                                      value={updateText}
                                      onChange={(val) => setUpdateText(val)}
                                      placeholder="Descreva aqui o novo episódio, observação ou alteração no contexto familiar..."
-                                     onReviewPending={(isPending) => setPendingAudioReviews(isPending)}
+                                     onReviewPending={(isPending) => {
+                                        if (isPending) setCurrentPendingQuestions(prev => Array.from(new Set([...prev, 'evo_update'])));
+                                        else setCurrentPendingQuestions(prev => prev.filter(id => id !== 'evo_update'));
+                                     }}
                                   />
                                   <div className="flex items-center gap-3 justify-end pt-2">
-                                     <button onClick={() => { setIsAddingUpdate(false); setUpdateText(''); setPendingAudioReviews(false); }} className="px-5 py-2.5 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-red-500 transition-all">Cancelar</button>
+                                     <button onClick={() => { setIsAddingUpdate(false); setUpdateText(''); setCurrentPendingQuestions([]); }} className="px-5 py-2.5 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-red-500 transition-all">Cancelar</button>
                                      <button 
-                                        disabled={pendingAudioReviews}
+                                        disabled={currentPendingQuestions.length > 0}
                                         onClick={() => {
                                         if (!updateText.trim()) return;
                                         const novaEvo = { date: new Date().toLocaleDateString('pt-BR'), person: 'Você', text: updateText };
@@ -956,7 +982,7 @@ export default function CaseStudy() {
                                         setSelectedRecord(prev => prev ? { ...prev, updates: [...(prev.updates || []), novaEvo] } : null);
                                         setUpdateText('');
                                         setIsAddingUpdate(false);
-                                     }} className={cn("px-6 py-3 font-black text-[10px] uppercase tracking-widest rounded-xl transition-all shadow-md", pendingAudioReviews ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none" : "bg-primary text-white shadow-primary/20 hover:bg-primary/90")}>Salvar Atualização</button>
+                                     }} className={cn("px-6 py-3 font-black text-[10px] uppercase tracking-widest rounded-xl transition-all shadow-md", currentPendingQuestions.length > 0 ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none" : "bg-primary text-white shadow-primary/20 hover:bg-primary/90")}>Salvar Atualização</button>
                                   </div>
                                </div>
                             ) : (
