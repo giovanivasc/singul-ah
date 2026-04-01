@@ -32,6 +32,7 @@ type IfSahsRecord = {
   pendingQuestions?: string[];
   audioStorage?: Record<string, string>;
   transcriptStorage?: Record<string, string>;
+  updateDraft?: { text: string; audio?: string; transcript?: string; pending: boolean };
 };
 
 interface InstrumentStatus {
@@ -156,6 +157,7 @@ export default function CaseStudy() {
   // Evolução Inline 
   const [isAddingUpdate, setIsAddingUpdate] = useState(false);
   const [updateText, setUpdateText] = useState('');
+  const [updateDraft, setUpdateDraft] = useState<{ text: string; audio?: string; transcript?: string; pending: boolean } | null>(null);
 
   // Formulário do IF-SAHS
   const [respondentName, setRespondentName] = useState('');
@@ -904,6 +906,12 @@ export default function CaseStudy() {
                 
                 {activeInstrumentId === 'IF-SAHS' && selectedRecord ? (
                    <div className="space-y-6">
+                      {selectedRecord.updateDraft && selectedRecord.updateDraft.pending && (
+                         <div className="bg-red-50 border border-red-200 text-red-600 px-6 py-4 rounded-3xl text-[13px] font-black flex items-center gap-4 shadow-[0_0_15px_rgba(239,68,68,0.15)] animate-in fade-in slide-in-from-top-4">
+                           <AlertTriangle size={24} className="shrink-0" />
+                           Atenção: Este documento possui uma atualização em rascunho com revisão de áudio pendente.
+                         </div>
+                      )}
                       <div className="bg-white p-8 rounded-[32px] border border-slate-100 atmospheric-shadow flex justify-between items-center flex-wrap gap-4">
                          <div>
                             <p className="font-black text-on-surface text-xl leading-tight">Respondente: {selectedRecord.respondentName}</p>
@@ -972,35 +980,50 @@ export default function CaseStudy() {
                                   </h4>
                                   <MultimodalInput 
                                      value={updateText}
-                                     onChange={(val) => setUpdateText(val)}
-                                     placeholder="Descreva aqui o novo episódio, observação ou alteração no contexto familiar..."
-                                     initialLiveTranscript={pendingTranscripts['evo_update'] || ''}
-                                     onLiveTranscriptUpdate={(text) => setPendingTranscripts(prev => ({ ...prev, 'evo_update': text }))}
-                                     onReviewPending={(isPending) => {
-                                        if (isPending) setCurrentPendingQuestions(prev => Array.from(new Set([...prev, 'evo_update'])));
-                                        else setCurrentPendingQuestions(prev => prev.filter(id => id !== 'evo_update'));
+                                     onChange={(val) => {
+                                        setUpdateText(val);
+                                        setUpdateDraft(prev => prev ? { ...prev, text: val } : { text: val, pending: false });
                                      }}
+                                     placeholder="Descreva aqui o novo episódio, observação ou alteração no contexto familiar..."
+                                     initialAudio={updateDraft?.audio}
+                                     initialLiveTranscript={updateDraft?.transcript}
+                                     initialReviewPending={updateDraft?.pending}
+                                     onReviewPending={(isPending) => setUpdateDraft(prev => prev ? { ...prev, pending: isPending } : { text: updateText, pending: isPending })}
+                                     onLiveTranscriptUpdate={(text) => setUpdateDraft(prev => prev ? { ...prev, transcript: text } : { text: updateText, transcript: text, pending: false })}
+                                     onAudioCaptured={(base64) => setUpdateDraft(prev => prev ? { ...prev, audio: base64 || undefined } : { text: updateText, audio: base64 || undefined, pending: false })}
                                   />
-                                  <div className="flex items-center gap-3 justify-end pt-2">
-                                     <button onClick={() => { setIsAddingUpdate(false); setUpdateText(''); setCurrentPendingQuestions([]); }} className="px-5 py-2.5 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-red-500 transition-all">Cancelar</button>
+                                  <div className="flex items-center gap-3 justify-end pt-2 flex-wrap">
+                                     <button onClick={() => { setIsAddingUpdate(false); setUpdateText(''); setUpdateDraft(null); }} className="px-5 py-2.5 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-red-500 transition-all">Cancelar</button>
                                      <button 
-                                        disabled={currentPendingQuestions.length > 0}
+                                        onClick={() => {
+                                           const draft = { text: updateText, audio: updateDraft?.audio, transcript: updateDraft?.transcript, pending: updateDraft?.pending || false };
+                                           setIfSahsRecords(prev => prev.map(r => r.id === selectedRecord.id ? { ...r, updateDraft: draft } : r));
+                                           setSelectedRecord(prev => prev ? { ...prev, updateDraft: draft } : null);
+                                           setIsAddingUpdate(false);
+                                        }} 
+                                        className="px-6 py-3 bg-orange-50 text-orange-600 border border-orange-200 font-black text-[10px] uppercase tracking-widest rounded-xl transition-all shadow-sm hover:brightness-95"
+                                     >
+                                        Salvar Rascunho de Atualização
+                                     </button>
+                                     <button 
+                                        disabled={updateDraft?.pending}
                                         onClick={() => {
                                         if (!updateText.trim()) return;
                                         const novaEvo = { date: new Date().toLocaleDateString('pt-BR'), person: 'Você', text: updateText };
-                                        setIfSahsRecords(prev => prev.map(r => r.id === selectedRecord.id ? { ...r, updates: [...(r.updates || []), novaEvo] } : r));
-                                        setSelectedRecord(prev => prev ? { ...prev, updates: [...(prev.updates || []), novaEvo] } : null);
+                                        setIfSahsRecords(prev => prev.map(r => r.id === selectedRecord.id ? { ...r, updates: [...(r.updates || []), novaEvo], updateDraft: undefined } : r));
+                                        setSelectedRecord(prev => prev ? { ...prev, updates: [...(prev.updates || []), novaEvo], updateDraft: undefined } : null);
                                         setUpdateText('');
+                                        setUpdateDraft(null);
                                         setIsAddingUpdate(false);
-                                     }} className={cn("px-6 py-3 font-black text-[10px] uppercase tracking-widest rounded-xl transition-all shadow-md", currentPendingQuestions.length > 0 ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none" : "bg-primary text-white shadow-primary/20 hover:bg-primary/90")}>Salvar Atualização</button>
+                                     }} className={cn("px-6 py-3 font-black text-[10px] uppercase tracking-widest rounded-xl transition-all shadow-md", updateDraft?.pending ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none" : "bg-primary text-white shadow-primary/20 hover:bg-primary/90")}>Finalizar Atualização</button>
                                   </div>
                                </div>
                             ) : (
                                <button 
-                                 onClick={() => setIsAddingUpdate(true)} 
+                                 onClick={() => { setIsAddingUpdate(true); if (selectedRecord.updateDraft) { setUpdateDraft(selectedRecord.updateDraft); setUpdateText(selectedRecord.updateDraft.text); } }} 
                                  className="w-full bg-slate-50 text-slate-500 py-6 rounded-3xl font-black text-xs uppercase tracking-widest border-2 border-slate-200 border-dashed hover:bg-primary/5 hover:text-primary hover:border-primary/50 transition-all flex items-center justify-center gap-3"
                                >
-                                  <Plus size={20} /> Adicionar Atualização aos Fatos
+                                  <Plus size={20} /> {selectedRecord.updateDraft ? 'Continuar Rascunho de Atualização' : 'Adicionar Atualização aos Fatos'}
                                </button>
                             )}
                          </div>
