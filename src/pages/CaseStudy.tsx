@@ -18,6 +18,18 @@ import { cn } from '../lib/utils';
 
 type ViewState = 'hub' | 'details' | 'filling' | 'consolidation' | 'versions';
 
+type IfSahsRecord = {
+  id: string;
+  type: 'versao_inicial' | 'atualizacao';
+  status: 'ativo' | 'arquivado';
+  date: string;
+  person: string;
+  respondentName: string;
+  respondentRole: string;
+  respondentRelation?: string;
+  answers: Record<string, string>;
+};
+
 interface InstrumentStatus {
   id: string;
   name: string;
@@ -128,6 +140,14 @@ export default function CaseStudy() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [docName, setDocName] = useState('');
 
+  const [ifSahsRecords, setIfSahsRecords] = useState<IfSahsRecord[]>([]);
+  const [selectedRecord, setSelectedRecord] = useState<IfSahsRecord | null>(null);
+  const [fillingType, setFillingType] = useState<'nova_versao' | 'atualizacao'>('nova_versao');
+
+  // Formulário do IF-SAHS
+  const [respondentName, setRespondentName] = useState('');
+  const [respondentRole, setRespondentRole] = useState('');
+  const [respondentRelation, setRespondentRelation] = useState('');
   const [ifSahsAnswers, setIfSahsAnswers] = useState<Record<string, string>>({});
 
   const handleIfSahsChange = (id: string, value: string) => {
@@ -174,6 +194,28 @@ export default function CaseStudy() {
 
   const handleSave = () => {
     if (!activeInstrumentId) return;
+
+    if (activeInstrumentId === 'IF-SAHS') {
+      const newRecord: IfSahsRecord = {
+         id: Date.now().toString(),
+         type: fillingType,
+         status: 'ativo',
+         date: new Date().toLocaleDateString('pt-BR'),
+         person: 'Prof. Local',
+         respondentName,
+         respondentRole,
+         respondentRelation,
+         answers: ifSahsAnswers
+      };
+      setIfSahsRecords(prev => [newRecord, ...prev]);
+      alert('IF-SAHS salvo com sucesso!');
+      setRespondentName('');
+      setRespondentRole('');
+      setRespondentRelation('');
+      setIfSahsAnswers({});
+      setView('details');
+      return;
+    }
     
     setInstrumentsData(prev => 
       prev.map(inst => inst.id === activeInstrumentId ? {
@@ -311,7 +353,47 @@ export default function CaseStudy() {
                      <h2 className="text-2xl font-black text-on-surface">Histórico de Preenchimento</h2>
                   </div>
 
-                  {activeInstrument.versions > 0 ? (
+                  {activeInstrumentId === 'IF-SAHS' ? (
+                     ifSahsRecords.length > 0 ? (
+                       <div className="space-y-4">
+                          {ifSahsRecords.map((record) => (
+                             <div key={record.id} className={cn("flex flex-col md:flex-row items-center justify-between gap-6 p-6 rounded-3xl border transition-all", record.status === 'arquivado' ? "bg-slate-50 opacity-75 grayscale border-slate-200" : "bg-slate-50/50 hover:bg-white hover:border-primary/30 border-slate-200")}>
+                                <div className="flex items-center gap-6">
+                                   <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex flex-col items-center justify-center font-black shadow-sm">
+                                      <span className="text-xs">{record.type === 'versao_inicial' ? 'V.I.' : 'ATUAL.'}</span>
+                                   </div>
+                                   <div>
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <p className="font-black text-on-surface text-lg leading-none">Registrado em {record.date}</p>
+                                        {record.status === 'arquivado' && <span className="bg-slate-200 text-slate-500 text-[9px] px-2 py-0.5 rounded-md font-black uppercase tracking-widest">Arquivado</span>}
+                                        {record.type === 'atualizacao' && <span className="bg-blue-100 text-blue-600 text-[9px] px-2 py-0.5 rounded-md font-black uppercase tracking-widest">Atualização</span>}
+                                      </div>
+                                      <p className="text-slate-500 font-bold text-[10px] uppercase tracking-widest">Respondente: {record.respondentName} ({record.respondentRole})</p>
+                                   </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                   <button onClick={() => { setSelectedRecord(record); setView('versions'); }} className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase text-primary hover:border-primary hover:bg-primary/5 transition-all flex items-center gap-2 shadow-sm">
+                                      <Eye size={14} /> Visualizar
+                                   </button>
+                                   {record.status === 'ativo' && (
+                                     <button onClick={() => setIfSahsRecords(prev => prev.map(r => r.id === record.id ? { ...r, status: 'arquivado' } : r))} className="px-4 py-2 bg-slate-100 text-slate-500 rounded-xl text-[10px] font-black uppercase hover:bg-slate-200 transition-all shadow-sm">
+                                        Arquivar
+                                     </button>
+                                   )}
+                                   <button onClick={() => { if(confirm('Excluir este registro permanentemente?')) setIfSahsRecords(prev => prev.filter(r => r.id !== record.id)); }} className="px-4 py-2 bg-red-50 text-red-500 rounded-xl text-[10px] font-black uppercase hover:bg-red-500 hover:text-white transition-all shadow-sm">
+                                      Excluir
+                                   </button>
+                                </div>
+                             </div>
+                          ))}
+                       </div>
+                     ) : (
+                       <div className="py-12 text-center bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+                          <FileText className="mx-auto text-slate-300 mb-4" size={48} />
+                          <p className="text-slate-500 font-bold text-sm">Nenhum preenchimento registrado ainda.</p>
+                       </div>
+                     )
+                  ) : activeInstrument.versions > 0 ? (
                     <div className="space-y-4">
                        {[...Array(activeInstrument.versions)].map((_, idx) => (
                          <div key={idx} className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 rounded-3xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-primary/30 transition-all">
@@ -354,22 +436,44 @@ export default function CaseStudy() {
                </div>
 
                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <button 
-                     onClick={() => handleInstrumentAction('fill')}
-                     className="p-6 bg-primary text-white rounded-3xl flex flex-col items-center justify-center gap-3 shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
-                  >
-                     <Plus size={28} />
-                     <span className="font-black text-xs uppercase tracking-widest">
-                       {activeInstrument.versions > 0 ? 'Nova Atualização / Versão' : 'Preencher Agora'}
-                     </span>
-                  </button>
+                  {activeInstrumentId === 'IF-SAHS' ? (() => {
+                     const hasActiveVersion = ifSahsRecords.some(r => r.status === 'ativo');
+                     return (
+                        <button 
+                           disabled={hasActiveVersion}
+                           onClick={() => { setFillingType('nova_versao'); setRespondentName(''); setRespondentRole(''); setRespondentRelation(''); setIfSahsAnswers({}); setView('filling'); }}
+                           className={cn("col-span-1 p-6 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all border-2", hasActiveVersion ? "bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed" : "bg-primary text-white border-transparent shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95")}
+                           title={hasActiveVersion ? "Arquive ou exclua a versão atual para iniciar uma nova" : "Criar uma nova versão a partir do zero"}
+                        >
+                           <Plus size={28} />
+                           {hasActiveVersion ? (
+                             <>
+                               <span className="font-black text-xs uppercase tracking-widest">Nova Versão</span>
+                               <span className="text-[9px] font-bold text-slate-400">Arquive a atual para liberar</span>
+                             </>
+                           ) : (
+                             <span className="font-black text-xs uppercase tracking-widest">Nova Versão</span>
+                           )}
+                        </button>
+                     );
+                  })() : (
+                    <button 
+                       onClick={() => handleInstrumentAction('fill')}
+                       className="col-span-1 p-6 bg-primary text-white rounded-3xl flex flex-col items-center justify-center gap-3 shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
+                    >
+                       <Plus size={28} />
+                       <span className="font-black text-xs uppercase tracking-widest">
+                         {activeInstrument.versions > 0 ? 'Nova Atualização / Versão' : 'Preencher Agora'}
+                       </span>
+                    </button>
+                  )}
 
                   <button 
                      onClick={() => setView('consolidation')}
-                     disabled={activeInstrument.versions === 0}
+                     disabled={activeInstrument.versions === 0 && ifSahsRecords.length === 0}
                      className={cn(
                        "p-6 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all border-2",
-                       activeInstrument.versions > 0 
+                       activeInstrument.versions > 0 || ifSahsRecords.length > 0
                          ? "bg-white border-primary/20 text-primary hover:bg-primary/5 cursor-pointer" 
                          : "bg-slate-50 border-transparent text-slate-300 cursor-not-allowed"
                      )}
@@ -378,6 +482,7 @@ export default function CaseStudy() {
                      <span className="font-black text-xs uppercase tracking-widest">Consolidar Dados (IA)</span>
                   </button>
 
+                  {activeInstrumentId !== 'IF-SAHS' && (
                   <div className="flex gap-4">
                      <button 
                         disabled={activeInstrument.versions === 0}
@@ -406,6 +511,7 @@ export default function CaseStudy() {
                         <span className="font-black text-[10px] uppercase tracking-widest">Excluir</span>
                      </button>
                   </div>
+                  )}
                </div>
             </motion.div>
           )}
@@ -438,9 +544,35 @@ export default function CaseStudy() {
                            <div className="bg-primary/5 p-8 rounded-[32px] border border-primary/10 flex items-start gap-4">
                               <TrendingUp className="text-primary mt-1" size={24} />
                               <div className="space-y-1">
-                                 <p className="font-black text-on-surface uppercase tracking-tight">Questionário de Avaliação Familiar</p>
+                                 <p className="font-black text-on-surface uppercase tracking-tight">{fillingType === 'nova_versao' ? 'Questionário de Avaliação Familiar' : 'Atualização de Entrevista'}</p>
                                  <p className="text-sm font-medium text-slate-500">Preencha as informações detalhadas durante a entrevista com a família.</p>
                               </div>
+                           </div>
+
+                           <div className="bg-white p-8 rounded-[32px] border border-slate-100 atmospheric-shadow space-y-6">
+                             <h3 className="text-lg font-black text-primary uppercase tracking-tight flex items-center gap-4">
+                                <UserIcon className="text-primary" /> Identificação do Respondente
+                             </h3>
+                             <div className="grid md:grid-cols-2 gap-6 pl-4 border-l-2 border-slate-100 py-2 ml-2">
+                                <div className="space-y-4">
+                                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nome do responsável</label>
+                                   <input value={respondentName} onChange={e => setRespondentName(e.target.value)} type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 outline-none focus:border-primary" placeholder="Digite o nome completo..." />
+                                </div>
+                                <div className="space-y-4">
+                                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Vínculo</label>
+                                   <div className="flex gap-2">
+                                      {['Mãe', 'Pai', 'Responsável legal'].map(role => (
+                                         <button key={role} onClick={() => setRespondentRole(role)} className={cn("flex-1 py-3 rounded-xl border font-bold text-xs transition-all tracking-wide", respondentRole === role ? "bg-primary text-white border-primary shadow-md shadow-primary/20" : "bg-white text-slate-500 border-slate-200 hover:border-primary/30")}>{role}</button>
+                                      ))}
+                                   </div>
+                                </div>
+                                {respondentRole === 'Responsável legal' && (
+                                   <div className="space-y-4 col-span-full">
+                                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Grau de parentesco (Ex: Avó, Tio...)</label>
+                                      <input value={respondentRelation} onChange={e => setRespondentRelation(e.target.value)} type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 outline-none focus:border-primary" placeholder="Especifique o parentesco" />
+                                   </div>
+                                )}
+                             </div>
                            </div>
                            
                            <div className="space-y-8">
@@ -626,32 +758,71 @@ export default function CaseStudy() {
                 <div className="flex items-center justify-between bg-white p-8 rounded-[32px] atmospheric-shadow border border-slate-100">
                    <div className="flex items-center gap-4">
                       <History className="text-primary" />
-                      <h3 className="text-xl font-black text-on-surface uppercase tracking-tight">Relatórios de Versões</h3>
+                      <h3 className="text-xl font-black text-on-surface uppercase tracking-tight">{activeInstrumentId === 'IF-SAHS' ? 'Visualizador de Dados' : 'Relatórios de Versões'}</h3>
                    </div>
                    <button onClick={() => setView('details')} className="text-primary font-black text-xs uppercase underline">Voltar</button>
                 </div>
                 
-                <div className="grid gap-4">
-                  {[1, 2].map(v => (
-                    <div key={v} className="bg-white p-8 rounded-[32px] border border-slate-100 atmospheric-shadow flex items-center justify-between group hover:border-primary transition-all">
-                       <div className="flex items-center gap-6">
-                          <div className="w-14 h-14 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center font-black text-xl">
-                             {v}
-                          </div>
-                          <div>
-                             <p className="font-black text-on-surface text-lg">Versão salva em {v === 1 ? '25/03/2024' : 'Ontem'}</p>
-                             <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">Responsável: Professor Maria Silva</p>
-                          </div>
-                       </div>
-                       <button 
-                         onClick={() => alert(`Conteúdo: ${inputText || 'Sem dados textuais'}`)}
-                         className="px-6 py-3 bg-slate-50 rounded-xl text-[10px] font-black uppercase text-slate-400 hover:bg-primary/10 hover:text-primary transition-all tracking-widest"
-                       >
-                          Visualizar Dados
-                       </button>
-                    </div>
-                  ))}
-                </div>
+                {activeInstrumentId === 'IF-SAHS' && selectedRecord ? (
+                   <div className="space-y-6">
+                      <div className="bg-white p-8 rounded-[32px] border border-slate-100 atmospheric-shadow flex justify-between items-center flex-wrap gap-4">
+                         <div>
+                            <p className="font-black text-on-surface text-xl leading-tight">Respondente: {selectedRecord.respondentName}</p>
+                            <p className="text-slate-500 font-bold text-sm mt-1">{selectedRecord.respondentRole} {selectedRecord.respondentRelation ? `- ${selectedRecord.respondentRelation}` : ''}</p>
+                            <p className="text-xs text-slate-400 font-bold mt-2 flex items-center gap-2"><Clock size={12} /> {selectedRecord.type === 'versao_inicial' ? 'Versão Inicial' : 'Atualização'} registrada em: {selectedRecord.date}</p>
+                         </div>
+                         {selectedRecord.status === 'arquivado' && (
+                            <button onClick={() => { setIfSahsRecords(prev => prev.map(r => r.id === selectedRecord.id ? { ...r, status: 'ativo' } : r)); alert('Voltou a ficar ativo!'); setView('details'); }} className="px-6 py-3 bg-primary text-white font-black text-[10px] uppercase rounded-xl tracking-widest shadow-lg shadow-primary/20 hover:scale-105 transition-all">Desarquivar Registro</button>
+                         )}
+                      </div>
+                      
+                      {IF_SAHS_QUESTIONS.map(sec => (
+                         <div key={sec.section} className="bg-white p-10 rounded-[32px] border border-slate-100 atmospheric-shadow space-y-8">
+                            <h4 className="font-black text-primary uppercase tracking-tight">{sec.section}</h4>
+                            <div className="space-y-6 pl-2 border-l-2 border-slate-100 ml-2">
+                               {sec.questions.map(q => (
+                                  <div key={q.id} className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
+                                     <p className="font-bold text-slate-700 text-sm mb-4 leading-relaxed">{q.text}</p>
+                                     <div className="bg-white p-4 rounded-xl border border-slate-100">
+                                        <p className="text-slate-600 font-medium whitespace-pre-wrap">{selectedRecord.answers[q.id] || <span className="text-slate-400 italic">Preenchimento vazio neste campo.</span>}</p>
+                                     </div>
+                                  </div>
+                               ))}
+                            </div>
+                         </div>
+                      ))}
+
+                      {selectedRecord.status === 'ativo' && (
+                         <div className="pt-8">
+                            <button onClick={() => { setFillingType('atualizacao'); setRespondentName(''); setRespondentRole(''); setRespondentRelation(''); setIfSahsAnswers({}); setView('filling'); }} className="w-full bg-slate-100 text-slate-500 py-6 rounded-3xl font-black text-xs uppercase tracking-widest border-2 border-slate-200 border-dashed hover:bg-primary/5 hover:text-primary hover:border-primary transition-all flex items-center justify-center gap-3">
+                               <Plus size={20} /> Adicionar Atualização aos Fatos
+                            </button>
+                         </div>
+                      )}
+                   </div>
+                ) : (
+                  <div className="grid gap-4">
+                    {[1, 2].map(v => (
+                      <div key={v} className="bg-white p-8 rounded-[32px] border border-slate-100 atmospheric-shadow flex items-center justify-between group hover:border-primary transition-all">
+                         <div className="flex items-center gap-6">
+                            <div className="w-14 h-14 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center font-black text-xl">
+                               {v}
+                            </div>
+                            <div>
+                               <p className="font-black text-on-surface text-lg">Versão salva em {v === 1 ? '25/03/2024' : 'Ontem'}</p>
+                               <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">Responsável: Professor Maria Silva</p>
+                            </div>
+                         </div>
+                         <button 
+                           onClick={() => alert(`Conteúdo: ${inputText || 'Sem dados textuais'}`)}
+                           className="px-6 py-3 bg-slate-50 rounded-xl text-[10px] font-black uppercase text-slate-400 hover:bg-primary/10 hover:text-primary transition-all tracking-widest"
+                         >
+                            Visualizar Dados
+                         </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
              </motion.div>
           )}
         </AnimatePresence>
