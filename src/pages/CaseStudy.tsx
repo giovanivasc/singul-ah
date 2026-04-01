@@ -31,6 +31,33 @@ interface InstrumentStatus {
   allowExternalLink?: boolean;
 }
 
+const IF_SAHS_QUESTIONS = [
+  {
+    section: 'I - PERFIL DO ESTUDANTE',
+    questions: [
+      { id: 'q1', text: 'O que o(a) estudante gosta de fazer ou apresenta facilidade para realizar? ex.: matemática, ciências, artes, música, tecnologia, linguagem, jogos, esportes' },
+      { id: 'q2', text: 'Como é a interação do seu filho com outras pessoas? Relate exemplo(s).' },
+      { id: 'q3', text: 'Como seu filho reage a desafios e frustrações? Relate exemplo(s).' }
+    ]
+  },
+  {
+    section: 'II - CONTEXTO FAMILIAR E APOIO EXTERNO',
+    questions: [
+      { id: 'q4', text: 'O estudante participa de atividades extracurriculares fora da escola? Se sim, quais?' },
+      { id: 'q5', text: 'A família já comunicou à escola a existência de desafios pedagógicos, emocionais ou comportamentais relacionados ao estudante? Se sim, quais?' }
+    ]
+  },
+  {
+    section: 'III - DESAFIOS E NECESSIDADES EDUCACIONAIS',
+    questions: [
+      { id: 'q6', text: 'O aluno demonstra sinais de desmotivação na escola? Quais comportamentos, atitudes ou situações evidenciam essa desmotivação?' },
+      { id: 'q7', text: 'Na sua opinião, quais são atualmente, as maiores necessidades pedagógicas do seu filho na escola?' },
+      { id: 'q8', text: 'Que expectativas você tem em relação ao desenvolvimento escolar do(a) seu(sua) filho(a)?' },
+      { id: 'q9', text: 'Gostaria de sugerir algo que considere importante para que possamos planejar um atendimento mais adequado ao seu(sua) filho(a)?' }
+    ]
+  }
+];
+
 const initialInstruments: InstrumentStatus[] = [
   { 
     id: 'IF-SAHS', 
@@ -100,6 +127,12 @@ export default function CaseStudy() {
   const [inputText, setInputText] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [docName, setDocName] = useState('');
+
+  const [ifSahsAnswers, setIfSahsAnswers] = useState<Record<string, string>>({});
+
+  const handleIfSahsChange = (id: string, value: string) => {
+    setIfSahsAnswers(prev => ({ ...prev, [id]: value }));
+  };
 
   useEffect(() => {
     async function fetchStudent() {
@@ -405,21 +438,42 @@ export default function CaseStudy() {
                            <div className="bg-primary/5 p-8 rounded-[32px] border border-primary/10 flex items-start gap-4">
                               <TrendingUp className="text-primary mt-1" size={24} />
                               <div className="space-y-1">
-                                 <p className="font-black text-on-surface uppercase tracking-tight">Evolução de Caso</p>
-                                 <p className="text-sm font-medium text-slate-500">Insira as novas informações ou observações recentes. O sistema consolidará estes dados ao documento mestre.</p>
+                                 <p className="font-black text-on-surface uppercase tracking-tight">Questionário de Avaliação Familiar</p>
+                                 <p className="text-sm font-medium text-slate-500">Preencha as informações detalhadas durante a entrevista com a família.</p>
                               </div>
                            </div>
-                           <div className="space-y-4">
-                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Campo de Atualização</label>
-                              <MultimodalInput 
-                                 value={inputText} 
-                                 onChange={setInputText} 
-                                 placeholder="Descreva aqui as mudanças ou novas informações coletadas..." 
-                              />
+                           
+                           <div className="space-y-8">
+                             {IF_SAHS_QUESTIONS.map((section, sidx) => (
+                               <div key={sidx} className="bg-white p-8 rounded-[32px] border border-slate-100 atmospheric-shadow space-y-6">
+                                 <h3 className="text-lg font-black text-primary uppercase tracking-tight flex items-center gap-4">
+                                   <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-sm shadow-sm shrink-0">
+                                     {sidx + 1}
+                                   </div>
+                                   {section.section}
+                                 </h3>
+                                 <div className="space-y-8 pl-4 border-l-2 border-slate-100 ml-4 py-2">
+                                   {section.questions.map(q => (
+                                     <div key={q.id} className="space-y-4">
+                                       <label className="text-[15px] font-bold text-on-surface-variant flex items-start gap-3 opacity-90">
+                                         <span className="text-primary mt-1 select-none">•</span> 
+                                         {q.text}
+                                       </label>
+                                       <MultimodalInput 
+                                          value={ifSahsAnswers[q.id] || ''} 
+                                          onChange={(val) => handleIfSahsChange(q.id, val)}
+                                          placeholder="Descreva aqui ou utilize o áudio para transcrever a resposta..." 
+                                       />
+                                     </div>
+                                   ))}
+                                 </div>
+                               </div>
+                             ))}
                            </div>
-                           <div className="p-8 bg-slate-50 rounded-3xl border border-slate-100 italic text-sm text-slate-400 flex items-center gap-4">
-                              <Sparkles size={18} className="text-primary opacity-40" />
-                              "Ao salvar, a IA atualizará automaticamente os eixos de análise do Estudo de Caso."
+
+                           <div className="p-8 bg-slate-50 rounded-3xl border border-slate-100 italic text-sm text-slate-400 flex items-center gap-4 shadow-sm">
+                              <Sparkles size={18} className="text-primary opacity-40 shrink-0" />
+                              "Ao salvar, a IA consolidará estas informações no perfil psicopedagógico do estudante."
                            </div>
                         </div>
                       ) : activeInstrumentId === 'DOC-ANALISE' ? (
