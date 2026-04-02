@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Brain, Sparkles, Database, Loader2, ArrowRight, Activity,
   Users, ShieldCheck, Plus, Highlighter, X, CheckCircle2, Info,
-  Maximize2, Trash2
+  Maximize2, Trash2, Archive, RefreshCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TopBar } from '../components/Navigation';
@@ -22,7 +22,7 @@ REGRAS VITAIS:
 }`;
 
 type AxisItem = { id: string; text: string; selected: boolean; isManual: boolean; };
-type HighlightSnippet = { id: string; text: string; category: 'demandas' | 'contexto' | 'potencialidades' | 'duvida'; source: string; };
+type HighlightSnippet = { id: string; text: string; category: 'demandas' | 'contexto' | 'potencialidades' | 'duvida'; source: string; status?: 'ativo' | 'armazenado' };
 type DataSource = { id: string; title: string; subtitle: string; content: string; icon: any; colorClass: string; bgColorClass: string; };
 
 const MOCK_SOURCES: DataSource[] = [
@@ -95,6 +95,7 @@ export default function ConvergenceEditor() {
     I: [], II: [], III: [], IV: []
   });
   const [lastConsolidation, setLastConsolidation] = useState<string | null>(null);
+  const [showToast, setShowToast] = useState(false);
 
   // Carregar do LocalStorage
   useEffect(() => {
@@ -128,6 +129,7 @@ export default function ConvergenceEditor() {
   }, [snippets, studentId]);
 
   // Modal Filters/Sort States
+  const [filterStatus, setFilterStatus] = useState<'ativo' | 'armazenado'>('ativo');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterSource, setFilterSource] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'recent' | 'category' | 'source'>('recent');
@@ -135,6 +137,7 @@ export default function ConvergenceEditor() {
   const availableSources = Array.from(new Set(snippets.map(s => s.source)));
 
   const filteredAndSortedSnippets = snippets
+    .filter(s => (s.status || 'ativo') === filterStatus)
     .filter(s => filterCategory === 'all' || s.category === filterCategory)
     .filter(s => filterSource === 'all' || s.source === filterSource)
     .sort((a, b) => {
@@ -150,7 +153,8 @@ export default function ConvergenceEditor() {
         id: Date.now().toString(),
         text: selection,
         category,
-        source: readingSource.title
+        source: readingSource.title,
+        status: 'ativo'
       }]);
       window.getSelection()?.removeAllRanges();
     } else {
@@ -215,8 +219,10 @@ export default function ConvergenceEditor() {
   };
 
   const handleApproveAndProceed = () => {
-    alert("Estudo de Caso aprovado com sucesso! Iniciando elaboração do PEI...");
-    navigate(`/students/${studentId}/pei-builder`);
+    setShowToast(true);
+    setTimeout(() => {
+       navigate(`/students/${studentId}`);
+    }, 1500);
   };
 
   const renderHighlightedContent = (content: string) => {
@@ -247,8 +253,21 @@ export default function ConvergenceEditor() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col relative">
       <TopBar title="Consolidação do Estudo de Caso" />
+      
+      <AnimatePresence>
+        {showToast && (
+          <motion.div 
+            initial={{ opacity: 0, y: -50, x: '-50%' }}
+            animate={{ opacity: 1, y: 16, x: '-50%' }}
+            exit={{ opacity: 0, y: -50, x: '-50%' }}
+            className="fixed top-0 left-1/2 z-[100] bg-[#1DB954] text-white px-6 py-3 rounded-2xl font-bold shadow-2xl flex items-center gap-3 tracking-wide"
+          >
+            <CheckCircle2 size={24} /> Mapeamento aprovado! O PEI foi atualizado.
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {lastConsolidation && (
         <div className="bg-blue-50 border-b border-blue-100/50 px-6 py-3 flex items-center justify-center gap-2 text-sm font-bold text-blue-700 shadow-inner">
@@ -331,16 +350,24 @@ export default function ConvergenceEditor() {
                  <Highlighter className="text-primary" size={24} />
                  <div>
                    <h2 className="text-lg font-black text-on-surface tracking-tight">Fichamento Prévio</h2>
-                   <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-0.5">{snippets.length} marcações realizadas</p>
+                   <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-0.5">{snippets.filter(s => s.status !== 'armazenado').length} marcações ativas</p>
                  </div>
               </div>
               
-              <button 
-                onClick={() => setIsSnippetsExpanded(true)}
-                className="w-full py-3 bg-slate-50 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2"
-              >
-                <Maximize2 size={16} /> Expandir/Gerenciar Marcadores
-              </button>
+              <div className="flex flex-col gap-2">
+                 <button 
+                   onClick={() => { setFilterStatus('ativo'); setIsSnippetsExpanded(true); }}
+                   className="w-full py-3 bg-slate-50 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                 >
+                   <Maximize2 size={16} /> Expandir Marcadores Ativos
+                 </button>
+                 <button 
+                   onClick={() => { setFilterStatus('armazenado'); setIsSnippetsExpanded(true); }}
+                   className="w-full py-2 text-slate-400 hover:text-slate-600 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                 >
+                   <Archive size={14} /> Cofre (Ver Armazenados)
+                 </button>
+              </div>
             </motion.div>
           )}
         </div>
@@ -628,9 +655,15 @@ export default function ConvergenceEditor() {
                  </div>
                  
                  {/* Filtros e Ordenação */}
-                 <div className="flex flex-wrap items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                    <div className="flex items-center gap-2">
-                       <span className="text-[10px] font-black tracking-widest text-slate-400 uppercase">Categoria:</span>
+                 <div className="flex flex-col gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <div className="flex bg-slate-200/50 p-1 rounded-lg self-start">
+                       <button onClick={() => setFilterStatus('ativo')} className={cn("px-6 py-1.5 rounded-md text-xs font-black uppercase tracking-widest transition-all", filterStatus === 'ativo' ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700")}>Ativos</button>
+                       <button onClick={() => setFilterStatus('armazenado')} className={cn("px-6 py-1.5 rounded-md text-xs font-black uppercase tracking-widest transition-all", filterStatus === 'armazenado' ? "bg-white text-slate-700 shadow-sm" : "text-slate-500 hover:text-slate-700")}>Armazenados</button>
+                    </div>
+                    
+                    <div className="flex flex-wrap items-center gap-3">
+                       <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black tracking-widest text-slate-400 uppercase">Categoria:</span>
                        <select 
                          value={filterCategory} 
                          onChange={e => setFilterCategory(e.target.value)}
@@ -670,6 +703,7 @@ export default function ConvergenceEditor() {
                     </div>
                  </div>
               </div>
+            </div>
 
               {/* Tabela/Cards (Visão Horizontal Compacta) */}
               <div className="p-6 overflow-y-auto flex-1 bg-slate-50 space-y-2">
@@ -677,7 +711,7 @@ export default function ConvergenceEditor() {
                     <p className="text-center text-slate-400 font-bold py-8">Nenhum marcador encontrado.</p>
                  )}
                  {filteredAndSortedSnippets.map(snippet => (
-                   <div key={snippet.id} className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center justify-between gap-4 transition-all hover:border-slate-300">
+                   <div key={snippet.id} className={cn("rounded-xl p-4 border flex items-center justify-between gap-4 transition-all", filterStatus === 'armazenado' ? "bg-slate-50 border-slate-200 opacity-80 mix-blend-multiply" : "bg-white border-slate-200 shadow-sm hover:border-slate-300")}>
                       
                       {/* Lado Esquerdo 80% */}
                       <div className="flex-1 min-w-0 pr-4 border-r border-slate-100">
@@ -696,38 +730,59 @@ export default function ConvergenceEditor() {
                       
                       {/* Lado Direito (Ações Compactas) */}
                       <div className="flex items-center gap-3 shrink-0">
-                         <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-100">
-                           {(['demandas', 'contexto', 'potencialidades', 'duvida'] as const).map(cat => (
-                              <button
-                                key={cat}
-                                onClick={() => handleChangeCategory(snippet.id, cat)}
-                                title={`Mudar para ${cat}`}
-                                className={cn(
-                                   "w-6 h-6 rounded-md flex items-center justify-center transition-all",
-                                   snippet.category === cat ? (
-                                      cat === 'demandas' ? 'bg-red-100' :
-                                      cat === 'contexto' ? 'bg-blue-100' :
-                                      cat === 'potencialidades' ? 'bg-green-100' : 'bg-yellow-100'
-                                   ) : "hover:bg-slate-200"
-                                )}
-                              >
-                                <div className={cn(
-                                  "w-3 h-3 rounded-full",
-                                  cat === 'demandas' ? 'bg-red-500' :
-                                  cat === 'contexto' ? 'bg-blue-500' :
-                                  cat === 'potencialidades' ? 'bg-green-500' : 'bg-yellow-500'
-                                )} />
-                              </button>
-                           ))}
-                         </div>
-                         
-                         <button 
-                           onClick={() => setSnippets(prev => prev.filter(s => s.id !== snippet.id))}
-                           className="w-8 h-8 shrink-0 text-slate-400 hover:bg-red-50 hover:text-red-500 rounded-lg flex items-center justify-center transition-all"
-                           title="Excluir marcador"
-                         >
-                            <Trash2 size={16} />
-                         </button>
+                         {filterStatus === 'ativo' ? (
+                           <>
+                             <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-100">
+                               {(['demandas', 'contexto', 'potencialidades', 'duvida'] as const).map(cat => (
+                                  <button
+                                    key={cat}
+                                    onClick={() => handleChangeCategory(snippet.id, cat)}
+                                    title={`Mudar para ${cat}`}
+                                    className={cn(
+                                       "w-6 h-6 rounded-md flex items-center justify-center transition-all",
+                                       snippet.category === cat ? (
+                                          cat === 'demandas' ? 'bg-red-100' :
+                                          cat === 'contexto' ? 'bg-blue-100' :
+                                          cat === 'potencialidades' ? 'bg-green-100' : 'bg-yellow-100'
+                                       ) : "hover:bg-slate-200"
+                                    )}
+                                  >
+                                    <div className={cn(
+                                      "w-3 h-3 rounded-full",
+                                      cat === 'demandas' ? 'bg-red-500' :
+                                      cat === 'contexto' ? 'bg-blue-500' :
+                                      cat === 'potencialidades' ? 'bg-green-500' : 'bg-yellow-500'
+                                    )} />
+                                  </button>
+                               ))}
+                             </div>
+                             
+                             <button 
+                               onClick={() => setSnippets(prev => prev.map(s => s.id === snippet.id ? { ...s, status: 'armazenado' } : s))}
+                               className="w-8 h-8 shrink-0 text-slate-400 hover:bg-slate-200 hover:text-slate-600 rounded-lg flex items-center justify-center transition-all"
+                               title="Arquivar marcador no cofre"
+                             >
+                                <Archive size={16} />
+                             </button>
+                           </>
+                         ) : (
+                           <>
+                             <button 
+                               onClick={() => setSnippets(prev => prev.map(s => s.id === snippet.id ? { ...s, status: 'ativo' } : s))}
+                               className="px-3 py-1.5 shrink-0 bg-white border border-slate-200 text-slate-500 hover:bg-primary hover:text-white hover:border-primary rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-sm"
+                               title="Restaurar para a lista principal"
+                             >
+                                <RefreshCcw size={14} /> Restaurar
+                             </button>
+                             <button 
+                               onClick={() => { if(confirm("Deseja realmente apagar este registro em definitivo?")) setSnippets(prev => prev.filter(s => s.id !== snippet.id)); }}
+                               className="w-8 h-8 shrink-0 bg-white text-slate-400 hover:bg-red-500 hover:text-white hover:border-red-500 border border-slate-200 shadow-sm rounded-lg flex items-center justify-center transition-all"
+                               title="Excluir Definitivamente"
+                             >
+                                <Trash2 size={14} />
+                             </button>
+                           </>
+                         )}
                       </div>
                    </div>
                  ))}
