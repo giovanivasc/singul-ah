@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { 
   Home, Users, Settings, Search, Bell, LogOut, 
   ClipboardList, Brain, PencilRuler, FolderArchive, TrendingUp,
-  Compass, ChevronLeft, LayoutDashboard, ClipboardCheck
+  Compass, ChevronLeft, LayoutDashboard, ClipboardCheck, Network
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
@@ -43,8 +43,9 @@ export function Sidebar() {
   ];
 
   const contextualNavItems = studentId ? [
+    { icon: LayoutDashboard, label: 'Painel do Aluno', path: `/students/${studentId}` },
     { icon: ClipboardList, label: 'Estudo de Caso', path: `/students/${studentId}/case-study` },
-    { icon: Brain, label: 'Mapeamento', path: `/students/${studentId}/mapping` },
+    { icon: Network, label: 'Mapeamento', path: `/students/${studentId}/convergence` },
     { icon: PencilRuler, label: 'Construtor PEI', path: `/students/${studentId}/builder` },
     { icon: TrendingUp, label: 'Avaliação', path: `/students/${studentId}/evaluation` },
   ] : [];

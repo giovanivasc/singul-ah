@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Brain, Sparkles, Database, Loader2, ArrowRight, Activity,
   Users, ShieldCheck, Plus, Highlighter, X, CheckCircle2, Info,
@@ -94,6 +94,38 @@ export default function ConvergenceEditor() {
   const [axisData, setAxisData] = useState<Record<string, AxisItem[]>>({
     I: [], II: [], III: [], IV: []
   });
+  const [lastConsolidation, setLastConsolidation] = useState<string | null>(null);
+
+  // Carregar do LocalStorage
+  useEffect(() => {
+    if (!studentId) return;
+    const saved = localStorage.getItem(`mapeamento_data_${studentId}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.snippets) setSnippets(parsed.snippets);
+        if (parsed.axisData) {
+          setAxisData(parsed.axisData);
+          if (Object.keys(parsed.axisData).some(k => parsed.axisData[k].length > 0)) {
+            setHasGenerated(true);
+          }
+        }
+        if (parsed.lastConsolidation) setLastConsolidation(parsed.lastConsolidation);
+      } catch (e) {
+        console.error("Erro ao carregar dados locais", e);
+      }
+    }
+  }, [studentId]);
+
+  // Auto-save dos snippets (marcadores)
+  useEffect(() => {
+    if (!studentId) return;
+    const saved = localStorage.getItem(`mapeamento_data_${studentId}`);
+    const parsed = saved ? JSON.parse(saved) : {};
+    // Só atualizamos e gravamos se houver alguma lista de snippets ou se for pra limpar
+    parsed.snippets = snippets;
+    localStorage.setItem(`mapeamento_data_${studentId}`, JSON.stringify(parsed));
+  }, [snippets, studentId]);
 
   // Modal Filters/Sort States
   const [filterCategory, setFilterCategory] = useState<string>('all');
@@ -142,9 +174,18 @@ export default function ConvergenceEditor() {
 
     // Simulating API Call to LLM
     setTimeout(() => {
+      const now = new Date().toLocaleString('pt-BR');
       setAxisData(mockIaResponse);
       setHasGenerated(true);
       setIsGenerating(false);
+      setLastConsolidation(now);
+
+      const saved = localStorage.getItem(`mapeamento_data_${studentId}`);
+      const parsed = saved ? JSON.parse(saved) : {};
+      parsed.axisData = mockIaResponse;
+      parsed.lastConsolidation = now;
+      parsed.snippets = snippets;
+      localStorage.setItem(`mapeamento_data_${studentId}`, JSON.stringify(parsed));
     }, 3000);
   };
 
@@ -156,10 +197,19 @@ export default function ConvergenceEditor() {
         selected: true,
         isManual: true
       };
-      setAxisData(prev => ({
-        ...prev,
-        [activeTab]: [...(prev[activeTab] || []), newItem]
-      }));
+      setAxisData(prev => {
+        const newData = { ...prev, [activeTab]: [...(prev[activeTab] || []), newItem] };
+        
+        // Auto-save manual item
+        if (studentId) {
+          const saved = localStorage.getItem(`mapeamento_data_${studentId}`);
+          const parsed = saved ? JSON.parse(saved) : {};
+          parsed.axisData = newData;
+          localStorage.setItem(`mapeamento_data_${studentId}`, JSON.stringify(parsed));
+        }
+        
+        return newData;
+      });
       setManualInput('');
     }
   };
@@ -199,6 +249,12 @@ export default function ConvergenceEditor() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
       <TopBar title="Consolidação do Estudo de Caso" />
+      
+      {lastConsolidation && (
+        <div className="bg-blue-50 border-b border-blue-100/50 px-6 py-3 flex items-center justify-center gap-2 text-sm font-bold text-blue-700 shadow-inner">
+          <CheckCircle2 size={16} /> Mapeamento consolidado pela última vez em: {lastConsolidation}
+        </div>
+      )}
       
       <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-8 flex flex-col lg:flex-row gap-8">
         
@@ -257,7 +313,7 @@ export default function ConvergenceEditor() {
                {isGenerating ? (
                   <><Loader2 size={20} className="animate-spin" /> Processando IA...</>
                ) : (
-                  <><Sparkles size={20} /> Gerar Mapeamento do Estudo de Caso (IA)</>
+                  <><Sparkles size={20} /> {lastConsolidation ? "Atualizar Mapeamento (IA)" : "Gerar Mapeamento do Estudo de Caso (IA)"}</>
                )}
             </button>
             

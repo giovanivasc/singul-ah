@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { 
   ClipboardList, Brain, PencilRuler, 
   TrendingUp, ArrowRight, User, GraduationCap, MapPin, 
-  Sparkles, Loader2, AlertCircle
+  Sparkles, Loader2, AlertCircle, Camera, Network
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { TopBar } from '../components/Navigation';
@@ -57,26 +57,35 @@ export default function StudentHub() {
       title: 'Estudo de Caso',
       subtitle: 'Diagnóstico e Coleta',
       icon: ClipboardList,
-      description: 'Preenchimento dos 4 instrumentos principais (IF-SAHS, IP-SAHS, Entrevista, N-ILS).',
+      description: 'Preenchimento dos instrumentos: IF-SAHS, IP-SAHS, Entrevista, N-ILS.',
       progress: 65,
       color: 'bg-primary',
       path: 'case-study'
     },
     {
-      title: 'Plano (PEI)',
-      subtitle: 'Processamento e Estratégia',
+      title: 'Mapeamento',
+      subtitle: 'Síntese e Cruzamento',
+      icon: Network,
+      description: 'Análise assistida por IA das barreiras e interesses conforme a LBI.',
+      progress: 0,
+      color: 'bg-indigo-500',
+      path: 'convergence'
+    },
+    {
+      title: 'Construtor PEI',
+      subtitle: 'Processamento e Plano',
       icon: Brain,
       secondIcon: PencilRuler,
-      description: 'Mapeamento de Convergência assistido por IA e construção do plano final.',
+      description: 'Planejamento de objetivos, metas e suportes baseados no mapeamento.',
       progress: 30,
       color: 'bg-secondary-container',
       path: 'builder'
     },
     {
-      title: 'Avaliação do Plano',
-      subtitle: 'Acompanhamento do Ciclo',
+      title: 'Avaliação PEI',
+      subtitle: 'Acompanhamento',
       icon: TrendingUp,
-      description: 'Mapeamento de progresso das metas e alimentação do próximo ciclo PEI.',
+      description: 'Monitoramento do progresso das metas para o próximo ciclo.',
       progress: 10,
       color: 'bg-tertiary-container',
       path: 'evaluation'
@@ -123,40 +132,49 @@ export default function StudentHub() {
           animate={{ opacity: 1, y: 0 }}
           className="relative mb-12"
         >
-          <div className="bg-white/70 backdrop-blur-xl rounded-[32px] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.05)] border border-white/50 flex flex-col items-center text-center overflow-hidden">
-             {/* Decorative element */}
-             <div className="absolute top-0 right-0 p-8 text-primary opacity-5">
-                <Sparkles size={120} />
-             </div>
-             
-             <div className="relative mb-6">
-                <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-xl bg-primary/5 flex items-center justify-center">
-                  {student.avatar_url ? (
-                    <img 
-                      src={student.avatar_url} 
-                      alt={student.full_name} 
-                      className="w-full h-full object-cover"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <User size={64} className="text-primary/20" />
-                  )}
+          <div className="bg-white/70 backdrop-blur-xl rounded-[32px] shadow-[0_10px_40px_rgba(0,0,0,0.05)] border border-white/50 flex flex-col overflow-hidden pb-8">
+             {/* Banner */}
+             <div className="w-full h-32 md:h-40 bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 relative">
+                <div className="absolute top-0 right-0 p-6 text-white opacity-20">
+                   <Sparkles size={80} />
                 </div>
-                <div className="absolute bottom-0 right-0 w-8 h-8 bg-green-500 border-4 border-white rounded-full" />
              </div>
              
-             <h2 className="text-4xl font-black text-on-surface tracking-tight mb-2">{student.full_name}</h2>
-             
-             <div className="flex flex-wrap justify-center gap-4 text-xs font-bold text-on-surface-variant/70 uppercase tracking-widest">
-                <span className="flex items-center gap-2 px-6 py-2.5 bg-surface-container rounded-full"><User size={16} className="text-primary"/> {age} Anos</span>
-                <span className="flex items-center gap-2 px-6 py-2.5 bg-surface-container rounded-full"><GraduationCap size={16} className="text-secondary-container-on" /> {student.grade}</span>
-                <span className="flex items-center gap-2 px-6 py-2.5 bg-surface-container rounded-full italic"><MapPin size={16} className="text-tertiary" /> {student.school}</span>
+             {/* Profile Info */}
+             <div className="px-8 flex flex-col md:flex-row items-center md:items-start md:gap-8 relative z-10">
+                <div className="relative -mt-12 md:max-w-none md:ml-4 mb-4 md:mb-0 shrink-0">
+                   <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-lg bg-slate-100 flex items-center justify-center relative">
+                     {student.avatar_url ? (
+                       <img 
+                         src={student.avatar_url} 
+                         alt={student.full_name} 
+                         className="w-full h-full object-cover"
+                         referrerPolicy="no-referrer"
+                       />
+                     ) : (
+                       <User size={40} className="text-primary/20" />
+                     )}
+                   </div>
+                   <button className="absolute bottom-0 right-0 w-7 h-7 bg-white text-slate-500 hover:text-primary hover:bg-slate-50 border border-slate-200 rounded-full flex items-center justify-center shadow-sm transition-colors" title="Editar foto">
+                      <Camera size={12} />
+                   </button>
+                </div>
+                
+                <div className="flex-1 text-center md:text-left pt-2 md:pt-4">
+                   <h2 className="text-3xl font-black text-on-surface tracking-tight mb-3">{student.full_name}</h2>
+                   
+                   <div className="flex flex-wrap justify-center md:justify-start gap-4 text-xs font-bold text-on-surface-variant/70 uppercase tracking-widest">
+                      <span className="flex items-center gap-2 px-4 py-1.5 bg-surface-container rounded-full"><User size={14} className="text-primary"/> {age} Anos</span>
+                      <span className="flex items-center gap-2 px-4 py-1.5 bg-surface-container rounded-full"><GraduationCap size={14} className="text-secondary-container-on" /> {student.grade}</span>
+                      <span className="flex items-center gap-2 px-4 py-1.5 bg-surface-container rounded-full italic"><MapPin size={14} className="text-tertiary" /> {student.school}</span>
+                   </div>
+                </div>
              </div>
           </div>
         </motion.div>
 
         {/* Functional Blocks Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
           {blocks.map((block, index) => (
             <motion.div
               key={block.title}
@@ -178,8 +196,8 @@ export default function StudentHub() {
                 </div>
                 
                 <p className="text-[10px] font-black uppercase text-outline/40 tracking-[0.2em] mb-2">{block.subtitle}</p>
-                <h3 className="text-2xl font-black text-on-surface mb-4 group-hover:text-primary transition-colors tracking-tight leading-tight">{block.title}</h3>
-                <p className="text-sm font-medium text-outline/60 leading-relaxed opacity-80 mb-8">{block.description}</p>
+                <h3 className="text-xl lg:text-2xl font-black text-on-surface mb-3 group-hover:text-primary transition-colors tracking-tight leading-tight">{block.title}</h3>
+                <p className="text-xs lg:text-sm font-medium text-outline/60 leading-relaxed opacity-80 mb-8">{block.description}</p>
               </div>
 
               <div>
