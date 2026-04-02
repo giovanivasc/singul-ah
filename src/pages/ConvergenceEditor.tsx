@@ -100,11 +100,12 @@ export default function ConvergenceEditor() {
   // Carregar do LocalStorage
   useEffect(() => {
     if (!studentId) return;
-    const saved = localStorage.getItem(`mapeamento_data_${studentId}`);
-    if (saved) {
+    
+    // Carregar mapeamento via chave antiga
+    const savedMap = localStorage.getItem(`mapeamento_data_${studentId}`);
+    if (savedMap) {
       try {
-        const parsed = JSON.parse(saved);
-        if (parsed.snippets) setSnippets(parsed.snippets);
+        const parsed = JSON.parse(savedMap);
         if (parsed.axisData) {
           setAxisData(parsed.axisData);
           if (Object.keys(parsed.axisData).some(k => parsed.axisData[k].length > 0)) {
@@ -113,19 +114,31 @@ export default function ConvergenceEditor() {
         }
         if (parsed.lastConsolidation) setLastConsolidation(parsed.lastConsolidation);
       } catch (e) {
-        console.error("Erro ao carregar dados locais", e);
+        console.error("Erro ao carregar mapeamento local", e);
       }
+    }
+
+    // Carregador específico para marcadores (Snippet Array Raw)
+    const savedSnippets = localStorage.getItem('snippets_student_' + studentId);
+    if (savedSnippets) {
+      try {
+        setSnippets(JSON.parse(savedSnippets));
+      } catch (e) {
+        console.error("Erro ao carregar snippets", e);
+      }
+    } else if (savedMap) {
+       // Fallback se não existir novo localStorage tenta resgatar do antigo (retrocompatibilidade)
+       try {
+         const parsed = JSON.parse(savedMap);
+         if (parsed.snippets) setSnippets(parsed.snippets);
+       } catch (e) {}
     }
   }, [studentId]);
 
-  // Auto-save dos snippets (marcadores)
+  // Auto-save exclusivo dos snippets (marcadores)
   useEffect(() => {
     if (!studentId) return;
-    const saved = localStorage.getItem(`mapeamento_data_${studentId}`);
-    const parsed = saved ? JSON.parse(saved) : {};
-    // Só atualizamos e gravamos se houver alguma lista de snippets ou se for pra limpar
-    parsed.snippets = snippets;
-    localStorage.setItem(`mapeamento_data_${studentId}`, JSON.stringify(parsed));
+    localStorage.setItem('snippets_student_' + studentId, JSON.stringify(snippets));
   }, [snippets, studentId]);
 
   // Modal Filters/Sort States
@@ -239,21 +252,25 @@ export default function ConvergenceEditor() {
     }, 1500);
   };
 
-  const renderHighlightedContent = (content: string) => {
-    let renderedContent = content;
-    const sortedSnippets = [...snippets].sort((a,b) => b.text.length - a.text.length);
+  const renderHighlightedText = (text: string, sourceTitle: string) => {
+    if (!text) return null;
+    let renderedContent = text;
+    const validSnippets = snippets.filter(s => s.source === sourceTitle);
+    const sortedSnippets = [...validSnippets].sort((a,b) => b.text.length - a.text.length);
     const placeholders: {placeholder: string, jsx: React.ReactNode}[] = [];
     
     sortedSnippets.forEach((snippet, idx) => {
-      if (readingSource?.title !== snippet.source) return;
       const placeholder = `__SNIP_${idx}__`;
       const bgColor = snippet.category === 'demandas' ? 'bg-red-200' :
                       snippet.category === 'contexto' ? 'bg-blue-200' :
                       snippet.category === 'potencialidades' ? 'bg-green-200' :
                       'bg-yellow-200';
+                      
+      const opacityClass = snippet.status === 'armazenado' ? 'opacity-50 grayscale' : 'opacity-80 text-slate-800';
+
       placeholders.push({
         placeholder, 
-        jsx: <mark key={snippet.id} className={`${bgColor} px-1 rounded bg-opacity-60 text-slate-800`}>{snippet.text}</mark>
+        jsx: <mark key={snippet.id} className={`${bgColor} ${opacityClass} px-1 rounded`}>{snippet.text}</mark>
       });
       renderedContent = renderedContent.split(snippet.text).join(placeholder);
     });
@@ -357,33 +374,25 @@ export default function ConvergenceEditor() {
             )}
           </div>
           
-          {/* Seção Marcadores do Professor (Versão Compacta) */}
-          {snippets.length > 0 && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-[32px] p-6 border border-slate-100 atmospheric-shadow flex flex-col gap-4">
-              <div className="flex items-center gap-3">
-                 <Highlighter className="text-primary" size={24} />
-                 <div>
-                   <h2 className="text-lg font-black text-on-surface tracking-tight">Fichamento Prévio</h2>
-                   <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-0.5">{snippets.filter(s => s.status !== 'armazenado').length} marcações ativas</p>
-                 </div>
-              </div>
-              
-              <div className="flex flex-col gap-2">
-                 <button 
-                   onClick={() => { setFilterStatus('ativo'); setIsSnippetsExpanded(true); }}
-                   className="w-full py-3 bg-slate-50 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2"
-                 >
-                   <Maximize2 size={16} /> Expandir Marcadores Ativos
-                 </button>
-                 <button 
-                   onClick={() => { setFilterStatus('armazenado'); setIsSnippetsExpanded(true); }}
-                   className="w-full py-2 text-slate-400 hover:text-slate-600 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2"
-                 >
-                   <Archive size={14} /> Cofre (Ver Armazenados)
-                 </button>
-              </div>
-            </motion.div>
-          )}
+          {/* Seção Marcadores do Professor (Versão Compacta Sempre Renderizada) */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-[32px] p-6 border border-slate-100 atmospheric-shadow flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+               <Highlighter className="text-primary" size={24} />
+               <div>
+                 <h2 className="text-lg font-black text-on-surface tracking-tight">Fichamento Prévio</h2>
+                 <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-0.5">{snippets.filter(s => s.status !== 'armazenado').length} marcações ativas</p>
+               </div>
+            </div>
+            
+            <div className="flex flex-col gap-2">
+               <button 
+                 onClick={() => { setFilterStatus('ativo'); setIsSnippetsExpanded(true); }}
+                 className="w-full py-3 bg-slate-50 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+               >
+                 <Maximize2 size={16} /> Expandir Marcadores
+               </button>
+            </div>
+          </motion.div>
         </div>
 
         {/* COLUNA DIREITA: Resultado Legal Art. 11 e Checklists */}
@@ -661,7 +670,7 @@ export default function ConvergenceEditor() {
 
               {/* Text Content */}
               <div className="p-8 overflow-y-auto flex-1 bg-white text-slate-700 leading-relaxed text-sm selection:bg-yellow-200 selection:text-slate-900">
-                 <p className="whitespace-pre-wrap">{renderHighlightedContent(readingSource.content)}</p>
+                 <p className="whitespace-pre-wrap">{renderHighlightedText(readingSource.content, readingSource.title)}</p>
                  <div className="mt-8 pt-8 border-t border-slate-100">
                     <p className="text-sm font-bold text-slate-400 flex items-center gap-2">
                        <CheckCircle2 size={16} />
