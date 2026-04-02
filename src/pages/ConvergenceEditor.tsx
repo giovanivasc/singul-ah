@@ -95,6 +95,22 @@ export default function ConvergenceEditor() {
     I: [], II: [], III: [], IV: []
   });
 
+  // Modal Filters/Sort States
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterSource, setFilterSource] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'recent' | 'category' | 'source'>('recent');
+
+  const availableSources = Array.from(new Set(snippets.map(s => s.source)));
+
+  const filteredAndSortedSnippets = snippets
+    .filter(s => filterCategory === 'all' || s.category === filterCategory)
+    .filter(s => filterSource === 'all' || s.source === filterSource)
+    .sort((a, b) => {
+       if (sortBy === 'category') return a.category.localeCompare(b.category);
+       if (sortBy === 'source') return a.source.localeCompare(b.source);
+       return Number(b.id) - Number(a.id);
+    });
+
   const handleHighlight = (category: 'demandas' | 'contexto' | 'potencialidades' | 'duvida') => {
     const selection = window.getSelection()?.toString().trim();
     if (selection && readingSource) {
@@ -122,7 +138,6 @@ export default function ConvergenceEditor() {
       promptAddition = `\nATENÇÃO: O professor já fez uma pré-análise e destacou os seguintes pontos importantes. Certifique-se de validar e incluir estes pontos na sua análise final, convertendo-os para itens de lista curtos:\n${snippets.map(s => `- [${s.category.toUpperCase()}] ${s.text}`).join('\n')}`;
     }
     
-    // Log para fins de debug mostrando a injeção dos grifos no prompt enviado à IA
     console.log("Enviando para IA:", SYSTEM_PROMPT_ESTUDO_CASO + promptAddition);
 
     // Simulating API Call to LLM
@@ -253,48 +268,23 @@ export default function ConvergenceEditor() {
             )}
           </div>
           
-          {/* Seção Marcadores do Professor */}
+          {/* Seção Marcadores do Professor (Versão Compacta) */}
           {snippets.length > 0 && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-[32px] p-8 border border-slate-100 atmospheric-shadow flex flex-col gap-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                 <div className="flex items-center gap-3">
-                   <Highlighter className="text-primary" size={24} />
-                   <div>
-                     <h2 className="text-xl font-black text-on-surface tracking-tight">Fichamento Prévio</h2>
-                     <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-1">Marcadores do Professor</p>
-                   </div>
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-[32px] p-6 border border-slate-100 atmospheric-shadow flex flex-col gap-4">
+              <div className="flex items-center gap-3">
+                 <Highlighter className="text-primary" size={24} />
+                 <div>
+                   <h2 className="text-lg font-black text-on-surface tracking-tight">Fichamento Prévio</h2>
+                   <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-0.5">{snippets.length} marcações realizadas</p>
                  </div>
-                 <button 
-                   onClick={() => setIsSnippetsExpanded(true)}
-                   className="p-2 bg-slate-50 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-xl transition-all"
-                   title="Ampliar/Gerenciar"
-                 >
-                   <Maximize2 size={16} />
-                 </button>
               </div>
-              <div className="space-y-3">
-                 {snippets.map(snippet => (
-                   <div key={snippet.id} className={cn(
-                     "p-4 rounded-xl text-sm relative border transition-all",
-                     snippet.category === 'demandas' ? 'bg-red-50 border-red-100 text-red-800' :
-                     snippet.category === 'contexto' ? 'bg-blue-50 border-blue-100 text-blue-800' :
-                     snippet.category === 'potencialidades' ? 'bg-green-50 border-green-100 text-green-800' :
-                     'bg-yellow-50 border-yellow-100 text-yellow-800'
-                   )}>
-                     <p className="font-medium italic text-xs">"{snippet.text}"</p>
-                     <p className={cn(
-                       "text-[10px] font-black uppercase tracking-widest mt-2",
-                       snippet.category === 'demandas' ? 'text-red-500' :
-                       snippet.category === 'contexto' ? 'text-blue-500' :
-                       snippet.category === 'potencialidades' ? 'text-green-500' :
-                       'text-yellow-600'
-                     )}>
-                       {snippet.category}
-                     </p>
-                     <span className="block text-[10px] text-slate-400 italic mt-1">Origem: {snippet.source}</span>
-                   </div>
-                 ))}
-              </div>
+              
+              <button 
+                onClick={() => setIsSnippetsExpanded(true)}
+                className="w-full py-3 bg-slate-50 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+              >
+                <Maximize2 size={16} /> Expandir/Gerenciar Marcadores
+              </button>
             </motion.div>
           )}
         </div>
@@ -343,7 +333,7 @@ export default function ConvergenceEditor() {
                      {[
                        { id: 'I', label: 'I. Demandas' },
                        { id: 'II', label: 'II. Contexto' },
-                       { id: 'III', label: 'III. Potencialidades' },
+                       { id: 'III', label: 'III. Potencialidades/Interesses' },
                        { id: 'IV', label: 'IV. Ponte PEI' },
                      ].map(tab => (
                        <button
@@ -522,7 +512,7 @@ export default function ConvergenceEditor() {
                      title="Identifique interesses profundos, talentos, facilidades e o que motiva o estudante."
                      className="px-4 py-2.5 bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 rounded-xl text-xs font-bold transition-all flex items-center gap-2 active:scale-95"
                    >
-                     <Highlighter size={14} /> Potencialidade <Info size={14} />
+                     <Highlighter size={14} /> Potencialidades/Interesses <Info size={14} />
                    </button>
                    <button 
                      onClick={() => handleHighlight('duvida')}
@@ -567,65 +557,122 @@ export default function ConvergenceEditor() {
               className="bg-white rounded-[32px] w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden"
             >
               {/* Header */}
-              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white">
-                 <div>
-                   <h3 className="font-black text-2xl text-slate-800">Gerenciador de Marcadores</h3>
-                   <p className="text-xs font-bold uppercase text-slate-400 tracking-widest mt-1">Revise as categorias antes de enviar para a IA</p>
+              <div className="p-6 border-b border-slate-100 flex flex-col gap-4 bg-white shrink-0">
+                 <div className="flex items-center justify-between">
+                   <div>
+                     <h3 className="font-black text-2xl text-slate-800">Gerenciador de Marcadores</h3>
+                     <p className="text-xs font-bold uppercase text-slate-400 tracking-widest mt-1">Revise as categorias antes de enviar para a IA</p>
+                   </div>
+                   <button 
+                     onClick={() => setIsSnippetsExpanded(false)} 
+                     className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
+                   >
+                     <X size={24} />
+                   </button>
                  </div>
-                 <button 
-                   onClick={() => setIsSnippetsExpanded(false)} 
-                   className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
-                 >
-                   <X size={24} />
-                 </button>
+                 
+                 {/* Filtros e Ordenação */}
+                 <div className="flex flex-wrap items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    <div className="flex items-center gap-2">
+                       <span className="text-[10px] font-black tracking-widest text-slate-400 uppercase">Categoria:</span>
+                       <select 
+                         value={filterCategory} 
+                         onChange={e => setFilterCategory(e.target.value)}
+                         className="bg-white border border-slate-200 text-xs font-bold text-slate-600 py-1.5 px-2 rounded-lg outline-none cursor-pointer focus:ring-2 focus:ring-primary/20"
+                       >
+                         <option value="all">Todas</option>
+                         <option value="demandas">Demandas</option>
+                         <option value="contexto">Contexto</option>
+                         <option value="potencialidades">Potencialidades/Interess.</option>
+                         <option value="duvida">Dúvidas</option>
+                       </select>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                       <span className="text-[10px] font-black tracking-widest text-slate-400 uppercase">Instrumento:</span>
+                       <select 
+                         value={filterSource} 
+                         onChange={e => setFilterSource(e.target.value)}
+                         className="bg-white border border-slate-200 text-xs font-bold text-slate-600 py-1.5 px-2 rounded-lg outline-none cursor-pointer focus:ring-2 focus:ring-primary/20"
+                       >
+                         <option value="all">Todos</option>
+                         {availableSources.map(s => <option key={s} value={s}>{s}</option>)}
+                       </select>
+                    </div>
+
+                    <div className="flex items-center gap-2 ml-auto">
+                       <span className="text-[10px] font-black tracking-widest text-slate-400 uppercase">Ordenar:</span>
+                       <select 
+                         value={sortBy} 
+                         onChange={e => setSortBy(e.target.value as any)}
+                         className="bg-white border border-slate-200 text-xs font-bold text-slate-600 py-1.5 px-2 rounded-lg outline-none cursor-pointer focus:ring-2 focus:ring-primary/20"
+                       >
+                         <option value="recent">Mais recentes</option>
+                         <option value="category">Categoria</option>
+                         <option value="source">Instrumento</option>
+                       </select>
+                    </div>
+                 </div>
               </div>
 
-              {/* Tabela/Cards */}
-              <div className="p-8 overflow-y-auto flex-1 bg-slate-50 space-y-4">
-                 {snippets.length === 0 && (
-                    <p className="text-center text-slate-400 font-bold">Nenhum marcador criado.</p>
+              {/* Tabela/Cards (Visão Horizontal Compacta) */}
+              <div className="p-6 overflow-y-auto flex-1 bg-slate-50 space-y-2">
+                 {filteredAndSortedSnippets.length === 0 && (
+                    <p className="text-center text-slate-400 font-bold py-8">Nenhum marcador encontrado.</p>
                  )}
-                 {snippets.map(snippet => (
-                   <div key={snippet.id} className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row gap-6 md:items-center transition-all">
-                      <div className="flex-1">
-                         <p className="text-sm font-medium text-slate-700 italic border-l-4 border-slate-200 pl-4 py-1">"{snippet.text}"</p>
-                         <p className="text-[10px] font-bold text-slate-400 mt-3 flex items-center gap-2">
-                           <Database size={12}/> ORIGEM: {snippet.source}
-                         </p>
+                 {filteredAndSortedSnippets.map(snippet => (
+                   <div key={snippet.id} className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center justify-between gap-4 transition-all hover:border-slate-300">
+                      
+                      {/* Lado Esquerdo 80% */}
+                      <div className="flex-1 min-w-0 pr-4 border-r border-slate-100">
+                         <div className="flex items-center gap-2 mb-1">
+                           <div className={cn(
+                             "w-2.5 h-2.5 rounded-full shrink-0",
+                             snippet.category === 'demandas' ? 'bg-red-500' :
+                             snippet.category === 'contexto' ? 'bg-blue-500' :
+                             snippet.category === 'potencialidades' ? 'bg-green-500' :
+                             'bg-yellow-500'
+                           )} />
+                           <p className="text-sm font-medium text-slate-800 line-clamp-2 truncate whitespace-normal leading-snug">"{snippet.text}"</p>
+                         </div>
+                         <p className="text-[10px] font-bold text-slate-400 pl-4 uppercase tracking-widest">Origem: {snippet.source}</p>
                       </div>
                       
-                      <div className="flex flex-col gap-3 shrink-0">
-                         <span className="text-[10px] font-black tracking-widest text-slate-400 uppercase">Alterar Categoria:</span>
-                         <div className="flex flex-wrap gap-2">
+                      {/* Lado Direito (Ações Compactas) */}
+                      <div className="flex items-center gap-3 shrink-0">
+                         <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-100">
                            {(['demandas', 'contexto', 'potencialidades', 'duvida'] as const).map(cat => (
                               <button
                                 key={cat}
                                 onClick={() => handleChangeCategory(snippet.id, cat)}
+                                title={`Mudar para ${cat}`}
                                 className={cn(
-                                   "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border",
+                                   "w-6 h-6 rounded-md flex items-center justify-center transition-all",
                                    snippet.category === cat ? (
-                                      cat === 'demandas' ? 'bg-red-500 text-white border-red-600 shadow-md shadow-red-500/20' :
-                                      cat === 'contexto' ? 'bg-blue-500 text-white border-blue-600 shadow-md shadow-blue-500/20' :
-                                      cat === 'potencialidades' ? 'bg-green-500 text-white border-green-600 shadow-md shadow-green-500/20' :
-                                      'bg-yellow-500 text-white border-yellow-600 shadow-md shadow-yellow-500/20'
-                                   ) : (
-                                      "bg-white text-slate-400 border-slate-200 hover:bg-slate-50"
-                                   )
+                                      cat === 'demandas' ? 'bg-red-100' :
+                                      cat === 'contexto' ? 'bg-blue-100' :
+                                      cat === 'potencialidades' ? 'bg-green-100' : 'bg-yellow-100'
+                                   ) : "hover:bg-slate-200"
                                 )}
                               >
-                                {cat}
+                                <div className={cn(
+                                  "w-3 h-3 rounded-full",
+                                  cat === 'demandas' ? 'bg-red-500' :
+                                  cat === 'contexto' ? 'bg-blue-500' :
+                                  cat === 'potencialidades' ? 'bg-green-500' : 'bg-yellow-500'
+                                )} />
                               </button>
                            ))}
                          </div>
+                         
+                         <button 
+                           onClick={() => setSnippets(prev => prev.filter(s => s.id !== snippet.id))}
+                           className="w-8 h-8 shrink-0 text-slate-400 hover:bg-red-50 hover:text-red-500 rounded-lg flex items-center justify-center transition-all"
+                           title="Excluir marcador"
+                         >
+                            <Trash2 size={16} />
+                         </button>
                       </div>
-                      
-                      <button 
-                        onClick={() => setSnippets(prev => prev.filter(s => s.id !== snippet.id))}
-                        className="w-10 h-10 shrink-0 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-xl flex items-center justify-center transition-all"
-                        title="Excluir Marcador"
-                      >
-                         <Trash2 size={16} />
-                      </button>
                    </div>
                  ))}
               </div>
