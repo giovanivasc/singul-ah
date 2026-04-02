@@ -21,7 +21,7 @@ REGRAS VITAIS:
   "eixo_IV": ["Uso de fones abafadores de ruído.", "Fragmentação de tarefas."]
 }`;
 
-type AxisItem = { id: string; text: string; selected: boolean; isManual: boolean; };
+type AxisItem = { id: string; text: string; selected: boolean; isManual: boolean; isNew?: boolean; };
 type HighlightSnippet = { id: string; text: string; category: 'demandas' | 'contexto' | 'potencialidades' | 'duvida'; source: string; status?: 'ativo' | 'armazenado' };
 type DataSource = { id: string; title: string; subtitle: string; content: string; icon: any; colorClass: string; bgColorClass: string; };
 
@@ -179,17 +179,31 @@ export default function ConvergenceEditor() {
     // Simulating API Call to LLM
     setTimeout(() => {
       const now = new Date().toLocaleString('pt-BR');
-      setAxisData(mockIaResponse);
+      
+      setAxisData(prev => {
+        const newData = { ...prev };
+        for (const axis of ['I', 'II', 'III', 'IV']) {
+          const existingItems = newData[axis] ? newData[axis].map(i => ({ ...i, isNew: false })) : [];
+          const newItems = (mockIaResponse[axis] || [])
+            .filter(newItem => !existingItems.some(existing => existing.text.toLowerCase().trim() === newItem.text.toLowerCase().trim()))
+            .map(i => ({ ...i, id: Date.now().toString() + Math.random().toString().slice(2, 6), isNew: true, selected: true }));
+          newData[axis] = [...existingItems, ...newItems];
+        }
+        
+        if (studentId) {
+          const saved = localStorage.getItem(`mapeamento_data_${studentId}`);
+          const parsed = saved ? JSON.parse(saved) : {};
+          parsed.axisData = newData;
+          parsed.lastConsolidation = now;
+          parsed.snippets = snippets;
+          localStorage.setItem(`mapeamento_data_${studentId}`, JSON.stringify(parsed));
+        }
+        return newData;
+      });
+
       setHasGenerated(true);
       setIsGenerating(false);
       setLastConsolidation(now);
-
-      const saved = localStorage.getItem(`mapeamento_data_${studentId}`);
-      const parsed = saved ? JSON.parse(saved) : {};
-      parsed.axisData = mockIaResponse;
-      parsed.lastConsolidation = now;
-      parsed.snippets = snippets;
-      localStorage.setItem(`mapeamento_data_${studentId}`, JSON.stringify(parsed));
     }, 3000);
   };
 
@@ -459,18 +473,27 @@ export default function ConvergenceEditor() {
                           <div 
                             key={item.id}
                             onClick={() => {
-                              setAxisData(prev => ({
-                                ...prev,
-                                [activeTab]: prev[activeTab].map(i => 
-                                  i.id === item.id ? { ...i, selected: !i.selected } : i
-                                )
-                              }));
+                              setAxisData(prev => {
+                                const newData = {
+                                  ...prev,
+                                  [activeTab]: prev[activeTab].map(i => 
+                                    i.id === item.id ? { ...i, selected: !i.selected } : i
+                                  )
+                                };
+                                if (studentId) {
+                                  const saved = localStorage.getItem(`mapeamento_data_${studentId}`);
+                                  const parsed = saved ? JSON.parse(saved) : {};
+                                  parsed.axisData = newData;
+                                  localStorage.setItem(`mapeamento_data_${studentId}`, JSON.stringify(parsed));
+                                }
+                                return newData;
+                              });
                             }}
                             className={cn(
-                              "flex items-start gap-4 p-4 rounded-2xl border-2 transition-all cursor-pointer group",
-                              item.selected 
-                                ? "border-primary bg-primary/5" 
-                                : "border-slate-100 bg-white hover:border-slate-300"
+                              "flex items-start gap-4 p-4 rounded-2xl border-2 transition-all cursor-pointer group relative",
+                              item.isNew && "bg-blue-50 border-blue-200",
+                              !item.isNew && item.selected && "border-primary bg-primary/5",
+                              !item.isNew && !item.selected && "border-slate-100 bg-white hover:border-slate-300"
                             )}
                           >
                             <div className={cn(
@@ -485,11 +508,40 @@ export default function ConvergenceEditor() {
                             )}>
                               {item.text}
                             </span>
-                            {item.isManual && (
-                               <span className="shrink-0 text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 px-2 py-1 rounded-md">
-                                 Manual
-                               </span>
-                            )}
+                            <div className="flex items-center gap-2 shrink-0">
+                               {item.isNew && (
+                                  <span className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-100 px-2 py-1 rounded-md shadow-sm">
+                                    Novo
+                                  </span>
+                               )}
+                               {item.isManual && (
+                                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 px-2 py-1 rounded-md">
+                                    Manual
+                                  </span>
+                               )}
+                               <button
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   setAxisData(prev => {
+                                      const newData = {
+                                        ...prev,
+                                        [activeTab]: prev[activeTab].filter(i => i.id !== item.id)
+                                      };
+                                      if (studentId) {
+                                        const saved = localStorage.getItem(`mapeamento_data_${studentId}`);
+                                        const parsed = saved ? JSON.parse(saved) : {};
+                                        parsed.axisData = newData;
+                                        localStorage.setItem(`mapeamento_data_${studentId}`, JSON.stringify(parsed));
+                                      }
+                                      return newData;
+                                   });
+                                 }}
+                                 className="text-slate-300 hover:text-red-500 hover:bg-red-50 w-6 h-6 rounded-md flex items-center justify-center transition-colors"
+                                 title="Excluir Definitivamente"
+                               >
+                                  <X size={16} />
+                               </button>
+                            </div>
                           </div>
                         ))}
                         {(!axisData[activeTab] || axisData[activeTab].length === 0) && (
