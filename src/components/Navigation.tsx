@@ -12,12 +12,9 @@ export function Logo() {
   return (
     <NavLink 
       to="/dashboard"
-      className="group flex flex-col xl:flex-row items-center justify-center gap-2 mb-2 w-full px-2"
+      className="group flex flex-col items-center justify-center mb-2 mt-4 w-full px-2"
     >
-      <div className="flex items-center justify-center text-primary group-hover:rotate-[360deg] transition-all duration-700">
-        <Compass size={28} strokeWidth={2} />
-      </div>
-      <span className="text-[10px] font-black text-white/90 tracking-widest uppercase hidden md:block">SINGUL-AH</span>
+      <span className="text-[10px] font-black text-white/90 tracking-widest uppercase transition-all group-hover:text-primary">SINGUL-AH</span>
     </NavLink>
   );
 }
@@ -35,7 +32,6 @@ export function Sidebar() {
   ];
 
   const contextualNavItems = studentId ? [
-    { icon: ChevronLeft, label: 'Voltar p/ Alunos', path: '/students', isBack: true },
     { icon: LayoutDashboard, label: 'Painel do Aluno', path: `/students/${studentId}` },
     { icon: ClipboardList, label: 'Estudo de Caso', path: `/students/${studentId}/case-study` },
     { icon: Network, label: 'Mapeamento', path: `/students/${studentId}/convergence` },
@@ -47,7 +43,7 @@ export function Sidebar() {
     <aside className="fixed left-4 top-1/2 -translate-y-1/2 w-24 h-[85vh] rounded-[30px] z-50 bg-[#1A1A1A] shadow-[0px_10px_40px_rgba(0,0,0,0.3)] flex flex-col items-center py-6 hidden md:flex overflow-hidden">
       <Logo />
       
-      <nav className="flex-1 flex flex-col justify-center items-center gap-4 w-full px-2 mt-4">
+      <nav className="flex-1 flex flex-col justify-start items-center overflow-y-auto no-scrollbar py-6 gap-2 w-full px-2">
         {baseNavItems.map((item) => (
           <NavLink
             key={item.path}
@@ -84,7 +80,6 @@ export function Sidebar() {
                 className={({ isActive }) =>
                   cn(
                     "flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300 relative group shrink-0",
-                    item.isBack ? "text-slate-400 hover:text-white hover:bg-slate-800" :
                     isActive 
                       ? "bg-secondary-container text-on-secondary-container shadow-[0_0_15px_rgba(255,183,77,0.2)]" 
                       : "text-gray-500 hover:text-white hover:bg-white/5"
