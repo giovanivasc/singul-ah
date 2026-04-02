@@ -12,20 +12,12 @@ export function Logo() {
   return (
     <NavLink 
       to="/dashboard"
-      className={({ isActive }) => cn(
-        "group relative flex items-center justify-center w-14 h-14 rounded-full transition-all duration-500 mb-4",
-        "text-slate-400 hover:text-primary",
-        isActive ? "bg-primary/10 ring-2 ring-primary/30" : ""
-      )}
+      className="group flex flex-col xl:flex-row items-center justify-center gap-2 mb-2 w-full px-2"
     >
-      <div className={cn(
-        "absolute inset-0 rounded-full transition-all duration-500 scale-0 group-hover:scale-100 bg-white shadow-[0_4px_20px_rgba(0,87,193,0.15)]",
-        "hidden group-hover:block"
-      )} />
-      
-      <div className="z-10 flex items-center justify-center w-10 h-10 bg-primary/5 rounded-2xl group-hover:rotate-[360deg] transition-all duration-700 group-hover:bg-primary group-hover:text-white">
-        <Compass size={24} strokeWidth={1.5} />
+      <div className="flex items-center justify-center text-primary group-hover:rotate-[360deg] transition-all duration-700">
+        <Compass size={28} strokeWidth={2} />
       </div>
+      <span className="text-[10px] font-black text-white/90 tracking-widest uppercase hidden md:block">SINGUL-AH</span>
     </NavLink>
   );
 }
@@ -43,6 +35,7 @@ export function Sidebar() {
   ];
 
   const contextualNavItems = studentId ? [
+    { icon: ChevronLeft, label: 'Voltar p/ Alunos', path: '/students', isBack: true },
     { icon: LayoutDashboard, label: 'Painel do Aluno', path: `/students/${studentId}` },
     { icon: ClipboardList, label: 'Estudo de Caso', path: `/students/${studentId}/case-study` },
     { icon: Network, label: 'Mapeamento', path: `/students/${studentId}/convergence` },
@@ -51,87 +44,66 @@ export function Sidebar() {
   ] : [];
 
   return (
-    <aside className="fixed left-4 top-1/2 -translate-y-1/2 w-20 h-[85vh] rounded-[30px] z-50 bg-[#1A1A1A] shadow-[0px_10px_40px_rgba(0,0,0,0.3)] flex flex-col items-center justify-between py-8 hidden md:flex">
-      <div className="flex flex-col items-center gap-4 w-full">
-        <Logo />
-        
-        <div className="w-10 h-10 rounded-full overflow-hidden border border-white/20 mb-4 opacity-70 hover:opacity-100 transition-opacity flex items-center justify-center bg-slate-700">
-          {user?.user_metadata?.avatar_url ? (
-            <img 
-              src={user.user_metadata.avatar_url} 
-              alt="Profile" 
-              className="w-full h-full object-cover"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <span className="text-white text-xs font-bold">{user?.email?.[0].toUpperCase()}</span>
-          )}
-        </div>
-        
-        <div className="w-full flex flex-col items-center gap-3">
-          {baseNavItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              title={item.label}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300 relative group",
-                  isActive 
-                    ? "bg-primary text-white shadow-[0_0_15px_rgba(0,87,193,0.4)]" 
-                    : "text-gray-400 hover:text-white hover:bg-white/5"
-                )
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-                  <span className="absolute left-16 bg-black text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-                    {item.label}
-                  </span>
-                </>
-              )}
-            </NavLink>
-          ))}
+    <aside className="fixed left-4 top-1/2 -translate-y-1/2 w-24 h-[85vh] rounded-[30px] z-50 bg-[#1A1A1A] shadow-[0px_10px_40px_rgba(0,0,0,0.3)] flex flex-col items-center py-6 hidden md:flex overflow-hidden">
+      <Logo />
+      
+      <nav className="flex-1 flex flex-col justify-center items-center gap-4 w-full px-2 mt-4">
+        {baseNavItems.map((item) => (
+          <NavLink
+            key={item.path}
+            to={item.path}
+            title={item.label}
+            className={({ isActive }) =>
+              cn(
+                "flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300 relative group shrink-0",
+                isActive 
+                  ? "bg-primary text-white shadow-[0_0_15px_rgba(0,87,193,0.4)]" 
+                  : "text-gray-400 hover:text-white hover:bg-white/5"
+              )
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                <span className="absolute left-16 bg-black text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+                  {item.label}
+                </span>
+              </>
+            )}
+          </NavLink>
+        ))}
 
-          {studentId && (
-            <>
-              <div className="w-10 h-[1px] bg-white/10 my-2" />
-              {contextualNavItems.map((item) => (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  title={item.label}
-                  className={({ isActive }) =>
-                    cn(
-                      "flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300 relative group",
-                      isActive 
-                        ? "bg-secondary-container text-on-secondary-container shadow-[0_0_15px_rgba(255,183,77,0.2)]" 
-                        : "text-gray-500 hover:text-white hover:bg-white/5"
-                    )
-                  }
-                >
-                   {({ isActive }) => (
-                    <>
-                      <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
-                      <span className="absolute left-16 bg-black text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-                        {item.label}
-                      </span>
-                    </>
-                  )}
-                </NavLink>
-              ))}
-            </>
-          )}
-        </div>
-      </div>
-
-      <button className="text-gray-400 hover:text-white transition-colors p-3 hover:bg-white/5 rounded-full relative group">
-        <Settings size={22} />
-        <span className="absolute left-16 bg-black text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-          Configurações
-        </span>
-      </button>
+        {studentId && (
+          <>
+            <div className="w-8 h-[1px] bg-white/10 my-2 shrink-0" />
+            {contextualNavItems.map((item) => (
+              <NavLink
+                key={item.label}
+                to={item.path}
+                title={item.label}
+                className={({ isActive }) =>
+                  cn(
+                    "flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300 relative group shrink-0",
+                    item.isBack ? "text-slate-400 hover:text-white hover:bg-slate-800" :
+                    isActive 
+                      ? "bg-secondary-container text-on-secondary-container shadow-[0_0_15px_rgba(255,183,77,0.2)]" 
+                      : "text-gray-500 hover:text-white hover:bg-white/5"
+                  )
+                }
+              >
+                 {({ isActive }) => (
+                  <>
+                    <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                    <span className="absolute left-16 bg-black text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+                      {item.label}
+                    </span>
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </>
+        )}
+      </nav>
     </aside>
   );
 }

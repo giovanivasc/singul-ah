@@ -59,7 +59,7 @@ export default function App() {
             <Route path="/students/:studentId/ip-sahs" element={<TeacherCollection />} />
             <Route path="/students/:studentId/interview" element={<StudentInterview />} />
             <Route path="/students/:studentId/n-ils" element={<StudentNILS />} />
-            <Route path="/students/:studentId/mapping" element={<ConvergenceEditor />} />
+            <Route path="/students/:studentId/convergence" element={<ConvergenceEditor />} />
             <Route path="/students/:studentId/builder" element={<PEIBuilder />} />
             <Route path="/students/:studentId/evaluation" element={<StudentHub />} />
             
