@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { 
   Brain, Sparkles, Database, Loader2, ArrowRight, Activity,
-  Users, ShieldCheck, Plus, Highlighter, X, CheckCircle2
+  Users, ShieldCheck, Plus, Highlighter, X, CheckCircle2, Info,
+  Maximize2, Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TopBar } from '../components/Navigation';
@@ -21,7 +22,7 @@ REGRAS VITAIS:
 }`;
 
 type AxisItem = { id: string; text: string; selected: boolean; isManual: boolean; };
-type HighlightSnippet = { id: string; text: string; category: 'demandas' | 'contexto' | 'potencialidades'; };
+type HighlightSnippet = { id: string; text: string; category: 'demandas' | 'contexto' | 'potencialidades' | 'duvida'; source: string; };
 type DataSource = { id: string; title: string; subtitle: string; content: string; icon: any; colorClass: string; bgColorClass: string; };
 
 const MOCK_SOURCES: DataSource[] = [
@@ -83,6 +84,7 @@ export default function ConvergenceEditor() {
   // Left Column States
   const [readingSource, setReadingSource] = useState<DataSource | null>(null);
   const [snippets, setSnippets] = useState<HighlightSnippet[]>([]);
+  const [isSnippetsExpanded, setIsSnippetsExpanded] = useState(false);
   
   // Generation & Right Column States
   const [isGenerating, setIsGenerating] = useState(false);
@@ -93,18 +95,23 @@ export default function ConvergenceEditor() {
     I: [], II: [], III: [], IV: []
   });
 
-  const handleHighlight = (category: 'demandas' | 'contexto' | 'potencialidades') => {
+  const handleHighlight = (category: 'demandas' | 'contexto' | 'potencialidades' | 'duvida') => {
     const selection = window.getSelection()?.toString().trim();
-    if (selection) {
+    if (selection && readingSource) {
       setSnippets(prev => [...prev, {
         id: Date.now().toString(),
         text: selection,
-        category
+        category,
+        source: readingSource.title
       }]);
       window.getSelection()?.removeAllRanges();
     } else {
       alert("Por favor, selecione um trecho do texto antes de clicar no botão.");
     }
+  };
+
+  const handleChangeCategory = (id: string, newCategory: 'demandas' | 'contexto' | 'potencialidades' | 'duvida') => {
+    setSnippets(prev => prev.map(s => s.id === id ? { ...s, category: newCategory } : s));
   };
 
   const handleGenerate = () => {
@@ -147,6 +154,33 @@ export default function ConvergenceEditor() {
     navigate(`/students/${studentId}/pei-builder`);
   };
 
+  const renderHighlightedContent = (content: string) => {
+    let renderedContent = content;
+    const sortedSnippets = [...snippets].sort((a,b) => b.text.length - a.text.length);
+    const placeholders: {placeholder: string, jsx: React.ReactNode}[] = [];
+    
+    sortedSnippets.forEach((snippet, idx) => {
+      if (readingSource?.title !== snippet.source) return;
+      const placeholder = `__SNIP_${idx}__`;
+      const bgColor = snippet.category === 'demandas' ? 'bg-red-200' :
+                      snippet.category === 'contexto' ? 'bg-blue-200' :
+                      snippet.category === 'potencialidades' ? 'bg-green-200' :
+                      'bg-yellow-200';
+      placeholders.push({
+        placeholder, 
+        jsx: <mark key={snippet.id} className={`${bgColor} px-1 rounded bg-opacity-60 text-slate-800`}>{snippet.text}</mark>
+      });
+      renderedContent = renderedContent.split(snippet.text).join(placeholder);
+    });
+
+    const parts = renderedContent.split(/(__SNIP_\d+__)/g);
+    return parts.map((part, i) => {
+      const ph = placeholders.find(p => p.placeholder === part);
+      if (ph) return ph.jsx;
+      return <span key={i}>{part}</span>;
+    });
+  };
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
       <TopBar title="Consolidação do Estudo de Caso" />
@@ -172,8 +206,13 @@ export default function ConvergenceEditor() {
                  return (
                    <button 
                      key={source.id}
-                     onClick={() => setReadingSource(source)}
-                     className="w-full flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-primary/30 transition-colors text-left"
+                     onClick={() => {
+                        if (source.id !== 'n-ils') setReadingSource(source);
+                     }}
+                     className={cn(
+                       "w-full flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 transition-colors text-left",
+                       source.id === 'n-ils' ? "opacity-75 cursor-default" : "group hover:border-primary/30 cursor-pointer"
+                     )}
                    >
                      <div className="flex items-center gap-3">
                         <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", source.bgColorClass, source.colorClass)}>
@@ -181,10 +220,12 @@ export default function ConvergenceEditor() {
                         </div>
                         <div>
                            <p className="font-bold text-sm text-slate-700">{source.title}</p>
-                           <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-1">{source.subtitle}</p>
+                           <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-1">
+                             {source.id === 'n-ils' ? '(Análise automática de Perfil)' : source.subtitle}
+                           </p>
                         </div>
                      </div>
-                     <ArrowRight size={16} className="text-slate-300 group-hover:text-primary transition-colors" />
+                     {source.id !== 'n-ils' && <ArrowRight size={16} className="text-slate-300 group-hover:text-primary transition-colors" />}
                    </button>
                  );
                })}
@@ -215,37 +256,42 @@ export default function ConvergenceEditor() {
           {/* Seção Marcadores do Professor */}
           {snippets.length > 0 && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-[32px] p-8 border border-slate-100 atmospheric-shadow flex flex-col gap-4">
-              <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-                 <Highlighter className="text-primary" size={24} />
-                 <div>
-                   <h2 className="text-xl font-black text-on-surface tracking-tight">Fichamento Prévio</h2>
-                   <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-1">Marcadores do Professor</p>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                 <div className="flex items-center gap-3">
+                   <Highlighter className="text-primary" size={24} />
+                   <div>
+                     <h2 className="text-xl font-black text-on-surface tracking-tight">Fichamento Prévio</h2>
+                     <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-1">Marcadores do Professor</p>
+                   </div>
                  </div>
+                 <button 
+                   onClick={() => setIsSnippetsExpanded(true)}
+                   className="p-2 bg-slate-50 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-xl transition-all"
+                   title="Ampliar/Gerenciar"
+                 >
+                   <Maximize2 size={16} />
+                 </button>
               </div>
               <div className="space-y-3">
                  {snippets.map(snippet => (
                    <div key={snippet.id} className={cn(
-                     "p-4 rounded-xl text-sm relative group border transition-all",
+                     "p-4 rounded-xl text-sm relative border transition-all",
                      snippet.category === 'demandas' ? 'bg-red-50 border-red-100 text-red-800' :
                      snippet.category === 'contexto' ? 'bg-blue-50 border-blue-100 text-blue-800' :
-                     'bg-green-50 border-green-100 text-green-800'
+                     snippet.category === 'potencialidades' ? 'bg-green-50 border-green-100 text-green-800' :
+                     'bg-yellow-50 border-yellow-100 text-yellow-800'
                    )}>
-                     <p className="pr-6 font-medium italic">"{snippet.text}"</p>
+                     <p className="font-medium italic text-xs">"{snippet.text}"</p>
                      <p className={cn(
                        "text-[10px] font-black uppercase tracking-widest mt-2",
                        snippet.category === 'demandas' ? 'text-red-500' :
                        snippet.category === 'contexto' ? 'text-blue-500' :
-                       'text-green-500'
+                       snippet.category === 'potencialidades' ? 'text-green-500' :
+                       'text-yellow-600'
                      )}>
                        {snippet.category}
                      </p>
-                     <button 
-                       onClick={() => setSnippets(prev => prev.filter(s => s.id !== snippet.id))}
-                       className="absolute top-3 right-3 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                       title="Remover marcador"
-                     >
-                       <X size={16} />
-                     </button>
+                     <span className="block text-[10px] text-slate-400 italic mt-1">Origem: {snippet.source}</span>
                    </div>
                  ))}
               </div>
@@ -293,7 +339,7 @@ export default function ConvergenceEditor() {
                   className="space-y-6"
                 >
                    {/* Tabs / Abas */}
-                   <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-200">
+                   <div className="flex items-center justify-center gap-4 my-8 pb-2 border-b border-transparent">
                      {[
                        { id: 'I', label: 'I. Demandas' },
                        { id: 'II', label: 'II. Contexto' },
@@ -432,7 +478,7 @@ export default function ConvergenceEditor() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-[32px] w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden"
+              className="bg-white rounded-[32px] w-full max-w-5xl h-[85vh] flex flex-col shadow-2xl overflow-hidden"
             >
               {/* Modal Header */}
               <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
@@ -459,34 +505,129 @@ export default function ConvergenceEditor() {
                  <div className="flex flex-wrap items-center gap-2">
                    <button 
                      onClick={() => handleHighlight('demandas')}
+                     title="Identifique entraves, frustrações e barreiras arquitetônicas, comunicacionais ou atitudinais (LBI)."
                      className="px-4 py-2.5 bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 rounded-xl text-xs font-bold transition-all flex items-center gap-2 active:scale-95"
                    >
-                     <Highlighter size={14} /> Demanda/Barreira
+                     <Highlighter size={14} /> Demanda/Barreira <Info size={14} />
                    </button>
                    <button 
                      onClick={() => handleHighlight('contexto')}
+                     title="Identifique características do ambiente escolar, métodos utilizados e dinâmica da turma."
                      className="px-4 py-2.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-xl text-xs font-bold transition-all flex items-center gap-2 active:scale-95"
                    >
-                     <Highlighter size={14} /> Contexto
+                     <Highlighter size={14} /> Contexto <Info size={14} />
                    </button>
                    <button 
                      onClick={() => handleHighlight('potencialidades')}
+                     title="Identifique interesses profundos, talentos, facilidades e o que motiva o estudante."
                      className="px-4 py-2.5 bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 rounded-xl text-xs font-bold transition-all flex items-center gap-2 active:scale-95"
                    >
-                     <Highlighter size={14} /> Potencialidade
+                     <Highlighter size={14} /> Potencialidade <Info size={14} />
+                   </button>
+                   <button 
+                     onClick={() => handleHighlight('duvida')}
+                     title="Use para trechos ambíguos ou que precisem de consulta a outro especialista."
+                     className="px-4 py-2.5 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-200 rounded-xl text-xs font-bold transition-all flex items-center gap-2 active:scale-95"
+                   >
+                     <Highlighter size={14} /> Dúvida / Em Análise <Info size={14} />
                    </button>
                  </div>
               </div>
 
               {/* Text Content */}
-              <div className="p-8 overflow-y-auto flex-1 bg-white text-slate-700 leading-relaxed text-lg font-medium selection:bg-yellow-200 selection:text-slate-900">
-                 <p className="whitespace-pre-wrap">{readingSource.content}</p>
+              <div className="p-8 overflow-y-auto flex-1 bg-white text-slate-700 leading-relaxed text-sm selection:bg-yellow-200 selection:text-slate-900">
+                 <p className="whitespace-pre-wrap">{renderHighlightedContent(readingSource.content)}</p>
                  <div className="mt-8 pt-8 border-t border-slate-100">
                     <p className="text-sm font-bold text-slate-400 flex items-center gap-2">
                        <CheckCircle2 size={16} />
                        Dica: Selecione o texto com o cursor e depois clique em um dos botões coloridos acima.
                     </p>
                  </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Gerenciador de Snippets */}
+      <AnimatePresence>
+        {isSnippetsExpanded && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm"
+            onClick={() => setIsSnippetsExpanded(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-[32px] w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden"
+            >
+              {/* Header */}
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white">
+                 <div>
+                   <h3 className="font-black text-2xl text-slate-800">Gerenciador de Marcadores</h3>
+                   <p className="text-xs font-bold uppercase text-slate-400 tracking-widest mt-1">Revise as categorias antes de enviar para a IA</p>
+                 </div>
+                 <button 
+                   onClick={() => setIsSnippetsExpanded(false)} 
+                   className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
+                 >
+                   <X size={24} />
+                 </button>
+              </div>
+
+              {/* Tabela/Cards */}
+              <div className="p-8 overflow-y-auto flex-1 bg-slate-50 space-y-4">
+                 {snippets.length === 0 && (
+                    <p className="text-center text-slate-400 font-bold">Nenhum marcador criado.</p>
+                 )}
+                 {snippets.map(snippet => (
+                   <div key={snippet.id} className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row gap-6 md:items-center transition-all">
+                      <div className="flex-1">
+                         <p className="text-sm font-medium text-slate-700 italic border-l-4 border-slate-200 pl-4 py-1">"{snippet.text}"</p>
+                         <p className="text-[10px] font-bold text-slate-400 mt-3 flex items-center gap-2">
+                           <Database size={12}/> ORIGEM: {snippet.source}
+                         </p>
+                      </div>
+                      
+                      <div className="flex flex-col gap-3 shrink-0">
+                         <span className="text-[10px] font-black tracking-widest text-slate-400 uppercase">Alterar Categoria:</span>
+                         <div className="flex flex-wrap gap-2">
+                           {(['demandas', 'contexto', 'potencialidades', 'duvida'] as const).map(cat => (
+                              <button
+                                key={cat}
+                                onClick={() => handleChangeCategory(snippet.id, cat)}
+                                className={cn(
+                                   "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border",
+                                   snippet.category === cat ? (
+                                      cat === 'demandas' ? 'bg-red-500 text-white border-red-600 shadow-md shadow-red-500/20' :
+                                      cat === 'contexto' ? 'bg-blue-500 text-white border-blue-600 shadow-md shadow-blue-500/20' :
+                                      cat === 'potencialidades' ? 'bg-green-500 text-white border-green-600 shadow-md shadow-green-500/20' :
+                                      'bg-yellow-500 text-white border-yellow-600 shadow-md shadow-yellow-500/20'
+                                   ) : (
+                                      "bg-white text-slate-400 border-slate-200 hover:bg-slate-50"
+                                   )
+                                )}
+                              >
+                                {cat}
+                              </button>
+                           ))}
+                         </div>
+                      </div>
+                      
+                      <button 
+                        onClick={() => setSnippets(prev => prev.filter(s => s.id !== snippet.id))}
+                        className="w-10 h-10 shrink-0 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-xl flex items-center justify-center transition-all"
+                        title="Excluir Marcador"
+                      >
+                         <Trash2 size={16} />
+                      </button>
+                   </div>
+                 ))}
               </div>
             </motion.div>
           </motion.div>
