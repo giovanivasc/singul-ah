@@ -83,7 +83,10 @@ export default function ConvergenceEditor() {
   
   // Left Column States
   const [readingSource, setReadingSource] = useState<DataSource | null>(null);
-  const [snippets, setSnippets] = useState<HighlightSnippet[]>([]);
+  const [snippets, setSnippets] = useState<HighlightSnippet[]>(() => {
+    const saved = localStorage.getItem(`snippets_student_${studentId}`);
+    return saved ? JSON.parse(saved) : [];
+  });
   const [isSnippetsExpanded, setIsSnippetsExpanded] = useState(false);
   
   // Generation & Right Column States
@@ -118,21 +121,8 @@ export default function ConvergenceEditor() {
       }
     }
 
-    // Carregador específico para marcadores (Snippet Array Raw)
-    const savedSnippets = localStorage.getItem('snippets_student_' + studentId);
-    if (savedSnippets) {
-      try {
-        setSnippets(JSON.parse(savedSnippets));
-      } catch (e) {
-        console.error("Erro ao carregar snippets", e);
-      }
-    } else if (savedMap) {
-       // Fallback se não existir novo localStorage tenta resgatar do antigo (retrocompatibilidade)
-       try {
-         const parsed = JSON.parse(savedMap);
-         if (parsed.snippets) setSnippets(parsed.snippets);
-       } catch (e) {}
-    }
+    // A inicialização dos marcadores agora é feita de forma "Eager" (tardia) direto no useState,
+    // então removemos a lógica com useEffect para evitar sobrescritas ou Race Conditions.
   }, [studentId]);
 
   // Auto-save exclusivo dos snippets (marcadores)
@@ -163,7 +153,7 @@ export default function ConvergenceEditor() {
     const selection = window.getSelection()?.toString().trim();
     if (selection && readingSource) {
       setSnippets(prev => [...prev, {
-        id: Date.now().toString(),
+        id: crypto.randomUUID(),
         text: selection,
         category,
         source: readingSource.title,
@@ -252,35 +242,31 @@ export default function ConvergenceEditor() {
     }, 1500);
   };
 
-  const renderHighlightedText = (text: string, sourceTitle: string) => {
-    if (!text) return null;
-    let renderedContent = text;
-    const validSnippets = snippets.filter(s => s.source === sourceTitle);
-    const sortedSnippets = [...validSnippets].sort((a,b) => b.text.length - a.text.length);
-    const placeholders: {placeholder: string, jsx: React.ReactNode}[] = [];
-    
-    sortedSnippets.forEach((snippet, idx) => {
-      const placeholder = `__SNIP_${idx}__`;
-      const bgColor = snippet.category === 'demandas' ? 'bg-red-200' :
-                      snippet.category === 'contexto' ? 'bg-blue-200' :
-                      snippet.category === 'potencialidades' ? 'bg-green-200' :
-                      'bg-yellow-200';
-                      
-      const opacityClass = snippet.status === 'armazenado' ? 'opacity-50 grayscale' : 'opacity-80 text-slate-800';
+  const renderHighlightedText = (text: string, source: string) => {
+    const sourceSnippets = snippets.filter(s => s.source === source && s.status !== 'armazenado');
+    if (sourceSnippets.length === 0) return <div dangerouslySetInnerHTML={{ __html: text }} className="leading-relaxed whitespace-pre-wrap" />;
 
-      placeholders.push({
-        placeholder, 
-        jsx: <mark key={snippet.id} className={`${bgColor} ${opacityClass} px-1 rounded`}>{snippet.text}</mark>
-      });
-      renderedContent = renderedContent.split(snippet.text).join(placeholder);
+    // Mapeamento de cores
+    const getCategoryColor = (category: string) => {
+      switch (category) {
+        case 'demandas': return 'bg-red-100 text-red-800';
+        case 'contexto': return 'bg-blue-100 text-blue-800';
+        case 'potencialidades': return 'bg-green-100 text-green-800';
+        case 'duvida': return 'bg-yellow-100 text-yellow-800';
+        default: return 'bg-gray-100';
+      }
+    };
+
+    let resultText = text;
+    // Substituição grosseira porém segura para React usando dangerouslySetInnerHTML para o modal de leitura
+    sourceSnippets.forEach(snippet => {
+      // Escapa caracteres especiais para usar no regex
+      const escapedText = snippet.text.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const regex = new RegExp(`(${escapedText})`, 'gi');
+      resultText = resultText.replace(regex, `<mark class="${getCategoryColor(snippet.category)} px-1 rounded">$1</mark>`);
     });
 
-    const parts = renderedContent.split(/(__SNIP_\d+__)/g);
-    return parts.map((part, i) => {
-      const ph = placeholders.find(p => p.placeholder === part);
-      if (ph) return ph.jsx;
-      return <span key={i}>{part}</span>;
-    });
+    return <div dangerouslySetInnerHTML={{ __html: resultText }} className="leading-relaxed whitespace-pre-wrap" />;
   };
 
   return (
@@ -670,7 +656,7 @@ export default function ConvergenceEditor() {
 
               {/* Text Content */}
               <div className="p-8 overflow-y-auto flex-1 bg-white text-slate-700 leading-relaxed text-sm selection:bg-yellow-200 selection:text-slate-900">
-                 <p className="whitespace-pre-wrap">{renderHighlightedText(readingSource.content, readingSource.title)}</p>
+                 {renderHighlightedText(readingSource.content, readingSource.title)}
                  <div className="mt-8 pt-8 border-t border-slate-100">
                     <p className="text-sm font-bold text-slate-400 flex items-center gap-2">
                        <CheckCircle2 size={16} />
