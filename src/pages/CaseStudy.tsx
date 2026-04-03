@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TopBar } from '../components/Navigation';
-import { StudentHeaderBanner } from '../components/StudentHeaderBanner';
+import { StudentPageHeader } from '../components/StudentPageHeader';
 import { supabase } from '../lib/supabase';
 import { Student, InstrumentStatus as DBInstrumentStatus } from '../types/database';
 import { MultimodalInput } from '../components/MultimodalInput';
@@ -300,29 +300,22 @@ export default function CaseStudy() {
   return (
     <div className="flex flex-col min-h-screen bg-[#F8FAFC]">
       <TopBar title="Hub de Instrumentos" showBack />
-      <StudentHeaderBanner title="Coleta de Dados" />
 
       {/* Main Content Area */}      <main className="max-w-7xl mx-auto px-8 py-10">
         <div className="flex items-center justify-between mb-12">
-           <div className="flex items-center gap-6">
-              <button 
-                onClick={() => {
-                  if (view === 'hub') navigate(`/students/${studentId}`);
-                  else if (view === 'details') setView('hub');
-                  else setView('details');
-                }}
-                className="w-12 h-12 rounded-2xl bg-white atmospheric-shadow flex items-center justify-center text-slate-400 hover:text-primary transition-all"
-              >
-                 <ChevronLeft size={24} />
-              </button>
-              <div>
-                 <h1 className="text-4xl font-black text-on-surface tracking-tight">
-                    {view === 'hub' ? 'Estudo de Caso' : 
-                     view === 'consolidation' ? 'Consolidação Técnica' : 
-                     activeInstrument?.name}
-                 </h1>
-                 <p className="text-on-surface-variant font-medium opacity-60">Aluno: <strong className="text-primary">{student?.full_name}</strong></p>
-              </div>
+           <StudentPageHeader 
+             title={
+               view === 'hub' ? 'Estudo de Caso' : 
+               view === 'consolidation' ? 'Consolidação Técnica' : 
+               (activeInstrument?.name || 'Estudo de Caso')
+             } 
+             studentId={studentId} 
+             onBack={() => {
+               if (view === 'hub') navigate(`/students/${studentId}`);
+               else if (view === 'details') setView('hub');
+               else setView('details');
+             }} 
+           />
            </div>
 
 

@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TopBar } from '../components/Navigation';
-import { StudentHeaderBanner } from '../components/StudentHeaderBanner';
+import { StudentPageHeader } from '../components/StudentPageHeader';
 import { cn } from '../lib/utils';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AxisItem } from '../types/database';
@@ -176,8 +176,7 @@ export default function PEIBuilder() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      <TopBar title="Construtor de PEI" />
-      <StudentHeaderBanner title="Construtor PEI" />
+      <TopBar title="Construtor de PEI" showBack />
       
       {lastSaved && (
         <div className="bg-yellow-50 border-b border-yellow-100 flex justify-center items-center gap-2 py-2 text-xs font-bold text-yellow-700">
@@ -188,8 +187,8 @@ export default function PEIBuilder() {
       <main className="max-w-6xl mx-auto px-6 py-8">
         {/* Header & Stepper */}
         <div className="mb-10">
-          <div className="flex items-center justify-between mb-8">
-            <h1 className="text-3xl font-black text-on-surface tracking-tight">Construtor de PEI - AH/SD</h1>
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-8">
+            <StudentPageHeader title="Construtor de PEI - AH/SD" studentId={studentId} showBack={false} />
             <button 
               onClick={() => { handleSaveData(); alert("Progresso salvo no navegador!"); }}
               className="bg-white border border-slate-200 text-slate-500 hover:border-primary/30 hover:text-primary transition-all px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center gap-2 shadow-sm"

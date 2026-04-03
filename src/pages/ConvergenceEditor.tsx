@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TopBar } from '../components/Navigation';
-import { StudentHeaderBanner } from '../components/StudentHeaderBanner';
+import { StudentPageHeader } from '../components/StudentPageHeader';
 import { useNavigate, useParams } from 'react-router-dom';
 import { cn } from '../lib/utils';
 
@@ -273,7 +273,6 @@ export default function ConvergenceEditor() {
   return (
     <div className="flex flex-col min-h-screen bg-[#F8FAFC]">
       <TopBar title="Análise de Convergência" showBack />
-      <StudentHeaderBanner title="Mapeamento Assistido" />
       
       <AnimatePresence>
         {showToast && (
@@ -294,10 +293,12 @@ export default function ConvergenceEditor() {
         </div>
       )}
       
-      <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-8 flex flex-col lg:flex-row gap-8">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-8 flex flex-col gap-6">
+        <StudentPageHeader title="Mapeamento Assistido" studentId={studentId} />
         
-        {/* COLUNA ESQUERDA: Fontes de Dados e Snippets */}
-        <div className="w-full lg:w-1/3 flex flex-col gap-6">
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* COLUNA ESQUERDA: Fontes de Dados e Snippets */}
+          <div className="w-full lg:w-1/3 flex flex-col gap-6">
           
           <div className="bg-white rounded-[32px] p-8 border border-slate-100 atmospheric-shadow flex flex-col gap-6">
             <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
