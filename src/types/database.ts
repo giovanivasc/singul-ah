@@ -7,8 +7,14 @@ export interface Student {
   date_of_birth: string; // formato YYYY-MM-DD
   school: string;
   grade: string;
-  specialty?: string; // Opcional
-  avatar_url?: string; // Opcional
+  guardian_name?: string;
+  phone?: string;
+  class_name?: string;
+  shift?: string;
+  regent_teacher?: string;
+  aee_teacher?: string;
+  specialty?: string;
+  avatar_url?: string;
   status: StudentStatus;
   created_at: string;
   updated_at: string;

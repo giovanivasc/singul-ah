@@ -12,6 +12,7 @@ import { cn } from '../lib/utils';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AxisItem } from '../types/database';
 import { BnccSkill, bnccData } from '../data/bncc';
+import { supabase } from '../lib/supabase';
 
 type DisciplineProfile = { 
   name: string; 
@@ -25,6 +26,7 @@ export default function PEIBuilder() {
 
   const [activeStep, setActiveStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const [studentInfo, setStudentInfo] = useState<any>(null);
   const [mappedAxisData, setMappedAxisData] = useState<Record<'I' | 'II' | 'III' | 'IV', AxisItem[]>>({
     I: [], II: [], III: [], IV: []
   });
@@ -108,6 +110,22 @@ export default function PEIBuilder() {
          if (parsed.lastSaved) setLastSaved(parsed.lastSaved);
       } catch(e) {}
     }
+
+    // Load Student Profile
+    const loadStudentProfile = async () => {
+      try {
+        const { data, error } = await supabase.from('students').select('*').eq('id', studentId).single();
+        if (!error && data) {
+           let fetchedInfo = data;
+           const localData = localStorage.getItem(`student_extras_${studentId}`);
+           if (localData) {
+              fetchedInfo = { ...fetchedInfo, ...JSON.parse(localData) };
+           }
+           setStudentInfo(fetchedInfo);
+        }
+      } catch(e) { console.error("Erro ao buscar dados do estudante", e); }
+    };
+    loadStudentProfile();
   }, [studentId]);
 
   // Busca BNCC
@@ -221,17 +239,25 @@ export default function PEIBuilder() {
                 
                 <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 flex flex-col md:flex-row gap-6 justify-between items-center">
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-                       <UserIcon className="text-primary" size={32} />
+                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center overflow-hidden border-2 border-white shadow-sm shrink-0">
+                       {studentInfo?.avatar_url ? (
+                          <img src={studentInfo.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                       ) : (
+                          <UserIcon className="text-primary" size={32} />
+                       )}
                     </div>
                     <div>
-                      <h3 className="text-xl font-black text-slate-800">João Silva Soares</h3>
-                      <p className="text-sm font-medium text-slate-500">10 anos • 5º Ano do Ensino Fundamental</p>
+                      <h3 className="text-xl font-black text-slate-800">{studentInfo?.full_name || 'Carregando...'}</h3>
+                      <p className="text-sm font-medium text-slate-500">{studentInfo?.school || 'Sem escola'} • {studentInfo?.grade || 'Sem etapa'}</p>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] font-black tracking-widest uppercase text-slate-400 mb-1">Equipe Responsável</p>
-                    <p className="text-sm font-bold text-slate-700">Prof. Maria (Regente) • Prof. Carlos (AEE)</p>
+                    <p className="text-sm font-bold text-slate-700">
+                      Regente: <span className="font-medium text-slate-500">{studentInfo?.regent_teacher || 'N/D'}</span><br className="md:hidden" />
+                      <span className="hidden md:inline"> • </span>
+                      AEE: <span className="font-medium text-slate-500">{studentInfo?.aee_teacher || 'N/D'}</span>
+                    </p>
                   </div>
                 </div>
 

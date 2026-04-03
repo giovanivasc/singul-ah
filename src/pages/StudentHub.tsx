@@ -28,7 +28,14 @@ export default function StudentHub() {
           .single();
 
         if (error) throw error;
-        setStudent(data);
+        
+        let fetchedStudent = data;
+        const localData = localStorage.getItem(`student_extras_${studentId}`);
+        if (localData) {
+           fetchedStudent = { ...fetchedStudent, ...JSON.parse(localData) };
+        }
+        
+        setStudent(fetchedStudent);
       } catch (err: any) {
         console.error('Erro ao buscar estudante:', err.message);
       } finally {

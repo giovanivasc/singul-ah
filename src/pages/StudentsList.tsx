@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, MoreVertical, X, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { Plus, Search, MoreVertical, X, Loader2, Camera, User } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { TopBar } from '../components/Navigation';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Student, StudentInsert } from '../types/database';
+import { Student } from '../types/database';
+import { cn } from '../lib/utils';
 
 export default function StudentsList() {
   const navigate = useNavigate();
@@ -20,8 +21,15 @@ export default function StudentsList() {
   const [formData, setFormData] = useState({
     full_name: '',
     date_of_birth: '',
-    school: '',
-    grade: ''
+    guardian_name: '',
+    phone: '',
+    school: 'SEMED Castanhal',
+    grade: '',
+    class_name: '',
+    shift: '',
+    regent_teacher: '',
+    aee_teacher: '',
+    avatar_url: ''
   });
 
   const fetchStudents = async () => {
@@ -34,7 +42,16 @@ export default function StudentsList() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setStudents(data || []);
+      
+      // Merge com localStorage
+      const enrichedStudents = (data || []).map(stud => {
+         const localData = localStorage.getItem(`student_extras_${stud.id}`);
+         if (localData) {
+            return { ...stud, ...JSON.parse(localData) };
+         }
+         return stud;
+      });
+      setStudents(enrichedStudents);
     } catch (err: any) {
       console.error('Erro ao buscar estudantes:', err.message);
     } finally {
@@ -56,19 +73,33 @@ export default function StudentsList() {
     try {
       if (!user) throw new Error('Usuário não autenticado');
 
+      const basicData = {
+         full_name: formData.full_name,
+         date_of_birth: formData.date_of_birth,
+         school: formData.school,
+         grade: formData.grade,
+         teacher_id: user.id,
+         status: 'coleta_pendente'
+      };
+
       const { data, error: insertError } = await supabase
         .from('students')
-        .insert([{
-          ...formData,
-          teacher_id: user.id,
-          status: 'coleta_pendente'
-        }])
+        .insert([basicData])
         .select();
 
       if (insertError) throw insertError;
+      
+      if (data && data.length > 0) {
+         const newId = data[0].id;
+         localStorage.setItem(`student_extras_${newId}`, JSON.stringify(formData));
+      }
 
       setIsModalOpen(false);
-      setFormData({ full_name: '', date_of_birth: '', school: '', grade: '' });
+      setFormData({
+        full_name: '', date_of_birth: '', guardian_name: '', phone: '',
+        school: 'SEMED Castanhal', grade: '', class_name: '', shift: '',
+        regent_teacher: '', aee_teacher: '', avatar_url: ''
+      });
       fetchStudents();
     } catch (err: any) {
       setError(err.message || 'Erro ao cadastrar estudante');
@@ -78,6 +109,7 @@ export default function StudentsList() {
   };
 
   const calculateAge = (dob: string) => {
+    if (!dob) return 0;
     const birthDate = new Date(dob);
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
@@ -111,10 +143,10 @@ export default function StudentsList() {
           </div>
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center justify-center gap-2 bg-primary text-white px-6 py-4 rounded-2xl font-bold atmospheric-shadow hover:brightness-110 active:scale-95 transition-all"
+            className="flex items-center justify-center gap-2 bg-primary text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-sm atmospheric-shadow hover:brightness-110 active:scale-95 transition-all shadow-xl shadow-primary/20"
           >
             <Plus size={20} strokeWidth={3} />
-            <span>Cadastrar Estudante</span>
+            <span>Novo Aluno</span>
           </button>
         </div>
 
@@ -143,105 +175,176 @@ export default function StudentsList() {
         )}
       </div>
 
-      {/* Registration Modal */}
+      {/* Modern Large Registration Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsModalOpen(false)}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm" 
+              className="fixed inset-0 bg-black/60 backdrop-blur-md" 
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-lg bg-white rounded-[32px] overflow-hidden atmospheric-shadow"
+              className="relative w-full max-w-4xl bg-white rounded-[32px] overflow-hidden atmospheric-shadow my-auto z-10 border border-slate-100"
             >
-              <div className="p-8">
-                <div className="flex justify-between items-center mb-8">
-                  <h3 className="text-2xl font-black text-on-surface tracking-tight">Novo Estudante</h3>
-                  <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-surface-container rounded-full transition-colors">
-                    <X size={24} className="text-on-surface-variant" />
-                  </button>
-                </div>
-
-                <form onSubmit={handleCreateStudent} className="space-y-6">
-                  {error && (
-                    <div className="bg-error-container/20 text-error text-xs p-4 rounded-xl border border-error/10 text-center font-bold">
-                      {error}
+              <div className="flex flex-col max-h-[90vh]">
+                 <div className="p-6 md:px-8 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                    <div>
+                      <h3 className="text-2xl font-black text-on-surface tracking-tight uppercase">Novo Estudante</h3>
+                      <p className="text-sm font-medium text-slate-500">Cadastre os dados de identificação e escolarização.</p>
                     </div>
-                  )}
+                    <button onClick={() => setIsModalOpen(false)} className="p-2 bg-white hover:bg-slate-200 rounded-full transition-colors shadow-sm">
+                      <X size={24} className="text-slate-500" />
+                    </button>
+                 </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-on-surface-variant/60 uppercase ml-2">Nome Completo</label>
-                    <input 
-                      required
-                      type="text" 
-                      placeholder="Nome do aluno"
-                      className="w-full px-6 py-4 bg-surface-container-low rounded-2xl border-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
-                      value={formData.full_name}
-                      onChange={e => setFormData({...formData, full_name: e.target.value})}
-                    />
-                  </div>
+                 <form onSubmit={handleCreateStudent} className="p-6 md:p-8 overflow-y-auto space-y-8 flex-1">
+                    {error && (
+                      <div className="bg-red-50 text-red-600 px-6 py-4 rounded-xl border border-red-100 font-bold text-center">
+                        {error}
+                      </div>
+                    )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-xs font-black text-on-surface-variant/60 uppercase ml-2">Data de Nascimento</label>
-                      <input 
-                        required
-                        type="date" 
-                        className="w-full px-6 py-4 bg-surface-container-low rounded-2xl border-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
-                        value={formData.date_of_birth}
-                        onChange={e => setFormData({...formData, date_of_birth: e.target.value})}
-                      />
+                    {/* FOTO UPLOAD MOCK */}
+                    <div className="flex flex-col items-center justify-center p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
+                       <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center text-slate-300 shadow-sm border border-slate-200 relative mb-4">
+                          <User size={40} />
+                          <button type="button" className="absolute bottom-0 right-0 p-2 bg-primary text-white rounded-full shadow-lg hover:scale-110 active:scale-95 transition-all">
+                             <Camera size={14} />
+                          </button>
+                       </div>
+                       <p className="text-sm font-bold text-slate-500">Foto de Perfil (Opcional)</p>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-black text-on-surface-variant/60 uppercase ml-2">Ano / Série</label>
-                      <select 
-                        required
-                        className="w-full px-6 py-4 bg-surface-container-low rounded-2xl border-none focus:ring-2 focus:ring-primary/20 transition-all font-medium appearance-none"
-                        value={formData.grade}
-                        onChange={e => setFormData({...formData, grade: e.target.value})}
+
+                    {/* IDENTIFICAÇÃO SECTION */}
+                    <div className="space-y-4">
+                       <h4 className="text-sm font-black uppercase text-primary tracking-widest flex items-center gap-2">
+                         <span className="bg-primary/20 w-6 h-6 rounded flex items-center justify-center text-[10px]">1</span> Identificação Básica
+                       </h4>
+                       <div className="grid md:grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Nome Completo</label>
+                            <input 
+                              required type="text" placeholder="Nome completo do aluno"
+                              className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 font-medium"
+                              value={formData.full_name} onChange={e => setFormData({...formData, full_name: e.target.value})}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Data de Nascimento</label>
+                            <input 
+                              required type="date"
+                              className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 font-medium"
+                              value={formData.date_of_birth} onChange={e => setFormData({...formData, date_of_birth: e.target.value})}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Nome do Responsável</label>
+                            <input 
+                              type="text" placeholder="Pai, mãe ou tutor legal"
+                              className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 font-medium"
+                              value={formData.guardian_name} onChange={e => setFormData({...formData, guardian_name: e.target.value})}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Telefone de Contato</label>
+                            <input 
+                              type="text" placeholder="(DD) 90000-0000"
+                              className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 font-medium"
+                              value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})}
+                            />
+                          </div>
+                       </div>
+                    </div>
+
+                    {/* ESCOLARIZAÇÃO SECTION */}
+                    <div className="space-y-4">
+                       <h4 className="text-sm font-black uppercase text-primary tracking-widest flex items-center gap-2">
+                         <span className="bg-primary/20 w-6 h-6 rounded flex items-center justify-center text-[10px]">2</span> Escolarização
+                       </h4>
+                       <div className="grid md:grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Escola / Instituição</label>
+                            <input 
+                              required type="text"
+                              className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 font-medium"
+                              value={formData.school} onChange={e => setFormData({...formData, school: e.target.value})}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Ano / Etapa</label>
+                            <select 
+                              required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 font-medium appearance-none"
+                              value={formData.grade} onChange={e => setFormData({...formData, grade: e.target.value})}
+                            >
+                              <option value="">Selecionar etapa...</option>
+                              <option value="Educação Infantil">Educação Infantil</option>
+                              <option value="1º Ano">1º Ano</option>
+                              <option value="2º Ano">2º Ano</option>
+                              <option value="3º Ano">3º Ano</option>
+                              <option value="4º Ano">4º Ano</option>
+                              <option value="5º Ano">5º Ano</option>
+                              <option value="6º Ano">6º Ano</option>
+                              <option value="7º Ano">7º Ano</option>
+                              <option value="8º Ano">8º Ano</option>
+                              <option value="9º Ano">9º Ano</option>
+                              <option value="Ensino Médio">Ensino Médio</option>
+                            </select>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Turma</label>
+                            <input 
+                              type="text" placeholder="Ex: Turma A"
+                              className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 font-medium"
+                              value={formData.class_name} onChange={e => setFormData({...formData, class_name: e.target.value})}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Turno</label>
+                            <select 
+                              className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 font-medium appearance-none"
+                              value={formData.shift} onChange={e => setFormData({...formData, shift: e.target.value})}
+                            >
+                              <option value="">Selecionar turno...</option>
+                              <option value="Manhã">Manhã</option>
+                              <option value="Tarde">Tarde</option>
+                              <option value="Integral">Integral</option>
+                            </select>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Professor(a) Regente</label>
+                            <input 
+                              type="text" placeholder="Nome do regente"
+                              className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 font-medium"
+                              value={formData.regent_teacher} onChange={e => setFormData({...formData, regent_teacher: e.target.value})}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Professor(a) do AEE</label>
+                            <input 
+                              type="text" placeholder="Nome do especialista"
+                              className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 font-medium"
+                              value={formData.aee_teacher} onChange={e => setFormData({...formData, aee_teacher: e.target.value})}
+                            />
+                          </div>
+                       </div>
+                    </div>
+
+                    <div className="pt-6">
+                      <button 
+                        disabled={submitting}
+                        type="submit" 
+                        className="w-full bg-[#1DB954] text-white py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-green-500/20 hover:brightness-110 active:scale-95 transition-all flex items-center justify-center disabled:opacity-50"
                       >
-                        <option value="">Selecionar...</option>
-                        <option value="Educação Infantil">Educação Infantil</option>
-                        <option value="1º Ano">1º Ano</option>
-                        <option value="2º Ano">2º Ano</option>
-                        <option value="3º Ano">3º Ano</option>
-                        <option value="4º Ano">4º Ano</option>
-                        <option value="5º Ano">5º Ano</option>
-                        <option value="6º Ano">6º Ano</option>
-                        <option value="7º Ano">7º Ano</option>
-                        <option value="8º Ano">8º Ano</option>
-                        <option value="9º Ano">9º Ano</option>
-                        <option value="Ensino Médio">Ensino Médio</option>
-                      </select>
+                        {submitting ? <Loader2 className="animate-spin" size={24} /> : 'Concluir Cadastro e Iniciar Acompanhamento'}
+                      </button>
                     </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-on-surface-variant/60 uppercase ml-2">Escola</label>
-                    <input 
-                      required
-                      type="text" 
-                      placeholder="Nome da instituição"
-                      className="w-full px-6 py-4 bg-surface-container-low rounded-2xl border-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
-                      value={formData.school}
-                      onChange={e => setFormData({...formData, school: e.target.value})}
-                    />
-                  </div>
-
-                  <button 
-                    disabled={submitting}
-                    type="submit" 
-                    className="w-full bg-primary text-white py-5 rounded-2xl font-black text-sm uppercase tracking-widest atmospheric-shadow hover:brightness-110 active:scale-95 transition-all flex items-center justify-center disabled:opacity-50"
-                  >
-                    {submitting ? <Loader2 className="animate-spin" size={24} /> : 'Concluir Cadastro'}
-                  </button>
-                </form>
+                 </form>
               </div>
             </motion.div>
           </div>
@@ -284,11 +387,10 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, index, age, onClick 
             referrerPolicy="no-referrer"
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-primary/30 group-hover:text-primary/50 transition-colors">
-             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-2">
-                <Plus size={32} />
+          <div className="w-full h-full flex flex-col items-center justify-center text-primary/30 group-hover:text-primary/50 transition-colors bg-gradient-to-br from-slate-100 to-slate-200">
+             <div className="w-16 h-16 rounded-full bg-white/50 flex items-center justify-center mb-2 shadow-sm">
+                <User size={32} />
              </div>
-             <span className="text-[10px] font-black uppercase tracking-widest">Sem Foto</span>
           </div>
         )}
         <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md p-1.5 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
@@ -302,23 +404,23 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, index, age, onClick 
         </div>
       </div>
       <div className="p-6">
-        <h3 className="text-lg font-bold text-on-surface mb-1 group-hover:text-primary transition-colors truncate">{student.full_name}</h3>
+        <h3 className="text-lg font-bold text-slate-800 mb-1 group-hover:text-primary transition-colors truncate">{student.full_name}</h3>
         <div className="space-y-1">
-          <p className="text-xs font-bold text-on-surface-variant/70 uppercase tracking-tighter">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-tighter">
             {age} anos • {student.grade}
           </p>
-          <p className="text-xs text-on-surface-variant/50 font-medium truncate italic">
+          <p className="text-xs text-slate-400 font-medium truncate italic">
             {student.school}
           </p>
         </div>
         
-        <div className="mt-4 pt-4 border-t border-outline-variant/10 flex justify-between items-center">
+        <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center">
           <div className="flex -space-x-2">
             {[1, 2].map(i => (
-              <div key={i} className="w-6 h-6 rounded-full bg-surface-container-high border-2 border-white" />
+              <div key={i} className="w-6 h-6 rounded-full bg-slate-100 border-2 border-white" />
             ))}
           </div>
-          <span className="text-[10px] font-bold text-primary group-hover:underline">Acessar Perfil →</span>
+          <span className="text-[10px] font-black text-primary uppercase tracking-widest group-hover:underline">Acessar Perfil →</span>
         </div>
       </div>
     </motion.div>
