@@ -9,8 +9,9 @@ import {
   MessageSquare, History, Wand2, TrendingUp,
   Percent, Eye, Trash2, Archive, AlertTriangle
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { TopBar } from '../components/Navigation';
+import { StudentHeaderBanner } from '../components/StudentHeaderBanner';
 import { supabase } from '../lib/supabase';
 import { Student, InstrumentStatus as DBInstrumentStatus } from '../types/database';
 import { MultimodalInput } from '../components/MultimodalInput';
@@ -297,10 +298,11 @@ export default function CaseStudy() {
   if (loading) return null;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
-      <TopBar />
-      
-      <main className="max-w-7xl mx-auto px-8 py-10">
+    <div className="flex flex-col min-h-screen bg-[#F8FAFC]">
+      <TopBar title="Hub de Instrumentos" showBack />
+      <StudentHeaderBanner title="Coleta de Dados" />
+
+      {/* Main Content Area */}      <main className="max-w-7xl mx-auto px-8 py-10">
         <div className="flex items-center justify-between mb-12">
            <div className="flex items-center gap-6">
               <button 
