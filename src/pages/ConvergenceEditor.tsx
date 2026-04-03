@@ -21,8 +21,7 @@ REGRAS VITAIS:
   "eixo_IV": ["Uso de fones abafadores de ruído.", "Fragmentação de tarefas."]
 }`;
 
-type AxisItem = { id: string; text: string; selected: boolean; isManual: boolean; isNew?: boolean; };
-type HighlightSnippet = { id: string; text: string; category: 'demandas' | 'contexto' | 'potencialidades' | 'duvida'; source: string; status?: 'ativo' | 'armazenado' };
+import { AxisItem, HighlightSnippet } from '../types/database';
 type DataSource = { id: string; title: string; subtitle: string; content: string; icon: any; colorClass: string; bgColorClass: string; };
 
 const MOCK_SOURCES: DataSource[] = [
@@ -137,15 +136,15 @@ export default function ConvergenceEditor() {
   const [filterSource, setFilterSource] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'recent' | 'category' | 'source'>('recent');
 
-  const availableSources = Array.from(new Set(snippets.map(s => s.source)));
+  const availableSources = Array.from(new Set(snippets.map(s => s.instrument_source)));
 
   const filteredAndSortedSnippets = snippets
     .filter(s => (s.status || 'ativo') === filterStatus)
     .filter(s => filterCategory === 'all' || s.category === filterCategory)
-    .filter(s => filterSource === 'all' || s.source === filterSource)
+    .filter(s => filterSource === 'all' || s.instrument_source === filterSource)
     .sort((a, b) => {
        if (sortBy === 'category') return a.category.localeCompare(b.category);
-       if (sortBy === 'source') return a.source.localeCompare(b.source);
+       if (sortBy === 'source') return a.instrument_source.localeCompare(b.instrument_source);
        return Number(b.id) - Number(a.id);
     });
 
@@ -154,9 +153,10 @@ export default function ConvergenceEditor() {
     if (selection && readingSource) {
       setSnippets(prev => [...prev, {
         id: crypto.randomUUID(),
+        student_id: studentId || '',
         text: selection,
         category,
-        source: readingSource.title,
+        instrument_source: readingSource.title,
         status: 'ativo'
       }]);
       window.getSelection()?.removeAllRanges();
@@ -243,7 +243,7 @@ export default function ConvergenceEditor() {
   };
 
   const renderHighlightedText = (text: string, source: string) => {
-    const sourceSnippets = snippets.filter(s => s.source === source && s.status !== 'armazenado');
+    const sourceSnippets = snippets.filter(s => s.instrument_source === source && s.status !== 'armazenado');
     if (sourceSnippets.length === 0) return <div dangerouslySetInnerHTML={{ __html: text }} className="leading-relaxed whitespace-pre-wrap" />;
 
     // Mapeamento de cores
@@ -772,7 +772,7 @@ export default function ConvergenceEditor() {
                            )} />
                            <p className="text-sm font-medium text-slate-800 line-clamp-2 truncate whitespace-normal leading-snug">"{snippet.text}"</p>
                          </div>
-                         <p className="text-[10px] font-bold text-slate-400 pl-4 uppercase tracking-widest">Origem: {snippet.source}</p>
+                         <p className="text-[10px] font-bold text-slate-400 pl-4 uppercase tracking-widest">Origem: {snippet.instrument_source}</p>
                       </div>
                       
                       {/* Lado Direito (Ações Compactas) */}

@@ -12,7 +12,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { TopBar } from '../components/Navigation';
 import { supabase } from '../lib/supabase';
-import { Student } from '../types/database';
+import { Student, InstrumentStatus as DBInstrumentStatus } from '../types/database';
 import { MultimodalInput } from '../components/MultimodalInput';
 import { cn } from '../lib/utils';
 
@@ -21,7 +21,7 @@ type ViewState = 'hub' | 'details' | 'filling' | 'consolidation' | 'versions';
 type IfSahsRecord = {
   id: string;
   type: 'versao_inicial' | 'atualizacao';
-  status: 'ativo' | 'arquivado' | 'rascunho';
+  status: DBInstrumentStatus;
   date: string;
   person: string;
   respondentName: string;
@@ -207,7 +207,7 @@ export default function CaseStudy() {
     if (action === 'view') setView('versions');
   };
 
-  const handleSave = (status: 'ativo' | 'rascunho' = 'ativo') => {
+  const handleSave = (status: DBInstrumentStatus = 'ativo') => {
     if (!activeInstrumentId) return;
 
     if (activeInstrumentId === 'IF-SAHS') {
