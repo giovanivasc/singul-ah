@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ChevronRight, ChevronLeft, Save, ShieldCheck, 
   Target, LayoutGrid, Sparkles, 
   Plus, CheckCircle2, Lightbulb, 
-  PencilRuler, BookOpen, Trash2, X, User as UserIcon
+  PencilRuler, BookOpen, Trash2, X, User as UserIcon,
+  Search, Clock, AlertTriangle, Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TopBar } from '../components/Navigation';
 import { cn } from '../lib/utils';
 import { useNavigate, useParams } from 'react-router-dom';
+import { AxisItem } from '../types/database';
 
 type DisciplineProfile = { 
   name: string; 
@@ -16,11 +18,24 @@ type DisciplineProfile = {
   justification: string; 
 };
 
+const MOCK_BNCC = [
+  { code: 'EF05MA04', text: 'Identificar frações equivalentes.' },
+  { code: 'EF05MA05', text: 'Comparar e ordenar números racionais positivos (representações fracionária e decimal).' },
+  { code: 'EF05LP01', text: 'Ler e compreender textos narrativos de maior porte.' },
+  { code: 'EF05LP02', text: 'Identificar a ideia central do texto, demonstrando compreensão global.' },
+  { code: 'EF05CI02', text: 'Aplicar os conhecimentos sobre as mudanças de estado físico da água.' },
+  { code: 'EF05HI04', text: 'Identificar a importância do patrimônio cultural e histórico.' }
+];
+
 export default function PEIBuilder() {
   const navigate = useNavigate();
   const { studentId } = useParams();
 
   const [activeStep, setActiveStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const [mappedAxisData, setMappedAxisData] = useState<Record<'I' | 'II' | 'III' | 'IV', AxisItem[]>>({
+    I: [], II: [], III: [], IV: []
+  });
 
   const steps = [
     { id: 1, title: 'Identificação e Caso', icon: ShieldCheck },
@@ -43,9 +58,11 @@ export default function PEIBuilder() {
 
   // Etapa 3 state
   const [planningContent, setPlanningContent] = useState('');
-  const [bnccCode, setBnccCode] = useState('');
-  const [bnccItems, setBnccItems] = useState<string[]>([]);
-  const hasSuplementar = disciplines.some(d => d.status === 'suplementar');
+  const [bnccSearch, setBnccSearch] = useState('');
+  const [bnccSuggestions, setBnccSuggestions] = useState<typeof MOCK_BNCC>([]);
+  const [bnccItems, setBnccItems] = useState<{code: string, text: string}[]>([]);
+  const suplementarDisciplines = disciplines.filter(d => d.status === 'suplementar');
+  const hasSuplementar = suplementarDisciplines.length > 0;
   const [compactationTarget, setCompactationTarget] = useState('');
   const [evaluationMethod, setEvaluationMethod] = useState('');
 
@@ -56,32 +73,118 @@ export default function PEIBuilder() {
 
   // Etapa 5 state
   const [smartGoals, setSmartGoals] = useState<string[]>(['']);
-  const [accessibilityResources, setAccessibilityResources] = useState<string[]>([
-    'Liberação pontual para uso de abafadores de ruído',
-    'Fragmentação de instruções longas'
-  ]); // Mocked from Eixo IV
+  const [accessibilityResources, setAccessibilityResources] = useState<string[]>([]);
   const [newResource, setNewResource] = useState('');
 
-  const nextStep = () => setActiveStep(prev => prev < 5 ? (prev + 1) as any : prev);
-  const prevStep = () => setActiveStep(prev => prev > 1 ? (prev - 1) as any : prev);
+  // LocalStorage Sync
+  useEffect(() => {
+    if (!studentId) return;
+
+    // Load Mapeamento (Axis)
+    const savedMap = localStorage.getItem(`mapeamento_data_${studentId}`);
+    if (savedMap) {
+      try {
+        const parsed = JSON.parse(savedMap);
+        if (parsed.axisData) {
+          setMappedAxisData(parsed.axisData);
+          // Auto-preencher recursos de acessibilidade do eixo IV se ainda não tiver nada salvo no PEI
+          const eixoIVResources = parsed.axisData['IV']
+            ?.filter((i: AxisItem) => i.selected)
+            .map((i: AxisItem) => i.text) || [];
+          setAccessibilityResources(eixoIVResources);
+        }
+      } catch(e) { console.error('Erro ao ler mapeamento:', e); }
+    }
+
+    // Load PEI Progress
+    const savedPEI = localStorage.getItem(`pei_data_${studentId}`);
+    if (savedPEI) {
+      try {
+         const parsed = JSON.parse(savedPEI);
+         if (parsed.disciplines) setDisciplines(parsed.disciplines);
+         if (parsed.planningContent) setPlanningContent(parsed.planningContent);
+         if (parsed.bnccItems) setBnccItems(parsed.bnccItems);
+         if (parsed.compactationTarget) setCompactationTarget(parsed.compactationTarget);
+         if (parsed.evaluationMethod) setEvaluationMethod(parsed.evaluationMethod);
+         if (parsed.renzulliTypeI !== undefined) setRenzulliTypeI(parsed.renzulliTypeI);
+         if (parsed.renzulliTypeII !== undefined) setRenzulliTypeII(parsed.renzulliTypeII);
+         if (parsed.renzulliTypeIII !== undefined) setRenzulliTypeIII(parsed.renzulliTypeIII);
+         if (parsed.smartGoals) setSmartGoals(parsed.smartGoals);
+         if (parsed.accessibilityResources && parsed.accessibilityResources.length > 0) {
+           setAccessibilityResources(parsed.accessibilityResources);
+         }
+         if (parsed.lastSaved) setLastSaved(parsed.lastSaved);
+      } catch(e) {}
+    }
+  }, [studentId]);
+
+  // Busca BNCC
+  useEffect(() => {
+    if (bnccSearch.length > 1) {
+      setBnccSuggestions(
+        MOCK_BNCC.filter(item => 
+          item.code.toLowerCase().includes(bnccSearch.toLowerCase()) || 
+          item.text.toLowerCase().includes(bnccSearch.toLowerCase())
+        )
+      );
+    } else {
+      setBnccSuggestions([]);
+    }
+  }, [bnccSearch]);
 
   const handleUpdateDiscipline = (index: number, updates: Partial<DisciplineProfile>) => {
     setDisciplines(prev => prev.map((d, i) => i === index ? { ...d, ...updates } : d));
   };
 
+  const handleSaveData = () => {
+    const dataToSave = {
+      disciplines,
+      planningContent,
+      bnccItems,
+      compactationTarget,
+      evaluationMethod,
+      renzulliTypeI,
+      renzulliTypeII,
+      renzulliTypeIII,
+      smartGoals,
+      accessibilityResources,
+      lastSaved: new Date().toLocaleString('pt-BR')
+    };
+    localStorage.setItem(`pei_data_${studentId}`, JSON.stringify(dataToSave));
+    setLastSaved(dataToSave.lastSaved);
+  };
+
   const handleCreatePei = () => {
+    handleSaveData();
     alert("PEI Salvo e ativado com sucesso!");
     navigate(`/students/${studentId || ''}`);
   };
+
+  const nextStep = () => setActiveStep(prev => prev < 5 ? (prev + 1) as any : prev);
+  const prevStep = () => setActiveStep(prev => prev > 1 ? (prev - 1) as any : prev);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       <TopBar title="Construtor de PEI" />
       
+      {lastSaved && (
+        <div className="bg-yellow-50 border-b border-yellow-100 flex justify-center items-center gap-2 py-2 text-xs font-bold text-yellow-700">
+           <Clock size={14} /> Progresso rascunho salvo em: {lastSaved}
+        </div>
+      )}
+
       <main className="max-w-6xl mx-auto px-6 py-8">
         {/* Header & Stepper */}
         <div className="mb-10">
-          <h1 className="text-3xl font-black text-on-surface mb-8 tracking-tight">Construtor de PEI - AH/SD</h1>
+          <div className="flex items-center justify-between mb-8">
+            <h1 className="text-3xl font-black text-on-surface tracking-tight">Construtor de PEI - AH/SD</h1>
+            <button 
+              onClick={() => { handleSaveData(); alert("Progresso salvo no navegador!"); }}
+              className="bg-white border border-slate-200 text-slate-500 hover:border-primary/30 hover:text-primary transition-all px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center gap-2 shadow-sm"
+            >
+              <Save size={16} /> Salvar Rascunho
+            </button>
+          </div>
           
           <div className="flex items-center justify-between relative">
              <div className="absolute top-1/2 left-0 right-0 h-1 bg-slate-200 -z-10 -translate-y-1/2 rounded-full" />
@@ -140,11 +243,34 @@ export default function PEIBuilder() {
                   </div>
                 </div>
 
-                <div className="bg-slate-100 border border-dashed border-slate-300 rounded-2xl p-12 flex flex-col items-center justify-center text-center gap-4">
-                   <LayoutGrid size={48} className="text-slate-300" />
-                   <div>
-                     <p className="text-lg font-bold text-slate-500 mb-1">Resumo do Mapeamento (Eixos I, II, III e IV) será carregado aqui</p>
-                     <p className="text-sm text-slate-400">Os dados estruturados serão injetados automaticamente a partir do último Mapeamento Consolidado.</p>
+                <div className="space-y-6 pt-4">
+                   <div className="flex items-center gap-2">
+                     <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Síntese do Mapeamento (Consultivo)</h3>
+                     <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Somente Leitura</span>
+                   </div>
+                   
+                   <div className="grid md:grid-cols-2 gap-6">
+                     {[
+                       { id: 'I', title: 'I. Demandas Biopsic.', data: mappedAxisData.I },
+                       { id: 'II', title: 'II. Contexto (Barreiras)', data: mappedAxisData.II },
+                       { id: 'III', title: 'III. Potencialidades', data: mappedAxisData.III },
+                       { id: 'IV', title: 'IV. Ponte PEI', data: mappedAxisData.IV }
+                     ].map(eixo => (
+                        <div key={eixo.id} className="bg-slate-50 border border-slate-100 rounded-2xl p-5 shadow-sm">
+                           <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center font-black mb-4">{eixo.id}</div>
+                           <h4 className="font-bold text-sm text-slate-700 uppercase tracking-wider mb-3">{eixo.title}</h4>
+                           <ul className="space-y-2">
+                             {eixo.data.filter((i: AxisItem) => i.selected).map((item: AxisItem) => (
+                               <li key={item.id} className="text-sm text-slate-600 font-medium flex items-start gap-2">
+                                 <span className="text-primary">•</span>{item.text}
+                               </li>
+                             ))}
+                             {eixo.data.filter((i: AxisItem) => i.selected).length === 0 && (
+                               <li className="text-xs text-slate-400 italic">Nenhum item mapeado nesta área.</li>
+                             )}
+                           </ul>
+                        </div>
+                     ))}
                    </div>
                 </div>
               </motion.div>
@@ -230,40 +356,75 @@ export default function PEIBuilder() {
 
                 <div className="space-y-4">
                   <label className="text-[10px] uppercase font-black tracking-widest text-slate-400 pl-2">Integração BNCC</label>
-                  <div className="flex gap-3">
-                    <input 
-                      type="text"
-                      value={bnccCode}
-                      onChange={e => setBnccCode(e.target.value)}
-                      placeholder="Digite o código da habilidade (ex: EF05MA04)"
-                      className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 uppercase"
-                    />
-                    <button 
-                      onClick={() => { if(bnccCode) { setBnccItems([...bnccItems, bnccCode.toUpperCase()]); setBnccCode(''); } }}
-                      className="px-6 bg-slate-900 text-white rounded-xl font-bold text-sm tracking-wide hover:brightness-110 active:scale-95 transition-all flex items-center gap-2 shadow-sm"
-                    >
-                      <Plus size={18} /> Adicionar
-                    </button>
+                  <div className="relative">
+                     <div className="flex gap-3">
+                       <div className="relative flex-1">
+                          <Search className="absolute left-4 top-3 text-slate-400" size={18} />
+                          <input 
+                            type="text"
+                            value={bnccSearch}
+                            onChange={e => setBnccSearch(e.target.value)}
+                            placeholder="Busque código ou texto (ex: Frações, EF05MA...)"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          />
+                       </div>
+                     </div>
+                     
+                     {/* BNCC Autocomplete Dropdown */}
+                     {bnccSuggestions.length > 0 && (
+                        <div className="absolute z-10 w-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-60 overflow-y-auto">
+                           {bnccSuggestions.map(item => (
+                             <button
+                               key={item.code}
+                               onClick={() => {
+                                 if (!bnccItems.find(i => i.code === item.code)) {
+                                    setBnccItems([...bnccItems, item]);
+                                 }
+                                 setBnccSearch('');
+                               }}
+                               className="w-full text-left px-4 py-3 hover:bg-primary/5 transition-colors border-b border-slate-50 last:border-0 flex flex-col gap-1"
+                             >
+                                <span className="font-black text-primary text-xs uppercase tracking-widest">{item.code}</span>
+                                <span className="text-sm text-slate-600 font-medium">{item.text}</span>
+                             </button>
+                           ))}
+                        </div>
+                     )}
                   </div>
+
                   {bnccItems.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-4">
-                      {bnccItems.map((code, idx) => (
-                        <div key={idx} className="bg-primary/10 text-primary border border-primary/20 px-3 py-1.5 rounded-lg text-xs font-black tracking-widest flex items-center gap-2 shadow-sm">
-                          {code}
-                          <button onClick={() => setBnccItems(bnccItems.filter((_, i) => i !== idx))}><X size={14} className="hover:text-red-500" /></button>
+                    <div className="flex flex-col gap-2 mt-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Habilidades Selecionadas</p>
+                      {bnccItems.map((item) => (
+                        <div key={item.code} className="bg-white border border-slate-200 p-3 rounded-xl flex items-center justify-between gap-4 shadow-sm group">
+                          <div>
+                            <span className="font-black text-primary text-xs mr-2">{item.code}</span>
+                            <span className="text-sm text-slate-600 font-medium">{item.text}</span>
+                          </div>
+                          <button onClick={() => setBnccItems(bnccItems.filter(i => i.code !== item.code))} className="text-slate-300 hover:text-red-500 rounded-md p-1 transition-all group-hover:bg-red-50"><X size={18} /></button>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
 
+                {/* Reactividade: Mostrar disciplinas suplementares conectadas à Compactação */}
                 {hasSuplementar && (
                   <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mt-8 space-y-6">
-                    <div className="flex items-center gap-3">
-                      <Sparkles className="text-green-600" size={24} />
-                      <h3 className="text-lg font-black text-green-800 uppercase tracking-tight">Compactação Curricular</h3>
+                    <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+                      <div className="flex items-center gap-3">
+                        <Sparkles className="text-green-600" size={24} />
+                        <h3 className="text-lg font-black text-green-800 uppercase tracking-tight">Compactação Curricular</h3>
+                      </div>
+                      <div className="flex gap-2 flex-wrap">
+                         {suplementarDisciplines.map(d => (
+                            <span key={d.name} className="bg-white border border-green-200 text-green-700 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-1.5">
+                               Foco: {d.name}
+                            </span>
+                         ))}
+                      </div>
                     </div>
-                    <p className="text-sm font-bold text-green-700/80 -mt-3">Atenção: Disciplinas suplementares exigem estratégias de compactação para evitar tédio e promover o avanço.</p>
+                    <p className="text-sm font-bold text-green-700/80 -mt-2">Disciplinas suplementares marcadadas anteriormente exigem estratégias de compactação para evitar tédio e promover o avanço.</p>
                     
                     <div className="grid md:grid-cols-2 gap-6">
                       <div className="space-y-2">
@@ -298,9 +459,20 @@ export default function PEIBuilder() {
                      <Sparkles className="text-primary" /> Tríade de Renzulli (Enriquecimento)
                   </h2>
                   <p className="text-sm font-medium text-slate-500 mt-2">
-                     Planeje projetos enriquecedores focaos em aprofundar interesses.
+                     Planeje projetos enriquecedores focados em aprofundar interesses.
                   </p>
                 </div>
+                
+                {hasSuplementar && (
+                  <div className="flex flex-wrap gap-2 pt-2 border-b border-slate-100 pb-6 mb-6">
+                     <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center">Disciplinas Alvo:</span>
+                     {suplementarDisciplines.map(d => (
+                        <span key={d.name} className="bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg">
+                           {d.name}
+                        </span>
+                     ))}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Tipo 1 */}
@@ -309,15 +481,15 @@ export default function PEIBuilder() {
                       <Lightbulb size={20} />
                     </div>
                     <h3 className="font-black text-lg text-slate-800">Tipo I: Exploratório</h3>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed flex-1">
                       Atividades para despertar novos interesses.
                     </p>
                     <textarea 
-                      rows={4}
+                      rows={5}
                       value={renzulliTypeI}
                       onChange={e => setRenzulliTypeI(e.target.value)}
                       placeholder="Ex: Trazer um palestrante sobre astronomia..."
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-200 mt-auto"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-200"
                     />
                   </div>
 
@@ -327,15 +499,15 @@ export default function PEIBuilder() {
                       <PencilRuler size={20} />
                     </div>
                     <h3 className="font-black text-lg text-slate-800">Tipo II: Treinamento</h3>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed flex-1">
                       Desenvolvimento de habilidades metodológicas ou socioemocionais.
                     </p>
                     <textarea 
-                      rows={4}
+                      rows={5}
                       value={renzulliTypeII}
                       onChange={e => setRenzulliTypeII(e.target.value)}
                       placeholder="Ex: Treinar uso de biblioteca e bases de dados..."
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 mt-auto"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
                     />
                   </div>
 
@@ -345,15 +517,15 @@ export default function PEIBuilder() {
                       <Target size={20} />
                     </div>
                     <h3 className="font-black text-lg text-slate-800">Tipo III: Investigação</h3>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed flex-1">
                       Projetos práticos e resolução de problemas reais.
                     </p>
                     <textarea 
-                      rows={4}
+                      rows={5}
                       value={renzulliTypeIII}
                       onChange={e => setRenzulliTypeIII(e.target.value)}
                       placeholder="Ex: Criar um minidocumentário sobre poluição local..."
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-200 mt-auto"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-200"
                     />
                   </div>
                 </div>
@@ -412,7 +584,7 @@ export default function PEIBuilder() {
                      <h3 className="font-black text-xl text-blue-900 uppercase tracking-tight">Recursos de Acessibilidade (LBI)</h3>
                    </div>
                    <p className="text-sm text-blue-800/80 font-medium bg-white/50 p-3 rounded-lg border border-blue-100/50">
-                     O sistema extrai bases de acessibilidade do <strong>Mapeamento Consolidado (Eixo IV)</strong>. Abaixo você pode rever ou adicionar manualmente se julgar necessário.
+                     O sistema inseriu bases do <strong>Mapeamento Consolidado (Eixo IV)</strong>. Abaixo você pode rever ou adicionar manualmente se julgar necessário.
                    </p>
                    
                    <ul className="space-y-3">
@@ -449,10 +621,16 @@ export default function PEIBuilder() {
                    </div>
                 </div>
 
-                <div className="pt-10 flex justify-end">
+                <div className="pt-10 flex flex-col sm:flex-row justify-end gap-4">
+                   <button 
+                     onClick={() => { handleSaveData(); alert("Progresso salvo no navegador!"); }}
+                     className="bg-white border-2 border-slate-200 text-slate-500 px-8 py-5 rounded-2xl font-black text-sm uppercase tracking-widest hover:border-slate-300 hover:text-slate-700 transition-all text-center"
+                   >
+                     Salvar Rascunho
+                   </button>
                    <button 
                      onClick={handleCreatePei}
-                     className="w-full md:w-auto bg-[#1DB954] text-white px-10 py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-green-500/20 hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-3"
+                     className="bg-[#1DB954] text-white px-10 py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-green-500/20 hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-3"
                    >
                      <Save size={20} /> Salvar e Ativar PEI
                    </button>
