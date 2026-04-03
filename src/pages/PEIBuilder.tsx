@@ -9,23 +9,14 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { TopBar } from '../components/Navigation';
 import { cn } from '../lib/utils';
-import { useNavigate, useParams } from 'react-router-dom';
 import { AxisItem } from '../types/database';
+import { BnccSkill, bnccData } from '../data/bncc';
 
 type DisciplineProfile = { 
   name: string; 
   status: 'suplementar' | 'padrao' | 'complementar'; 
   justification: string; 
 };
-
-const MOCK_BNCC = [
-  { code: 'EF05MA04', text: 'Identificar frações equivalentes.' },
-  { code: 'EF05MA05', text: 'Comparar e ordenar números racionais positivos (representações fracionária e decimal).' },
-  { code: 'EF05LP01', text: 'Ler e compreender textos narrativos de maior porte.' },
-  { code: 'EF05LP02', text: 'Identificar a ideia central do texto, demonstrando compreensão global.' },
-  { code: 'EF05CI02', text: 'Aplicar os conhecimentos sobre as mudanças de estado físico da água.' },
-  { code: 'EF05HI04', text: 'Identificar a importância do patrimônio cultural e histórico.' }
-];
 
 export default function PEIBuilder() {
   const navigate = useNavigate();
@@ -58,9 +49,9 @@ export default function PEIBuilder() {
 
   // Etapa 3 state
   const [planningContent, setPlanningContent] = useState('');
-  const [bnccSearch, setBnccSearch] = useState('');
-  const [bnccSuggestions, setBnccSuggestions] = useState<typeof MOCK_BNCC>([]);
-  const [bnccItems, setBnccItems] = useState<{code: string, text: string}[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<BnccSkill[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<BnccSkill[]>([]);
   const suplementarDisciplines = disciplines.filter(d => d.status === 'suplementar');
   const hasSuplementar = suplementarDisciplines.length > 0;
   const [compactationTarget, setCompactationTarget] = useState('');
@@ -103,7 +94,7 @@ export default function PEIBuilder() {
          const parsed = JSON.parse(savedPEI);
          if (parsed.disciplines) setDisciplines(parsed.disciplines);
          if (parsed.planningContent) setPlanningContent(parsed.planningContent);
-         if (parsed.bnccItems) setBnccItems(parsed.bnccItems);
+         if (parsed.selectedSkills) setSelectedSkills(parsed.selectedSkills);
          if (parsed.compactationTarget) setCompactationTarget(parsed.compactationTarget);
          if (parsed.evaluationMethod) setEvaluationMethod(parsed.evaluationMethod);
          if (parsed.renzulliTypeI !== undefined) setRenzulliTypeI(parsed.renzulliTypeI);
@@ -120,17 +111,17 @@ export default function PEIBuilder() {
 
   // Busca BNCC
   useEffect(() => {
-    if (bnccSearch.length > 1) {
-      setBnccSuggestions(
-        MOCK_BNCC.filter(item => 
-          item.code.toLowerCase().includes(bnccSearch.toLowerCase()) || 
-          item.text.toLowerCase().includes(bnccSearch.toLowerCase())
+    if (searchTerm.length > 1) {
+      setSearchResults(
+        bnccData.filter(item => 
+          item.codigo.toLowerCase().includes(searchTerm.toLowerCase()) || 
+          item.descricao.toLowerCase().includes(searchTerm.toLowerCase())
         )
       );
     } else {
-      setBnccSuggestions([]);
+      setSearchResults([]);
     }
-  }, [bnccSearch]);
+  }, [searchTerm]);
 
   const handleUpdateDiscipline = (index: number, updates: Partial<DisciplineProfile>) => {
     setDisciplines(prev => prev.map((d, i) => i === index ? { ...d, ...updates } : d));
@@ -140,7 +131,7 @@ export default function PEIBuilder() {
     const dataToSave = {
       disciplines,
       planningContent,
-      bnccItems,
+      selectedSkills,
       compactationTarget,
       evaluationMethod,
       renzulliTypeI,
@@ -362,8 +353,8 @@ export default function PEIBuilder() {
                           <Search className="absolute left-4 top-3 text-slate-400" size={18} />
                           <input 
                             type="text"
-                            value={bnccSearch}
-                            onChange={e => setBnccSearch(e.target.value)}
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
                             placeholder="Busque código ou texto (ex: Frações, EF05MA...)"
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
                           />
@@ -371,37 +362,38 @@ export default function PEIBuilder() {
                      </div>
                      
                      {/* BNCC Autocomplete Dropdown */}
-                     {bnccSuggestions.length > 0 && (
+                     {searchResults.length > 0 && (
                         <div className="absolute z-10 w-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-60 overflow-y-auto">
-                           {bnccSuggestions.map(item => (
+                           {searchResults.map(item => (
                              <button
-                               key={item.code}
+                               key={item.codigo}
                                onClick={() => {
-                                 if (!bnccItems.find(i => i.code === item.code)) {
-                                    setBnccItems([...bnccItems, item]);
+                                 if (!selectedSkills.find(i => i.codigo === item.codigo)) {
+                                    setSelectedSkills([...selectedSkills, item]);
                                  }
-                                 setBnccSearch('');
+                                 setSearchTerm('');
+                                 setSearchResults([]);
                                }}
                                className="w-full text-left px-4 py-3 hover:bg-primary/5 transition-colors border-b border-slate-50 last:border-0 flex flex-col gap-1"
                              >
-                                <span className="font-black text-primary text-xs uppercase tracking-widest">{item.code}</span>
-                                <span className="text-sm text-slate-600 font-medium">{item.text}</span>
+                                <span className="font-black text-primary text-xs uppercase tracking-widest">{item.codigo}</span>
+                                <span className="text-sm text-slate-600 font-medium">{item.descricao}</span>
                              </button>
                            ))}
                         </div>
                      )}
                   </div>
 
-                  {bnccItems.length > 0 && (
+                  {selectedSkills.length > 0 && (
                     <div className="flex flex-col gap-2 mt-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                       <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Habilidades Selecionadas</p>
-                      {bnccItems.map((item) => (
-                        <div key={item.code} className="bg-white border border-slate-200 p-3 rounded-xl flex items-center justify-between gap-4 shadow-sm group">
+                      {selectedSkills.map((item) => (
+                        <div key={item.codigo} className="bg-white border border-slate-200 p-3 rounded-xl flex items-center justify-between gap-4 shadow-sm group">
                           <div>
-                            <span className="font-black text-primary text-xs mr-2">{item.code}</span>
-                            <span className="text-sm text-slate-600 font-medium">{item.text}</span>
+                            <span className="font-black text-primary text-xs mr-2">{item.codigo}</span>
+                            <span className="text-sm text-slate-600 font-medium">{item.descricao}</span>
                           </div>
-                          <button onClick={() => setBnccItems(bnccItems.filter(i => i.code !== item.code))} className="text-slate-300 hover:text-red-500 rounded-md p-1 transition-all group-hover:bg-red-50"><X size={18} /></button>
+                          <button onClick={() => setSelectedSkills(selectedSkills.filter(i => i.codigo !== item.codigo))} className="text-slate-300 hover:text-red-500 rounded-md p-1 transition-all group-hover:bg-red-50"><X size={18} /></button>
                         </div>
                       ))}
                     </div>
