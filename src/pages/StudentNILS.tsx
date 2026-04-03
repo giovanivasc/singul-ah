@@ -251,18 +251,6 @@ export default function StudentNILS() {
     }
   };
 
-  const handleReset = async () => {
-    if (!activeResult) return;
-    if (confirm('Deseja realmente excluir este teste? Essa ação não pode ser desfeita.')) {
-      await supabase.from('n_ils_responses').delete().eq('id', activeResult.id);
-      setHasResult(false);
-      setResultsData([]);
-      setCurrentStep(0);
-      setAnswers({});
-      setActiveResult(null);
-    }
-  };
-
   const handleGenerateIA = async () => {
     if (iaAdvice) return;
     setIsGeneratingIA(true);
@@ -492,13 +480,7 @@ Com base EXCLUSIVAMENTE nas regras do seu sistema, gere a interpretação e as e
                     >
                        <Archive size={16} /> Arquivar Teste
                     </button>
-                    <button 
-                      onClick={handleReset}
-                      className="p-4 bg-red-50 text-red-600 rounded-2xl hover:bg-red-600 hover:text-white transition-all border border-red-100 shadow-sm flex items-center gap-2 text-xs font-black uppercase tracking-widest"
-                    >
-                       <Trash2 size={16} /> Excluir
-                    </button>
-                 </div>
+                   </div>
               </div>
 
               <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
