@@ -323,12 +323,7 @@ export default function CaseStudy() {
               </div>
            </div>
 
-           {view === 'hub' && (
-             <button className="flex items-center gap-3 bg-primary text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:brightness-105 transition-all">
-                <Wand2 size={18} />
-                Gerar PEI (IA)
-             </button>
-           )}
+
         </div>
 
         <AnimatePresence mode="wait">
