@@ -9,6 +9,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { TopBar } from '../components/Navigation';
 import { cn } from '../lib/utils';
+import { useNavigate, useParams } from 'react-router-dom';
 import { AxisItem } from '../types/database';
 import { BnccSkill, bnccData } from '../data/bncc';
 
