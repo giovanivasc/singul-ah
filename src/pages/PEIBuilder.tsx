@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TopBar } from '../components/Navigation';
+import { StudentHeaderBanner } from '../components/StudentHeaderBanner';
 import { cn } from '../lib/utils';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AxisItem } from '../types/database';
@@ -176,6 +177,7 @@ export default function PEIBuilder() {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       <TopBar title="Construtor de PEI" />
+      <StudentHeaderBanner title="Construtor PEI" />
       
       {lastSaved && (
         <div className="bg-yellow-50 border-b border-yellow-100 flex justify-center items-center gap-2 py-2 text-xs font-bold text-yellow-700">

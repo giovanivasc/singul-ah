@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { 
   Brain, Sparkles, Database, Loader2, ArrowRight, Activity,
   Users, ShieldCheck, Plus, Highlighter, X, CheckCircle2, Info,
-  Maximize2, Trash2, Archive, RefreshCcw
+  Maximize2, Trash2, Archive, RefreshCcw, ChevronLeft
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TopBar } from '../components/Navigation';
+import { StudentHeaderBanner } from '../components/StudentHeaderBanner';
 import { useNavigate, useParams } from 'react-router-dom';
 import { cn } from '../lib/utils';
 
@@ -270,8 +271,9 @@ export default function ConvergenceEditor() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col relative">
-      <TopBar title="Consolidação do Estudo de Caso" />
+    <div className="flex flex-col min-h-screen bg-[#F8FAFC]">
+      <TopBar title="Análise de Convergência" showBack />
+      <StudentHeaderBanner title="Mapeamento Assistido" />
       
       <AnimatePresence>
         {showToast && (
