@@ -584,6 +584,7 @@ export default function ConvergenceEditor() {
              )}
           </AnimatePresence>
         </div>
+      </div>
       </main>
 
       {/* Modal de Leitura (Side Panel ou Overlay Central) */}
