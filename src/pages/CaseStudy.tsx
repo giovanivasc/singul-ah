@@ -316,9 +316,6 @@ export default function CaseStudy() {
                else setView('details');
              }} 
            />
-           </div>
-
-
         </div>
 
         <AnimatePresence mode="wait">
