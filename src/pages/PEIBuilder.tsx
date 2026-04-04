@@ -410,96 +410,97 @@ export default function PEIBuilder() {
                        <div className="flex gap-3">
                          <div className="relative flex-1">
                             <Search className="absolute left-4 top-3 text-slate-400" size={18} />
-                          <input 
-                            type="text"
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                            placeholder="Busque código ou texto (ex: Frações, EF05MA...)"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
-                          />
+                            <input 
+                              type="text"
+                              value={searchTerm}
+                              onChange={e => setSearchTerm(e.target.value)}
+                              placeholder="Busque código ou texto (ex: Frações, EF05MA...)"
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            />
+                         </div>
                        </div>
-                     </div>
-                     
-                     {/* BNCC Autocomplete Dropdown */}
-                     {searchResults.length > 0 && (
-                        <div className="absolute z-10 w-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-60 overflow-y-auto">
-                           {searchResults.map(item => (
-                             <button
-                               key={item.codigo}
-                               onClick={() => {
-                                 if (!selectedSkills.find(i => i.codigo === item.codigo)) {
-                                    setSelectedSkills([...selectedSkills, item]);
-                                 }
-                                 setSearchTerm('');
-                                 setSearchResults([]);
-                               }}
-                               className="w-full text-left px-4 py-3 hover:bg-primary/5 transition-colors border-b border-slate-50 last:border-0 flex flex-col gap-1"
-                             >
-                                <div className="flex flex-wrap items-center gap-2 mb-1">
-                                  {item.tipo === 'competencia' ? (
-                                    <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-2 py-0.5 rounded uppercase tracking-tighter">Competência</span>
-                                  ) : (
-                                    <>
-                                      <span className="font-black text-primary text-xs uppercase tracking-widest">{item.codigo}</span>
-                                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{item.etapa}</span>
-                                      <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">{item.disciplina}</span>
-                                    </>
-                                  )}
-                                </div>
-                                <span className={cn(
-                                  "text-sm font-medium",
-                                  item.tipo === 'competencia' ? "text-slate-800 leading-relaxed" : "text-slate-600"
-                                )}>
-                                  {item.descricao}
-                                </span>
-                             </button>
-                           ))}
-                        </div>
-                     )}
-                  </div>
-
-                  {selectedSkills.length > 0 && (
-                    <div className="space-y-6 mt-4">
-                      {/* Habilidades Selecionadas */}
-                      {selectedSkills.some(s => s.tipo === 'habilidade') && (
-                        <div className="flex flex-col gap-2 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                          <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Habilidades Selecionadas</p>
-                          {selectedSkills.filter(s => s.tipo === 'habilidade').map((item) => (
-                            <div key={item.codigo} className="bg-white border border-slate-200 p-3 rounded-xl flex items-center justify-between gap-4 shadow-sm group">
-                              <div className="flex-1">
-                                <div className="flex flex-wrap items-center gap-2 mb-1">
-                                  <span className="font-black text-primary text-xs mr-2">{item.codigo}</span>
-                                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{item.etapa}</span>
-                                  <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">{item.disciplina}</span>
-                                </div>
-                                <p className="text-sm text-slate-600 font-medium line-clamp-2 transition-all group-hover:line-clamp-none">{item.descricao}</p>
-                              </div>
-                              <button onClick={() => setSelectedSkills(selectedSkills.filter(i => i.codigo !== item.codigo))} className="text-slate-300 hover:text-red-500 rounded-md p-1 transition-all group-hover:bg-red-50 shrink-0"><X size={18} /></button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Competências Selecionadas */}
-                      {selectedSkills.some(s => s.tipo === 'competencia') && (
-                        <div className="flex flex-col gap-2 bg-amber-50/30 p-4 rounded-2xl border border-amber-100">
-                          <p className="text-[10px] font-black uppercase text-amber-500/70 tracking-widest mb-1">Competências Gerais / Específicas</p>
-                          {selectedSkills.filter(s => s.tipo === 'competencia').map((item) => (
-                            <div key={item.codigo} className="bg-white border border-amber-100 p-3 rounded-xl flex items-center justify-between gap-4 shadow-sm group">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-[9px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded uppercase">{item.etapa}</span>
-                                  <span className="text-[9px] font-black text-amber-600/50 uppercase tracking-widest">{item.disciplina}</span>
-                                </div>
-                                <p className="text-sm text-slate-800 font-bold leading-relaxed line-clamp-2 transition-all group-hover:line-clamp-none">{item.descricao}</p>
-                              </div>
-                              <button onClick={() => setSelectedSkills(selectedSkills.filter(i => i.codigo !== item.codigo))} className="text-slate-300 hover:text-red-500 rounded-md p-1 transition-all group-hover:bg-red-50 shrink-0"><X size={18} /></button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                       
+                       {/* BNCC Autocomplete Dropdown */}
+                       {searchResults.length > 0 && (
+                          <div className="absolute z-10 w-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-60 overflow-y-auto">
+                             {searchResults.map(item => (
+                               <button
+                                 key={item.codigo}
+                                 onClick={() => {
+                                   if (!selectedSkills.find(i => i.codigo === item.codigo)) {
+                                      setSelectedSkills([...selectedSkills, item]);
+                                   }
+                                   setSearchTerm('');
+                                   setSearchResults([]);
+                                 }}
+                                 className="w-full text-left px-4 py-3 hover:bg-primary/5 transition-colors border-b border-slate-50 last:border-0 flex flex-col gap-1"
+                               >
+                                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                                    {item.tipo === 'competencia' ? (
+                                      <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-2 py-0.5 rounded uppercase tracking-tighter">Competência</span>
+                                    ) : (
+                                      <>
+                                        <span className="font-black text-primary text-xs uppercase tracking-widest">{item.codigo}</span>
+                                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{item.etapa}</span>
+                                        <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">{item.disciplina}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                  <span className={cn(
+                                    "text-sm font-medium",
+                                    item.tipo === 'competencia' ? "text-slate-800 leading-relaxed" : "text-slate-600"
+                                  )}>
+                                    {item.descricao}
+                                  </span>
+                               </button>
+                             ))}
+                          </div>
+                       )}
                     </div>
-                  )}
+
+                    {selectedSkills.length > 0 && (
+                      <div className="space-y-6 mt-4">
+                        {/* Habilidades Selecionadas */}
+                        {selectedSkills.some(s => s.tipo === 'habilidade') && (
+                          <div className="flex flex-col gap-2 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Habilidades Selecionadas</p>
+                            {selectedSkills.filter(s => s.tipo === 'habilidade').map((item) => (
+                              <div key={item.codigo} className="bg-white border border-slate-200 p-3 rounded-xl flex items-center justify-between gap-4 shadow-sm group">
+                                <div className="flex-1">
+                                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                                    <span className="font-black text-primary text-xs mr-2">{item.codigo}</span>
+                                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{item.etapa}</span>
+                                    <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">{item.disciplina}</span>
+                                  </div>
+                                  <p className="text-sm text-slate-600 font-medium line-clamp-2 transition-all group-hover:line-clamp-none">{item.descricao}</p>
+                                </div>
+                                <button onClick={() => setSelectedSkills(selectedSkills.filter(i => i.codigo !== item.codigo))} className="text-slate-300 hover:text-red-500 rounded-md p-1 transition-all group-hover:bg-red-50 shrink-0"><X size={18} /></button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Competências Selecionadas */}
+                        {selectedSkills.some(s => s.tipo === 'competencia') && (
+                          <div className="flex flex-col gap-2 bg-amber-50/30 p-4 rounded-2xl border border-amber-100">
+                            <p className="text-[10px] font-black uppercase text-amber-500/70 tracking-widest mb-1">Competências Gerais / Específicas</p>
+                            {selectedSkills.filter(s => s.tipo === 'competencia').map((item) => (
+                              <div key={item.codigo} className="bg-white border border-amber-100 p-3 rounded-xl flex items-center justify-between gap-4 shadow-sm group">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-[9px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded uppercase">{item.etapa}</span>
+                                    <span className="text-[9px] font-black text-amber-600/50 uppercase tracking-widest">{item.disciplina}</span>
+                                  </div>
+                                  <p className="text-sm text-slate-800 font-bold leading-relaxed line-clamp-2 transition-all group-hover:line-clamp-none">{item.descricao}</p>
+                                </div>
+                                <button onClick={() => setSelectedSkills(selectedSkills.filter(i => i.codigo !== item.codigo))} className="text-slate-300 hover:text-red-500 rounded-md p-1 transition-all group-hover:bg-red-50 shrink-0"><X size={18} /></button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Reactividade: Mostrar disciplinas suplementares conectadas à Compactação */}
