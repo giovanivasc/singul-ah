@@ -55,6 +55,7 @@ export default function PEIBuilder() {
   const [planningContent, setPlanningContent] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState<'habilidade' | 'competencia'>('habilidade');
+  const [allowAdvancedYears, setAllowAdvancedYears] = useState(false);
   const [searchResults, setSearchResults] = useState<BnccSkill[]>([]);
   const [selectedSkills, setSelectedSkills] = useState<BnccSkill[]>([]);
   const suplementarDisciplines = disciplines.filter(d => d.status === 'suplementar');
@@ -133,18 +134,42 @@ export default function PEIBuilder() {
   // Busca BNCC
   useEffect(() => {
     if (searchTerm.length >= 3) {
+      const studentGrade = studentInfo?.grade || '';
+      
       setSearchResults(
-        unifiedBnccData.filter(item => 
-          item.tipo === searchType && (
+        unifiedBnccData.filter(item => {
+          // Filtro por tipo
+          if (item.tipo !== searchType) return false;
+
+          // Filtro por termo (código ou descrição)
+          const matchesTerm = (
             item.codigo.toLowerCase().includes(searchTerm.toLowerCase()) || 
             item.descricao.toLowerCase().includes(searchTerm.toLowerCase())
-          )
-        )
+          );
+          if (!matchesTerm) return false;
+
+          // Se aceleração estiver ativa, não filtra por ano
+          if (allowAdvancedYears) return true;
+
+          // Competências gerais e itens de "Todas" aparecem sempre
+          if (item.ano === 'Todas' || item.etapa === 'Todas') return true;
+
+          // Se não tiver info do aluno, mostra tudo por segurança, 
+          // caso contrário filtra pelo ano escolar do aluno
+          if (!studentGrade) return true;
+
+          // Verifica se o ano do item bate ou está contido na série do aluno
+          // (ex: aluno "5º Ano" encontra item "5º ano")
+          const cleanGrade = studentGrade.toLowerCase().replace('º', '').replace('ano', '').trim();
+          const cleanItemAno = item.ano.toLowerCase().replace('º', '').replace('ano', '').trim();
+          
+          return cleanItemAno.includes(cleanGrade) || cleanGrade.includes(cleanItemAno);
+        })
       );
     } else {
       setSearchResults([]);
     }
-  }, [searchTerm, searchType]);
+  }, [searchTerm, searchType, allowAdvancedYears, studentInfo]);
 
   const handleUpdateDiscipline = (index: number, updates: Partial<DisciplineProfile>) => {
     setDisciplines(prev => prev.map((d, i) => i === index ? { ...d, ...updates } : d));
@@ -406,6 +431,32 @@ export default function PEIBuilder() {
                       </button>
                     </div>
 
+                    {/* Toggle Aceleração (Só habilitado se houver suplementar) */}
+                    <div className="flex items-center justify-between bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+                          hasSuplementar ? "bg-amber-100 text-amber-600" : "bg-slate-200 text-slate-400"
+                        )}>
+                          <Sparkles size={20} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-black text-slate-700 uppercase tracking-tight">Busca Avançada (Aceleração)</p>
+                          <p className="text-[10px] text-slate-500 font-medium">Permitir seleção de anos letivos superiores</p>
+                        </div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          className="sr-only peer"
+                          checked={allowAdvancedYears}
+                          disabled={!hasSuplementar}
+                          onChange={(e) => setAllowAdvancedYears(e.target.checked)}
+                        />
+                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary disabled:opacity-50"></div>
+                      </label>
+                    </div>
+
                     <div className="relative">
                        <div className="flex gap-3">
                          <div className="relative flex-1">
@@ -442,6 +493,14 @@ export default function PEIBuilder() {
                                       <>
                                         <span className="font-black text-primary text-xs uppercase tracking-widest">{item.codigo}</span>
                                         <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{item.etapa}</span>
+                                        <span className={cn(
+                                          "text-xs px-2 py-1 rounded-full font-bold",
+                                          allowAdvancedYears && studentInfo?.grade && !item.ano.toLowerCase().includes(studentInfo.grade.toLowerCase().split(' ')[0])
+                                            ? "bg-red-100 text-red-700 border border-red-200 animate-pulse" 
+                                            : "bg-gray-100 text-gray-700"
+                                        )}>
+                                          {item.ano}
+                                        </span>
                                         <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">{item.disciplina}</span>
                                       </>
                                     )}
@@ -470,6 +529,14 @@ export default function PEIBuilder() {
                                   <div className="flex flex-wrap items-center gap-2 mb-1">
                                     <span className="font-black text-primary text-xs mr-2">{item.codigo}</span>
                                     <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{item.etapa}</span>
+                                    <span className={cn(
+                                      "text-xs px-2 py-1 rounded-full font-bold",
+                                      studentInfo?.grade && !item.ano.toLowerCase().includes(studentInfo.grade.toLowerCase().split(' ')[0])
+                                        ? "bg-red-100 text-red-700 border border-red-200" 
+                                        : "bg-gray-100 text-gray-700"
+                                    )}>
+                                      {item.ano}
+                                    </span>
                                     <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">{item.disciplina}</span>
                                   </div>
                                   <p className="text-sm text-slate-600 font-medium line-clamp-2 transition-all group-hover:line-clamp-none">{item.descricao}</p>
