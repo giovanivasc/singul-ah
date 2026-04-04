@@ -12,7 +12,7 @@ import { StudentPageHeader } from '../components/StudentPageHeader';
 import { cn } from '../lib/utils';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AxisItem } from '../types/database';
-import { BnccSkill, bnccData } from '../data/bncc';
+import { BnccSkill, unifiedBnccData } from '../data/bnccData';
 import { supabase } from '../lib/supabase';
 
 type DisciplineProfile = { 
@@ -54,6 +54,7 @@ export default function PEIBuilder() {
   // Etapa 3 state
   const [planningContent, setPlanningContent] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchType, setSearchType] = useState<'habilidade' | 'competencia'>('habilidade');
   const [searchResults, setSearchResults] = useState<BnccSkill[]>([]);
   const [selectedSkills, setSelectedSkills] = useState<BnccSkill[]>([]);
   const suplementarDisciplines = disciplines.filter(d => d.status === 'suplementar');
@@ -131,17 +132,19 @@ export default function PEIBuilder() {
 
   // Busca BNCC
   useEffect(() => {
-    if (searchTerm.length > 1) {
+    if (searchTerm.length >= 3) {
       setSearchResults(
-        bnccData.filter(item => 
-          item.codigo.toLowerCase().includes(searchTerm.toLowerCase()) || 
-          item.descricao.toLowerCase().includes(searchTerm.toLowerCase())
+        unifiedBnccData.filter(item => 
+          item.tipo === searchType && (
+            item.codigo.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            item.descricao.toLowerCase().includes(searchTerm.toLowerCase())
+          )
         )
       );
     } else {
       setSearchResults([]);
     }
-  }, [searchTerm]);
+  }, [searchTerm, searchType]);
 
   const handleUpdateDiscipline = (index: number, updates: Partial<DisciplineProfile>) => {
     setDisciplines(prev => prev.map((d, i) => i === index ? { ...d, ...updates } : d));
@@ -373,12 +376,40 @@ export default function PEIBuilder() {
                   />
                 </div>
 
-                <div className="space-y-4">
-                  <label className="text-[10px] uppercase font-black tracking-widest text-slate-400 pl-2">Integração BNCC</label>
-                  <div className="relative">
-                     <div className="flex gap-3">
-                       <div className="relative flex-1">
-                          <Search className="absolute left-4 top-3 text-slate-400" size={18} />
+                <div className="space-y-6">
+                  <div className="flex flex-col gap-4">
+                    <label className="text-[10px] uppercase font-black tracking-widest text-slate-400 pl-2">Integração BNCC</label>
+                    
+                    {/* Seletor de Tipo de Busca */}
+                    <div className="flex p-1 bg-slate-100 rounded-xl w-fit">
+                      <button 
+                        onClick={() => setSearchType('habilidade')}
+                        className={cn(
+                          "px-4 py-2 rounded-lg text-xs font-black transition-all",
+                          searchType === 'habilidade' 
+                            ? "bg-white text-primary shadow-sm" 
+                            : "text-slate-500 hover:text-slate-700"
+                        )}
+                      >
+                        HABILIDADES
+                      </button>
+                      <button 
+                        onClick={() => setSearchType('competencia')}
+                        className={cn(
+                          "px-4 py-2 rounded-lg text-xs font-black transition-all",
+                          searchType === 'competencia' 
+                            ? "bg-white text-primary shadow-sm" 
+                            : "text-slate-500 hover:text-slate-700"
+                        )}
+                      >
+                        COMPETÊNCIAS
+                      </button>
+                    </div>
+
+                    <div className="relative">
+                       <div className="flex gap-3">
+                         <div className="relative flex-1">
+                            <Search className="absolute left-4 top-3 text-slate-400" size={18} />
                           <input 
                             type="text"
                             value={searchTerm}
@@ -404,8 +435,23 @@ export default function PEIBuilder() {
                                }}
                                className="w-full text-left px-4 py-3 hover:bg-primary/5 transition-colors border-b border-slate-50 last:border-0 flex flex-col gap-1"
                              >
-                                <span className="font-black text-primary text-xs uppercase tracking-widest">{item.codigo}</span>
-                                <span className="text-sm text-slate-600 font-medium">{item.descricao}</span>
+                                <div className="flex flex-wrap items-center gap-2 mb-1">
+                                  {item.tipo === 'competencia' ? (
+                                    <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-2 py-0.5 rounded uppercase tracking-tighter">Competência</span>
+                                  ) : (
+                                    <>
+                                      <span className="font-black text-primary text-xs uppercase tracking-widest">{item.codigo}</span>
+                                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{item.etapa}</span>
+                                      <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">{item.disciplina}</span>
+                                    </>
+                                  )}
+                                </div>
+                                <span className={cn(
+                                  "text-sm font-medium",
+                                  item.tipo === 'competencia' ? "text-slate-800 leading-relaxed" : "text-slate-600"
+                                )}>
+                                  {item.descricao}
+                                </span>
                              </button>
                            ))}
                         </div>
@@ -413,17 +459,45 @@ export default function PEIBuilder() {
                   </div>
 
                   {selectedSkills.length > 0 && (
-                    <div className="flex flex-col gap-2 mt-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Habilidades Selecionadas</p>
-                      {selectedSkills.map((item) => (
-                        <div key={item.codigo} className="bg-white border border-slate-200 p-3 rounded-xl flex items-center justify-between gap-4 shadow-sm group">
-                          <div>
-                            <span className="font-black text-primary text-xs mr-2">{item.codigo}</span>
-                            <span className="text-sm text-slate-600 font-medium">{item.descricao}</span>
-                          </div>
-                          <button onClick={() => setSelectedSkills(selectedSkills.filter(i => i.codigo !== item.codigo))} className="text-slate-300 hover:text-red-500 rounded-md p-1 transition-all group-hover:bg-red-50"><X size={18} /></button>
+                    <div className="space-y-6 mt-4">
+                      {/* Habilidades Selecionadas */}
+                      {selectedSkills.some(s => s.tipo === 'habilidade') && (
+                        <div className="flex flex-col gap-2 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                          <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Habilidades Selecionadas</p>
+                          {selectedSkills.filter(s => s.tipo === 'habilidade').map((item) => (
+                            <div key={item.codigo} className="bg-white border border-slate-200 p-3 rounded-xl flex items-center justify-between gap-4 shadow-sm group">
+                              <div className="flex-1">
+                                <div className="flex flex-wrap items-center gap-2 mb-1">
+                                  <span className="font-black text-primary text-xs mr-2">{item.codigo}</span>
+                                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{item.etapa}</span>
+                                  <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">{item.disciplina}</span>
+                                </div>
+                                <p className="text-sm text-slate-600 font-medium line-clamp-2 transition-all group-hover:line-clamp-none">{item.descricao}</p>
+                              </div>
+                              <button onClick={() => setSelectedSkills(selectedSkills.filter(i => i.codigo !== item.codigo))} className="text-slate-300 hover:text-red-500 rounded-md p-1 transition-all group-hover:bg-red-50 shrink-0"><X size={18} /></button>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
+
+                      {/* Competências Selecionadas */}
+                      {selectedSkills.some(s => s.tipo === 'competencia') && (
+                        <div className="flex flex-col gap-2 bg-amber-50/30 p-4 rounded-2xl border border-amber-100">
+                          <p className="text-[10px] font-black uppercase text-amber-500/70 tracking-widest mb-1">Competências Gerais / Específicas</p>
+                          {selectedSkills.filter(s => s.tipo === 'competencia').map((item) => (
+                            <div key={item.codigo} className="bg-white border border-amber-100 p-3 rounded-xl flex items-center justify-between gap-4 shadow-sm group">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-[9px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded uppercase">{item.etapa}</span>
+                                  <span className="text-[9px] font-black text-amber-600/50 uppercase tracking-widest">{item.disciplina}</span>
+                                </div>
+                                <p className="text-sm text-slate-800 font-bold leading-relaxed line-clamp-2 transition-all group-hover:line-clamp-none">{item.descricao}</p>
+                              </div>
+                              <button onClick={() => setSelectedSkills(selectedSkills.filter(i => i.codigo !== item.codigo))} className="text-slate-300 hover:text-red-500 rounded-md p-1 transition-all group-hover:bg-red-50 shrink-0"><X size={18} /></button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
