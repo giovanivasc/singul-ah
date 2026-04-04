@@ -136,7 +136,7 @@ export default function PEIBuilder() {
     try {
       if (searchTerm && searchTerm.length >= 3) {
         const studentGrade = studentInfo?.grade || '';
-        const searchLower = searchTerm.toLowerCase();
+        const searchLower = String(searchTerm).toLowerCase();
 
         setSearchResults(
           unifiedBnccData.filter(item => {
@@ -145,9 +145,9 @@ export default function PEIBuilder() {
             // Filtro por tipo
             if (item.tipo !== searchType) return false;
 
-            // Filtro por termo (código ou descrição) - Defensivo
-            const cod = (item.codigo || '').toLowerCase();
-            const desc = (item.descricao || '').toLowerCase();
+            // Filtro por termo (código ou descrição) - Defensivo GERAL
+            const cod = item.codigo ? String(item.codigo).toLowerCase() : '';
+            const desc = item.descricao ? String(item.descricao).toLowerCase() : '';
             const matchesTerm = cod.includes(searchLower) || desc.includes(searchLower);
             
             if (!matchesTerm) return false;
@@ -156,31 +156,33 @@ export default function PEIBuilder() {
             if (allowAdvancedYears) return true;
 
             // Competências gerais e itens de "Todas" aparecem sempre
-            if (item.ano === 'Todas' || item.etapa === 'Todas') return true;
+            const itemAno = item.ano ? String(item.ano).toLowerCase() : '';
+            const itemEtapa = item.etapa ? String(item.etapa).toLowerCase() : '';
+            
+            if (itemAno.includes('todas') || itemEtapa.includes('todas')) return true;
 
             // Se não tiver info do aluno, não bloqueia a busca
             if (!studentGrade) return true;
 
             // Filtro de ano - Afrouxamento (Extraímos apenas o número da série, ex: de "5º Ano" pegamos "5")
-            const studentYearMatch = studentGrade.match(/\d+/);
+            const safeStudentGrade = String(studentGrade).toLowerCase();
+            const studentYearMatch = safeStudentGrade.match(/\d+/);
             const studentYearNum = studentYearMatch ? studentYearMatch[0] : '';
-            const itemAnoLower = (item.ano || '').toLowerCase();
-            const itemEtapaLower = (item.etapa || '').toLowerCase();
             
             // Regras de correspondência:
             // 1. Número da série está presente na descrição do ano do item
-            const matchesYearNum = studentYearNum && itemAnoLower.includes(studentYearNum);
+            const matchesYearNum = studentYearNum && itemAno.includes(studentYearNum);
             
             // 2. O item é de um ciclo integral (Fundamental ou Médio)
-            const isCycleGeneral = itemAnoLower.includes('fundamental') || 
-                                   itemAnoLower.includes('ao 9') || 
-                                   itemAnoLower.includes('médio') || 
-                                   itemAnoLower.includes('1, 2, 3') ||
-                                   itemEtapaLower === 'ensino fundamental' ||
-                                   itemEtapaLower === 'ensino médio';
+            const isCycleGeneral = itemAno.includes('fundamental') || 
+                                   itemAno.includes('ao 9') || 
+                                   itemAno.includes('médio') || 
+                                   itemAno.includes('1, 2, 3') ||
+                                   itemEtapa.includes('ensino fundamental') ||
+                                   itemEtapa.includes('ensino médio');
 
             // 3. Casos especiais para Infantil
-            const isInfantilMatch = itemEtapaLower.includes('infantil') && studentGrade.toLowerCase().includes('infantil');
+            const isInfantilMatch = itemEtapa.includes('infantil') && safeStudentGrade.includes('infantil');
 
             return matchesYearNum || isCycleGeneral || isInfantilMatch;
           })
