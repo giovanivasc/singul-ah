@@ -133,40 +133,47 @@ export default function PEIBuilder() {
 
   // Busca BNCC
   useEffect(() => {
-    if (searchTerm.length >= 3) {
-      const studentGrade = studentInfo?.grade || '';
-      
-      setSearchResults(
-        unifiedBnccData.filter(item => {
-          // Filtro por tipo
-          if (item.tipo !== searchType) return false;
+    try {
+      if (searchTerm && searchTerm.length >= 3) {
+        const studentGrade = studentInfo?.grade || '';
+        const searchLower = searchTerm.toLowerCase();
 
-          // Filtro por termo (código ou descrição)
-          const matchesTerm = (
-            item.codigo.toLowerCase().includes(searchTerm.toLowerCase()) || 
-            item.descricao.toLowerCase().includes(searchTerm.toLowerCase())
-          );
-          if (!matchesTerm) return false;
+        setSearchResults(
+          unifiedBnccData.filter(item => {
+            if (!item) return false;
 
-          // Se aceleração estiver ativa, não filtra por ano
-          if (allowAdvancedYears) return true;
+            // Filtro por tipo
+            if (item.tipo !== searchType) return false;
 
-          // Competências gerais e itens de "Todas" aparecem sempre
-          if (item.ano === 'Todas' || item.etapa === 'Todas') return true;
+            // Filtro por termo (código ou descrição) - Defensivo
+            const cod = (item.codigo || '').toLowerCase();
+            const desc = (item.descricao || '').toLowerCase();
+            const matchesTerm = cod.includes(searchLower) || desc.includes(searchLower);
+            
+            if (!matchesTerm) return false;
 
-          // Se não tiver info do aluno, mostra tudo por segurança, 
-          // caso contrário filtra pelo ano escolar do aluno
-          if (!studentGrade) return true;
+            // Se aceleração estiver ativa, não filtra por ano
+            if (allowAdvancedYears) return true;
 
-          // Verifica se o ano do item bate ou está contido na série do aluno
-          // (ex: aluno "5º Ano" encontra item "5º ano")
-          const cleanGrade = studentGrade.toLowerCase().replace('º', '').replace('ano', '').trim();
-          const cleanItemAno = item.ano.toLowerCase().replace('º', '').replace('ano', '').trim();
-          
-          return cleanItemAno.includes(cleanGrade) || cleanGrade.includes(cleanItemAno);
-        })
-      );
-    } else {
+            // Competências gerais e itens de "Todas" aparecem sempre
+            if (item.ano === 'Todas' || item.etapa === 'Todas') return true;
+
+            // Se não tiver info do aluno, mostra tudo por segurança, 
+            // caso contrário filtra pelo ano escolar do aluno
+            if (!studentGrade) return true;
+
+            // Filtro de ano - Defensivo
+            const cleanGrade = studentGrade.toLowerCase().replace('º', '').replace('ano', '').trim();
+            const cleanItemAno = (item.ano || '').toLowerCase().replace('º', '').replace('ano', '').trim();
+            
+            return cleanItemAno.includes(cleanGrade) || cleanGrade.includes(cleanItemAno);
+          })
+        );
+      } else {
+        setSearchResults([]);
+      }
+    } catch (error) {
+      console.error("Erro crítico na busca BNCC:", error);
       setSearchResults([]);
     }
   }, [searchTerm, searchType, allowAdvancedYears, studentInfo]);
