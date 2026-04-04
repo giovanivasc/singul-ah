@@ -158,15 +158,31 @@ export default function PEIBuilder() {
             // Competências gerais e itens de "Todas" aparecem sempre
             if (item.ano === 'Todas' || item.etapa === 'Todas') return true;
 
-            // Se não tiver info do aluno, mostra tudo por segurança, 
-            // caso contrário filtra pelo ano escolar do aluno
+            // Se não tiver info do aluno, não bloqueia a busca
             if (!studentGrade) return true;
 
-            // Filtro de ano - Defensivo
-            const cleanGrade = studentGrade.toLowerCase().replace('º', '').replace('ano', '').trim();
-            const cleanItemAno = (item.ano || '').toLowerCase().replace('º', '').replace('ano', '').trim();
+            // Filtro de ano - Afrouxamento (Extraímos apenas o número da série, ex: de "5º Ano" pegamos "5")
+            const studentYearMatch = studentGrade.match(/\d+/);
+            const studentYearNum = studentYearMatch ? studentYearMatch[0] : '';
+            const itemAnoLower = (item.ano || '').toLowerCase();
+            const itemEtapaLower = (item.etapa || '').toLowerCase();
             
-            return cleanItemAno.includes(cleanGrade) || cleanGrade.includes(cleanItemAno);
+            // Regras de correspondência:
+            // 1. Número da série está presente na descrição do ano do item
+            const matchesYearNum = studentYearNum && itemAnoLower.includes(studentYearNum);
+            
+            // 2. O item é de um ciclo integral (Fundamental ou Médio)
+            const isCycleGeneral = itemAnoLower.includes('fundamental') || 
+                                   itemAnoLower.includes('ao 9') || 
+                                   itemAnoLower.includes('médio') || 
+                                   itemAnoLower.includes('1, 2, 3') ||
+                                   itemEtapaLower === 'ensino fundamental' ||
+                                   itemEtapaLower === 'ensino médio';
+
+            // 3. Casos especiais para Infantil
+            const isInfantilMatch = itemEtapaLower.includes('infantil') && studentGrade.toLowerCase().includes('infantil');
+
+            return matchesYearNum || isCycleGeneral || isInfantilMatch;
           })
         );
       } else {

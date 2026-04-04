@@ -22,13 +22,17 @@ function normalizeInfantil(): BnccSkill[] {
     for (const faixa of (campo.faixas_etarias || [])) {
       const ano = faixa.nome_faixa;
       for (const obj of (faixa.objetivos || [])) {
-        if (obj.codigo && obj.descricao) {
+        const descricao = obj.descricao || obj.habilidade || obj.texto || obj.name || 'Sem descrição';
+        const codigo = obj.codigo || obj.codigo_habilidade || obj.id || '';
+        const rawAno = obj.ano || obj.faixa_etaria || obj.etapa || ano || '';
+        
+        if (descricao) {
           skills.push({
-            codigo: obj.codigo,
+            codigo,
             disciplina: disciplina, // Usamos o "campo de experiência" como disciplina
             etapa,
-            ano,
-            descricao: obj.descricao,
+            ano: rawAno,
+            descricao,
             tipo: 'habilidade',
           });
         }
@@ -107,13 +111,17 @@ function normalizeMedio(): BnccSkill[] {
     for (const anoObj of (area.ano || [])) {
       const ano = Array.isArray(anoObj.nome_ano) ? anoObj.nome_ano.join(', ') : anoObj.nome_ano;
       for (const hab of (anoObj.codigo_habilidade || [])) {
-        if (hab.nome_codigo && hab.nome_habilidade) {
+        const descricao = hab.nome_habilidade || hab.descricao || hab.habilidade || hab.texto || hab.name || 'Sem descrição';
+        const codigo = hab.nome_codigo || hab.codigo || hab.codigo_habilidade || hab.id || '';
+        const rawAno = hab.ano || hab.faixa_etaria || hab.etapa || ano || '';
+
+        if (descricao) {
           skills.push({
-            codigo: hab.nome_codigo,
+            codigo,
             disciplina,
             etapa,
-            ano,
-            descricao: hab.nome_habilidade,
+            ano: rawAno,
+            descricao,
             tipo: 'habilidade',
           });
         }
@@ -190,3 +198,7 @@ export const unifiedBnccData: BnccSkill[] = [
   ...normalizeMedio(),
   ...normalizeCompetencias(),
 ];
+
+if (typeof window !== 'undefined') {
+  console.log("Amostra do BD unificado BNCC:", unifiedBnccData.slice(0, 3));
+}
