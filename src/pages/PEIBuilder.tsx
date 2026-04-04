@@ -21,6 +21,21 @@ type DisciplineProfile = {
   justification: string; 
 };
 
+const getAllowedBnccCodes = (gradeNum: string): string[] => {
+  const map: Record<string, string[]> = {
+    '1': ['01', '15', '00'], // Incluímos '00' caso haja algo genérico
+    '2': ['02', '15'],
+    '3': ['03', '15', '35'],
+    '4': ['04', '15', '35'],
+    '5': ['05', '15', '35'],
+    '6': ['06', '67', '69'],
+    '7': ['07', '67', '69'],
+    '8': ['08', '89', '69'],
+    '9': ['09', '89', '69'],
+  };
+  return map[gradeNum] || [];
+};
+
 export default function PEIBuilder() {
   const navigate = useNavigate();
   const { studentId } = useParams();
@@ -138,6 +153,13 @@ export default function PEIBuilder() {
         const studentGrade = studentInfo?.grade || '';
         const searchLower = String(searchTerm).toLowerCase();
 
+        // 1. Extrair número do ano do aluno (ex: "5")
+        const gradeMatch = studentGrade?.match(/\d+/);
+        const gradeNum = gradeMatch ? gradeMatch[0] : null;
+        
+        // 2. Obter códigos permitidos para o ciclo
+        const allowedCodes = gradeNum ? getAllowedBnccCodes(gradeNum) : [];
+
         setSearchResults(
           unifiedBnccData.filter(item => {
             if (!item) return false;
@@ -146,15 +168,29 @@ export default function PEIBuilder() {
             if (item.tipo !== searchType) return false;
 
             // Filtro por termo (código ou descrição) - Defensivo GERAL
-            const cod = item.codigo ? String(item.codigo).toLowerCase() : '';
+            const cod = item.codigo ? String(item.codigo).toLowerCase().trim() : '';
             const desc = item.descricao ? String(item.descricao).toLowerCase() : '';
             const matchesTerm = cod.includes(searchLower) || desc.includes(searchLower);
             
             if (!matchesTerm) return false;
 
-            // Se aceleração estiver ativa, não filtra por ano
+            // Se for competência, ignora as travas de código do EF
+            if (item.tipo === 'competencia') return true;
+
+            // Se aceleração estiver ativa, não filtra por ano/ciclo
             if (allowAdvancedYears) return true;
 
+            // Filtro ESTRITO por Código BNCC (Ensino Fundamental)
+            // Códigos EF: EFxx... onde xx (posições 2 e 3) é o ano
+            if (cod.startsWith('ef')) {
+              const codeGrade = cod.substring(2, 4);
+              // Só permite se o código da habilidade estiver no ciclo do aluno
+              if (allowedCodes.length > 0 && !allowedCodes.includes(codeGrade)) {
+                return false;
+              }
+            }
+
+            // Fallback para itens sem código padrão EF (Infantil, Médio, etc.)
             // Competências gerais e itens de "Todas" aparecem sempre
             const itemAno = item.ano ? String(item.ano).toLowerCase() : '';
             const itemEtapa = item.etapa ? String(item.etapa).toLowerCase() : '';
@@ -164,10 +200,9 @@ export default function PEIBuilder() {
             // Se não tiver info do aluno, não bloqueia a busca
             if (!studentGrade) return true;
 
-            // Filtro de ano - Afrouxamento (Extraímos apenas o número da série, ex: de "5º Ano" pegamos "5")
+            // Filtro de ano residual (para Infantil/Médio onde não usamos o código numérico)
             const safeStudentGrade = String(studentGrade).toLowerCase();
-            const studentYearMatch = safeStudentGrade.match(/\d+/);
-            const studentYearNum = studentYearMatch ? studentYearMatch[0] : '';
+            const studentYearNum = gradeNum || '';
             
             // Regras de correspondência:
             // 1. Número da série está presente na descrição do ano do item
