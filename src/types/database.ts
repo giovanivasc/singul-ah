@@ -7,6 +7,8 @@ export interface Student {
   date_of_birth: string; // formato YYYY-MM-DD
   school: string;
   grade: string;
+  gender?: string;
+  exceptionalities?: string[];
   guardian_name?: string;
   phone?: string;
   class_name?: string;

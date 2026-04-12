@@ -55,6 +55,14 @@ export default function PEIBuilder() {
     { id: 5, title: 'Metas e Apoio', icon: Target },
   ];
 
+  // Etapa 1 state
+  const [academicYear, setAcademicYear] = useState('');
+  const [alignmentMeetingDate, setAlignmentMeetingDate] = useState('');
+  const [applicationStartDate, setApplicationStartDate] = useState('');
+  const [evaluationFormat, setEvaluationFormat] = useState('Notas');
+  const [validityType, setValidityType] = useState('Bimestral');
+  const [validityPeriod, setValidityPeriod] = useState('1º');
+
   // Etapa 2 state
   const [disciplines, setDisciplines] = useState<DisciplineProfile[]>([
     { name: 'Língua Portuguesa', status: 'padrao', justification: '' },
@@ -113,6 +121,12 @@ export default function PEIBuilder() {
     if (savedPEI) {
       try {
          const parsed = JSON.parse(savedPEI);
+         if (parsed.academicYear) setAcademicYear(parsed.academicYear);
+         if (parsed.alignmentMeetingDate) setAlignmentMeetingDate(parsed.alignmentMeetingDate);
+         if (parsed.applicationStartDate) setApplicationStartDate(parsed.applicationStartDate);
+         if (parsed.evaluationFormat) setEvaluationFormat(parsed.evaluationFormat);
+         if (parsed.validityType) setValidityType(parsed.validityType);
+         if (parsed.validityPeriod) setValidityPeriod(parsed.validityPeriod);
          if (parsed.disciplines) setDisciplines(parsed.disciplines);
          if (parsed.planningContent) setPlanningContent(parsed.planningContent);
          if (parsed.selectedSkills) setSelectedSkills(parsed.selectedSkills);
@@ -237,6 +251,12 @@ export default function PEIBuilder() {
 
   const handleSaveData = () => {
     const dataToSave = {
+      academicYear,
+      alignmentMeetingDate,
+      applicationStartDate,
+      evaluationFormat,
+      validityType,
+      validityPeriod,
       disciplines,
       planningContent,
       selectedSkills,
@@ -261,6 +281,18 @@ export default function PEIBuilder() {
 
   const nextStep = () => setActiveStep(prev => prev < 5 ? (prev + 1) as any : prev);
   const prevStep = () => setActiveStep(prev => prev > 1 ? (prev - 1) as any : prev);
+
+  const calculateAge = (dob: string | undefined) => {
+    if (!dob) return 0;
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -326,27 +358,128 @@ export default function PEIBuilder() {
                    <ShieldCheck className="text-primary" /> Identificação e Caso
                 </h2>
                 
-                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 flex flex-col md:flex-row gap-6 justify-between items-center">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center overflow-hidden border-2 border-white shadow-sm shrink-0">
-                       {studentInfo?.avatar_url ? (
-                          <img src={studentInfo.avatar_url} alt="Profile" className="w-full h-full object-cover" />
-                       ) : (
-                          <UserIcon className="text-primary" size={32} />
-                       )}
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Card 1: Dados do Estudante */}
+                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 space-y-6">
+                    <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight flex items-center justify-between">
+                      Dados do Estudante
+                      <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest hidden sm:inline-block">Somente Leitura</span>
+                    </h3>
+                    <div className="flex items-center gap-4 border-b border-slate-200 pb-4">
+                      <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center overflow-hidden border-2 border-white shadow-sm shrink-0">
+                         {studentInfo?.avatar_url ? (
+                            <img src={studentInfo.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                         ) : (
+                            <UserIcon className="text-primary" size={32} />
+                         )}
+                      </div>
+                      <div>
+                        <h4 className="text-xl font-black text-slate-800">{studentInfo?.full_name || 'Carregando...'}</h4>
+                        <p className="text-sm font-medium text-slate-500">{calculateAge(studentInfo?.date_of_birth)} anos • {studentInfo?.gender || 'Sexo não informado'}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-xl font-black text-slate-800">{studentInfo?.full_name || 'Carregando...'}</h3>
-                      <p className="text-sm font-medium text-slate-500">{studentInfo?.school || 'Sem escola'} • {studentInfo?.grade || 'Sem etapa'}</p>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-[10px] font-black tracking-widest uppercase text-slate-400 mb-1">Escola / Etapa</p>
+                        <p className="text-sm font-bold text-slate-700">{studentInfo?.school || 'Sem escola'}<br/>{studentInfo?.grade || 'Sem etapa'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black tracking-widest uppercase text-slate-400 mb-1">Turno</p>
+                        <p className="text-sm font-bold text-slate-700">{studentInfo?.shift || 'N/D'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black tracking-widest uppercase text-slate-400 mb-1">Data de Nasc.</p>
+                        <p className="text-sm font-bold text-slate-700">{studentInfo?.date_of_birth ? new Date(studentInfo.date_of_birth).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'N/D'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black tracking-widest uppercase text-slate-400 mb-1">Equipe</p>
+                        <p className="text-sm font-bold text-slate-700 truncate">Reg: {studentInfo?.regent_teacher || 'N/D'}<br/>AEE: {studentInfo?.aee_teacher || 'N/D'}</p>
+                      </div>
                     </div>
+
+                    {studentInfo?.exceptionalities && studentInfo.exceptionalities.length > 0 && (
+                      <div className="pt-2 border-t border-slate-200">
+                        <p className="text-[10px] font-black tracking-widest uppercase text-slate-400 mb-2">Excepcionalidades</p>
+                        <div className="flex flex-wrap gap-2">
+                          {studentInfo.exceptionalities.map((exc: string) => (
+                            <span key={exc} className="bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md">
+                              {exc}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-black tracking-widest uppercase text-slate-400 mb-1">Equipe Responsável</p>
-                    <p className="text-sm font-bold text-slate-700">
-                      Regente: <span className="font-medium text-slate-500">{studentInfo?.regent_teacher || 'N/D'}</span><br className="md:hidden" />
-                      <span className="hidden md:inline"> • </span>
-                      AEE: <span className="font-medium text-slate-500">{studentInfo?.aee_teacher || 'N/D'}</span>
-                    </p>
+
+                  {/* Card 2: Parâmetros de Execução do PEI */}
+                  <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-6 shadow-sm">
+                    <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Parâmetros do PEI</h3>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black tracking-widest uppercase text-slate-400">Ano Letivo</label>
+                        <input type="text" value={academicYear} onChange={e => setAcademicYear(e.target.value)} placeholder="Ex: 2026" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black tracking-widest uppercase text-slate-400">Reunião Alinhamento</label>
+                        <input type="date" value={alignmentMeetingDate} onChange={e => setAlignmentMeetingDate(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                      </div>
+                      <div className="space-y-1 col-span-2">
+                        <label className="text-[10px] font-black tracking-widest uppercase text-slate-400">Início da Aplicação do PEI</label>
+                        <input type="date" value={applicationStartDate} onChange={e => setApplicationStartDate(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black tracking-widest uppercase text-slate-400">Formato de Avaliação</label>
+                        <div className="flex gap-4">
+                          {['Notas', 'Relatório'].map(format => (
+                            <label key={format} className="flex items-center gap-2 cursor-pointer">
+                              <input type="radio" name="evalFormat" value={format} checked={evaluationFormat === format} onChange={e => setEvaluationFormat(e.target.value)} className="text-primary focus:ring-primary/20" />
+                              <span className="text-sm font-medium text-slate-700">{format}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black tracking-widest uppercase text-slate-400">Vigência</label>
+                          <div className="flex flex-col gap-2">
+                            {['Semestral', 'Bimestral'].map(type => (
+                              <label key={type} className="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="valType" value={type} checked={validityType === type} onChange={e => {
+                                  setValidityType(e.target.value);
+                                  setValidityPeriod(e.target.value === 'Semestral' ? '1º Semestre' : '1º Bimestre');
+                                }} className="text-primary focus:ring-primary/20" />
+                                <span className="text-sm font-medium text-slate-700">{type}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black tracking-widest uppercase text-slate-400">Período de Execução</label>
+                          <select aria-label="Período de Execução" value={validityPeriod} onChange={e => setValidityPeriod(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none">
+                            {validityType === 'Semestral' ? (
+                              <>
+                                <option value="1º Semestre">1º Semestre</option>
+                                <option value="2º Semestre">2º Semestre</option>
+                              </>
+                            ) : (
+                              <>
+                                <option value="1º Bimestre">1º Bimestre</option>
+                                <option value="2º Bimestre">2º Bimestre</option>
+                                <option value="3º Bimestre">3º Bimestre</option>
+                                <option value="4º Bimestre">4º Bimestre</option>
+                              </>
+                            )}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 

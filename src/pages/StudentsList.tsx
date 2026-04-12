@@ -21,6 +21,7 @@ export default function StudentsList() {
   const [formData, setFormData] = useState({
     full_name: '',
     date_of_birth: '',
+    gender: '',
     guardian_name: '',
     phone: '',
     school: 'SEMED Castanhal',
@@ -29,8 +30,17 @@ export default function StudentsList() {
     shift: '',
     regent_teacher: '',
     aee_teacher: '',
-    avatar_url: ''
+    avatar_url: '',
+    exceptionalities: [] as string[]
   });
+
+  const exceptionalityGroups = {
+    "Transtornos de Aprendizagem": ["Dislexia", "Discalculia", "Disgrafia", "Disortografia", "Outro Transtorno de Aprendizagem"],
+    "Transtornos do Neurodesenvolvimento": ["TEA", "TDAH", "Deficiência Intelectual", "TOD", "Outro Transtorno Neurodesenvolvimento"],
+    "Transtornos Emocionais": ["Ansiedade", "Depressão", "Baixa Regulação Emocional", "Outro Transtorno Emocional"],
+    "Deficiências Sensoriais/Físicas": ["Deficiência Visual", "Deficiência Auditiva", "Baixa Visão", "Surdez", "Deficiência Física", "Mobilidade Reduzida"],
+    "Altas Habilidades/Superdotação": ["Altas Habilidades / Superdotação", "Dupla Excepcionalidade"]
+  };
 
   const fetchStudents = async () => {
     try {
@@ -78,6 +88,8 @@ export default function StudentsList() {
          date_of_birth: formData.date_of_birth,
          school: formData.school,
          grade: formData.grade,
+         gender: formData.gender,
+         exceptionalities: formData.exceptionalities,
          teacher_id: user.id,
          status: 'coleta_pendente'
       };
@@ -96,9 +108,9 @@ export default function StudentsList() {
 
       setIsModalOpen(false);
       setFormData({
-        full_name: '', date_of_birth: '', guardian_name: '', phone: '',
+        full_name: '', date_of_birth: '', gender: '', guardian_name: '', phone: '',
         school: 'SEMED Castanhal', grade: '', class_name: '', shift: '',
-        regent_teacher: '', aee_teacher: '', avatar_url: ''
+        regent_teacher: '', aee_teacher: '', avatar_url: '', exceptionalities: []
       });
       fetchStudents();
     } catch (err: any) {
@@ -244,6 +256,19 @@ export default function StudentsList() {
                             />
                           </div>
                           <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Sexo</label>
+                            <select 
+                              aria-label="Sexo"
+                              required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 font-medium appearance-none"
+                              value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})}
+                            >
+                              <option value="">Selecionar...</option>
+                              <option value="Masculino">Masculino</option>
+                              <option value="Feminino">Feminino</option>
+                              <option value="Outro">Outro</option>
+                            </select>
+                          </div>
+                          <div className="space-y-1">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Nome do Responsável</label>
                             <input 
                               type="text" placeholder="Pai, mãe ou tutor legal"
@@ -332,6 +357,46 @@ export default function StudentsList() {
                               value={formData.aee_teacher} onChange={e => setFormData({...formData, aee_teacher: e.target.value})}
                             />
                           </div>
+                       </div>
+                    </div>
+
+                    {/* EXCEPCIONALIDADES SECTION */}
+                    <div className="space-y-4">
+                       <h4 className="text-sm font-black uppercase text-primary tracking-widest flex items-center gap-2">
+                         <span className="bg-primary/20 w-6 h-6 rounded flex items-center justify-center text-[10px]">3</span> Excepcionalidades (Condições e Transtornos)
+                       </h4>
+                       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 space-y-6">
+                          {Object.entries(exceptionalityGroups).map(([group, options]) => (
+                            <div key={group} className="space-y-3">
+                              <h5 className="text-xs font-black text-slate-700 uppercase tracking-widest border-b border-slate-200 pb-2">{group}</h5>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                                {options.map(option => (
+                                  <label key={option} className="flex items-start gap-2 cursor-pointer group/label">
+                                    <div className="relative flex items-start mt-0.5">
+                                      <input 
+                                        type="checkbox" 
+                                        className="peer sr-only"
+                                        checked={formData.exceptionalities.includes(option)}
+                                        onChange={(e) => {
+                                          if (e.target.checked) {
+                                            setFormData(prev => ({...prev, exceptionalities: [...prev.exceptionalities, option]}));
+                                          } else {
+                                            setFormData(prev => ({...prev, exceptionalities: prev.exceptionalities.filter(o => o !== option)}));
+                                          }
+                                        }}
+                                      />
+                                      <div className="w-5 h-5 rounded border-2 border-slate-300 peer-checked:bg-primary peer-checked:border-primary flex items-center justify-center transition-all">
+                                        <svg className="w-3 h-3 text-white scale-0 peer-checked:scale-100 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                                          <polyline points="20 6 9 17 4 12"></polyline>
+                                        </svg>
+                                      </div>
+                                    </div>
+                                    <span className="text-sm font-medium text-slate-600 group-hover/label:text-slate-800 flex-1 leading-snug pt-0.5">{option}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
                        </div>
                     </div>
 
