@@ -49,12 +49,12 @@ export default function PEIBuilder() {
   const [studentInfo, setStudentInfo] = useState<any>(null);
 
   const steps = [
-    { id: 1, title: 'Identificação', icon: ShieldCheck },
-    { id: 2, title: 'Estudo de Caso', icon: Brain },
-    { id: 3, title: 'Perfil Curricular', icon: LayoutGrid },
-    { id: 4, title: 'Planejamento e SDI', icon: BookOpen },
-    { id: 5, title: 'Enriquecimento (Renzulli)', icon: Sparkles },
-    { id: 6, title: 'Metas e Apoio', icon: Target },
+    { id: 1, title: 'Seção I: Identificação', icon: ShieldCheck },
+    { id: 2, title: 'Seções II e III: Estudo de Caso', icon: Brain },
+    { id: 3, title: 'Seção IV: Perfil Curricular', icon: LayoutGrid },
+    { id: 4, title: 'Seções V e VI: SDI', icon: BookOpen },
+    { id: 5, title: 'Seções VII e VIII', icon: Sparkles },
+    { id: 6, title: 'Seção IX: Metas', icon: Target },
   ];
 
   // Etapa 1 state
@@ -81,18 +81,18 @@ export default function PEIBuilder() {
   const [isAddingAssessment, setIsAddingAssessment] = useState(false);
   const [newAssessment, setNewAssessment] = useState({ source: '', date: '', summary: '' });
 
-  // Etapa 2 state (Estudo de Caso - Refactored to Topics)
+  // Etapa 2 state (Estudo de Caso - Refactored to read-only CaseStudySynthesis)
   const [activeTabStep2, setActiveTabStep2] = useState<'contexto' | 'estilos' | 'potencialidades' | 'demandas' | 'adaptacoes'>('contexto');
-  const [contextTopics, setContextTopics] = useState<TopicItem[]>([]);
-  const [learningStyleTopics, setLearningStyleTopics] = useState<TopicItem[]>([]);
-  const [potentialTopics, setPotentialTopics] = useState<TopicItem[]>([]);
-  const [demandTopics, setDemandTopics] = useState<TopicItem[]>([]);
   
-  const [instructionalTopics, setInstructionalTopics] = useState<TopicItem[]>([]);
-  const [environmentalTopics, setEnvironmentalTopics] = useState<TopicItem[]>([]);
-  const [evaluationTopics, setEvaluationTopics] = useState<TopicItem[]>([]);
+  type CaseStudySynthesis = {
+    currentContext: { academic: TopicItem[]; cognitive: TopicItem[]; linguistic: TopicItem[]; social: TopicItem[]; emotional: TopicItem[]; psychological: TopicItem[]; physical: TopicItem[]; };
+    learningStyle: TopicItem[];
+    potentialsInterests: TopicItem[];
+    demandsBarriers: TopicItem[];
+    accessibilityStrategies: { instructional: TopicItem[]; environmental: TopicItem[]; evaluation: TopicItem[]; };
+  };
   
-  const [newTopicInput, setNewTopicInput] = useState('');
+  const [caseStudySynthesis, setCaseStudySynthesis] = useState<CaseStudySynthesis | null>(null);
 
   // Etapa 3 state
   const [disciplines, setDisciplines] = useState<DisciplineProfile[]>([
@@ -137,24 +137,7 @@ export default function PEIBuilder() {
       try {
         const parsed = JSON.parse(savedMap);
         if (parsed.caseStudySynthesis) {
-           const parseTextToTopics = (text: string) => {
-             if (!text) return [];
-             return text.split(/(?:\. |\n)/).filter(s => s.trim().length > 0).map(s => ({
-               id: crypto.randomUUID(),
-               text: s.trim() + (s.trim().endsWith('.') ? '' : '.'),
-               selected: true
-             }));
-           };
-
-           // Load from legacy fields only if not loaded from pei_data yet
-           setContextTopics(prev => prev.length ? prev : parseTextToTopics(Object.values(parsed.caseStudySynthesis.currentContext || {}).filter(Boolean).join('. ')));
-           setLearningStyleTopics(prev => prev.length ? prev : parseTextToTopics(parsed.caseStudySynthesis.learningStyle));
-           setPotentialTopics(prev => prev.length ? prev : parseTextToTopics(parsed.caseStudySynthesis.potentialsInterests));
-           setDemandTopics(prev => prev.length ? prev : parseTextToTopics(parsed.caseStudySynthesis.demandsBarriers));
-           
-           if(parsed.caseStudySynthesis.accessibilityStrategies) {
-              setInstructionalTopics(prev => prev.length ? prev : parseTextToTopics(parsed.caseStudySynthesis.accessibilityStrategies));
-           }
+           setCaseStudySynthesis(parsed.caseStudySynthesis);
         }
       } catch(e) { console.error('Erro ao ler mapeamento:', e); }
     }
@@ -173,14 +156,7 @@ export default function PEIBuilder() {
          if (parsed.evaluationFormat) setEvaluationFormat(parsed.evaluationFormat);
          if (parsed.validityType) setValidityType(parsed.validityType);
          if (parsed.validityPeriod) setValidityPeriod(parsed.validityPeriod);
-         
-         if (parsed.contextTopics) setContextTopics(parsed.contextTopics);
-         if (parsed.learningStyleTopics) setLearningStyleTopics(parsed.learningStyleTopics);
-         if (parsed.potentialTopics) setPotentialTopics(parsed.potentialTopics);
-         if (parsed.demandTopics) setDemandTopics(parsed.demandTopics);
-         if (parsed.instructionalTopics) setInstructionalTopics(parsed.instructionalTopics);
-         if (parsed.environmentalTopics) setEnvironmentalTopics(parsed.environmentalTopics);
-         if (parsed.evaluationTopics) setEvaluationTopics(parsed.evaluationTopics);
+         if (parsed.validityPeriod) setValidityPeriod(parsed.validityPeriod);
 
          if (parsed.disciplines) setDisciplines(parsed.disciplines);
          if (parsed.planningContent) setPlanningContent(parsed.planningContent);
@@ -315,13 +291,6 @@ export default function PEIBuilder() {
       evaluationFormat,
       validityType,
       validityPeriod,
-      contextTopics,
-      learningStyleTopics,
-      potentialTopics,
-      demandTopics,
-      instructionalTopics,
-      environmentalTopics,
-      evaluationTopics,
       disciplines,
       planningContent,
       selectedSkills,
@@ -358,35 +327,22 @@ export default function PEIBuilder() {
     }
     return age;
   };
-  const renderTopicList = (topics: TopicItem[], setTopics: React.Dispatch<React.SetStateAction<TopicItem[]>>, placeholder: string) => (
-    <div className="space-y-3">
-       {topics.map(t => (
-         <div key={t.id} className="flex items-start gap-3 bg-white border border-slate-200 p-3 rounded-xl shadow-sm transition-all focus-within:ring-2 focus-within:ring-primary/20">
-           <button aria-label={t.selected ? "Desmarcar tópico" : "Marcar tópico"} onClick={() => setTopics(prev => prev.map(p => p.id === t.id ? {...p, selected: !p.selected} : p))} className={cn("mt-1 w-5 h-5 rounded flex items-center justify-center border shrink-0 transition-colors", t.selected ? "bg-primary border-primary text-white" : "border-slate-300 hover:border-slate-400")}>
-             {t.selected && <Check size={14}/>}
-           </button>
-           <textarea aria-label="Texto do tópico" placeholder="Texto do tópico" className={cn("flex-1 bg-transparent text-sm resize-none focus:outline-none transition-all leading-relaxed", !t.selected && "line-through text-slate-400")} value={t.text} onChange={e => setTopics(prev => prev.map(p => p.id === t.id ? {...p, text: e.target.value} : p))} rows={2}/>
-           <button aria-label="Remover tópico" onClick={() => setTopics(prev => prev.filter(p => p.id !== t.id))} className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg shrink-0 mt-0.5"><Trash2 size={16}/></button>
-         </div>
-       ))}
-       <div className="flex items-center gap-2 mt-4 pt-2 border-t border-slate-100">
-         <input type="text" placeholder={placeholder} className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" value={newTopicInput} onChange={e => setNewTopicInput(e.target.value)} onKeyDown={(e) => {
-           if(e.key === 'Enter' && newTopicInput.trim()) {
-             setTopics(prev => [...prev, { id: crypto.randomUUID(), text: newTopicInput.trim(), selected: true }]);
-             setNewTopicInput('');
-           }
-         }}/>
-         <button onClick={() => {
-             if(newTopicInput.trim()) {
-               setTopics(prev => [...prev, { id: crypto.randomUUID(), text: newTopicInput.trim(), selected: true }]);
-               setNewTopicInput('');
-             }
-         }} className="bg-slate-900 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors">
-            <Plus size={16}/> Adicionar
-         </button>
-       </div>
-    </div>
-  );
+  const renderReadOnlyList = (topics?: TopicItem[]) => {
+    if (!topics || topics.length === 0) return <p className="text-sm text-slate-400 italic">Sem registros catalogados.</p>;
+    const selected = topics.filter(t => t.selected);
+    if (selected.length === 0) return <p className="text-sm text-slate-400 italic">Nenhum item selecionado para o PEI.</p>;
+    
+    return (
+      <ul className="space-y-3">
+        {selected.map(t => (
+           <li key={t.id} className="flex items-start gap-3 bg-white border border-slate-100 p-3 rounded-xl shadow-sm text-sm text-slate-700 leading-relaxed">
+             <CheckCircle2 size={16} className="text-primary mt-0.5 shrink-0" />
+             <span className="flex-1">{t.text}</span>
+           </li>
+        ))}
+      </ul>
+    );
+  };
 
 
   return (
@@ -753,10 +709,10 @@ export default function PEIBuilder() {
               <motion.div key="step-case" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                 <div>
                    <h2 className="text-2xl font-black text-on-surface flex items-center gap-3">
-                     <Brain className="text-primary" /> Estudo de Caso (Checklist Curador)
+                     <Brain className="text-primary" /> Seções II e III: Estudo de Caso
                    </h2>
                    <p className="text-sm font-medium text-slate-500 mt-2">
-                     Analise, edite e selecione as informações mais relevantes para constarem no PEI.
+                     Informações selecionadas a partir do Mapeamento Biopsicossocial.
                    </p>
                 </div>
 
@@ -764,11 +720,10 @@ export default function PEIBuilder() {
                    {/* Tabs Menu */}
                    <div className="flex border-b border-slate-100 bg-slate-50 overflow-x-auto">
                      {[
-                       { id: 'contexto', label: 'Contexto Atual' },
-                       { id: 'estilos', label: 'Estilos de Aprendizagem' },
-                       { id: 'potencialidades', label: 'Potencialidades e Interesses' },
+                       { id: 'contexto', label: 'Caracterização: Contexto' },
+                       { id: 'estilos', label: 'Estilos e Interesses' },
                        { id: 'demandas', label: 'Demandas e Barreiras' },
-                       { id: 'adaptacoes', label: 'Adaptações (PEI)' }
+                       { id: 'adaptacoes', label: 'Acessibilidade: Estratégias' }
                      ].map(tab => (
                        <button
                          key={tab.id}
@@ -788,30 +743,44 @@ export default function PEIBuilder() {
                    {/* Tab Content */}
                    <div className="p-8 bg-slate-50/50">
                      {activeTabStep2 === 'contexto' && (
-                        <div>
+                        <div className="space-y-6">
                            <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Contexto Biopsicossocial e Educacional</h3>
-                           {renderTopicList(contextTopics, setContextTopics, "Adicionar novo fato ao contexto...")}
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                             {[
+                               { key: 'academic', label: 'Acadêmico/Educacional' },
+                               { key: 'cognitive', label: 'Cognitivo' },
+                               { key: 'linguistic', label: 'Linguístico' },
+                               { key: 'social', label: 'Social' },
+                               { key: 'emotional', label: 'Emocional' },
+                               { key: 'psychological', label: 'Psicológico' },
+                               { key: 'physical', label: 'Físico/Sensorial' },
+                             ].map(({ key, label }) => (
+                               <div key={key} className="space-y-3">
+                                  <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest border-b border-slate-200 pb-2">{label}</h4>
+                                  {renderReadOnlyList(caseStudySynthesis?.currentContext?.[key as keyof CaseStudySynthesis['currentContext']])}
+                               </div>
+                             ))}
+                           </div>
                         </div>
                      )}
                      
                      {activeTabStep2 === 'estilos' && (
-                        <div>
-                           <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Estilos de Aprendizagem Identificados</h3>
-                           {renderTopicList(learningStyleTopics, setLearningStyleTopics, "Adicionar um estilo ou característica...")}
-                        </div>
-                     )}
-
-                     {activeTabStep2 === 'potencialidades' && (
-                        <div>
-                           <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Potencialidades, Interesses e Indicadores AH/SD</h3>
-                           {renderTopicList(potentialTopics, setPotentialTopics, "Adicionar novo potencial ou interesse...")}
+                        <div className="space-y-8">
+                           <div>
+                             <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Estilos de Aprendizagem Identificados</h3>
+                             {renderReadOnlyList(caseStudySynthesis?.learningStyle)}
+                           </div>
+                           <div className="pt-4 border-t border-slate-100">
+                             <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Potencialidades, Interesses e Indicadores AH/SD</h3>
+                             {renderReadOnlyList(caseStudySynthesis?.potentialsInterests)}
+                           </div>
                         </div>
                      )}
 
                      {activeTabStep2 === 'demandas' && (
                         <div>
                            <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Demandas e Barreiras Mapeadas</h3>
-                           {renderTopicList(demandTopics, setDemandTopics, "Adicionar nova demanda ou barreira...")}
+                           {renderReadOnlyList(caseStudySynthesis?.demandsBarriers)}
                         </div>
                      )}
 
@@ -827,15 +796,15 @@ export default function PEIBuilder() {
                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                               <div className="space-y-4">
                                 <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest border-b border-slate-200 pb-2">Adaptações Instrucionais</h4>
-                                {renderTopicList(instructionalTopics, setInstructionalTopics, "A. Instrucional")}
+                                {renderReadOnlyList(caseStudySynthesis?.accessibilityStrategies?.instructional)}
                               </div>
                               <div className="space-y-4">
                                 <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest border-b border-slate-200 pb-2">Adaptações Ambientais</h4>
-                                {renderTopicList(environmentalTopics, setEnvironmentalTopics, "A. Ambiental")}
+                                {renderReadOnlyList(caseStudySynthesis?.accessibilityStrategies?.environmental)}
                               </div>
                               <div className="space-y-4">
                                 <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest border-b border-slate-200 pb-2">Adaptações na Avaliação</h4>
-                                {renderTopicList(evaluationTopics, setEvaluationTopics, "A. Avaliação")}
+                                {renderReadOnlyList(caseStudySynthesis?.accessibilityStrategies?.evaluation)}
                               </div>
                            </div>
                         </div>

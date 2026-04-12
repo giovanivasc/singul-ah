@@ -55,28 +55,48 @@ const MOCK_SOURCES: DataSource[] = [
   }
 ];
 
+type TopicItem = { id: string; text: string; selected: boolean; source?: string };
+
 type CaseStudySynthesis = {
-  currentContext: { academic: string; cognitive: string; linguistic: string; social: string; emotional: string; psychological: string; physical: string };
-  learningStyle: string;
-  potentialsInterests: string;
-  demandsBarriers: string;
-  accessibilityStrategies: string;
+  currentContext: {
+    academic: TopicItem[];
+    cognitive: TopicItem[];
+    linguistic: TopicItem[];
+    social: TopicItem[];
+    emotional: TopicItem[];
+    psychological: TopicItem[];
+    physical: TopicItem[];
+  };
+  learningStyle: TopicItem[];
+  potentialsInterests: TopicItem[];
+  demandsBarriers: TopicItem[];
+  accessibilityStrategies: {
+    instructional: TopicItem[];
+    environmental: TopicItem[];
+    evaluation: TopicItem[];
+  };
 };
+
+const parseString = (str: string): TopicItem[] => str.split(/(?:\. |\n)/).filter(Boolean).map(s => ({ id: crypto.randomUUID(), text: s.trim() + (s.trim().endsWith('.') ? '' : '.'), selected: true }));
 
 const mockIaResponse: CaseStudySynthesis = {
   currentContext: {
-    academic: 'Desempenha bem em matérias exatas, porém apresenta lentidão em tarefas de leitura e escrita. Demonstra desmotivação nas aulas expositivas.',
-    cognitive: 'Capacidade de raciocínio lógico-espacial avançada. Atenção flutuante em tarefas longas.',
-    linguistic: 'Vocabulário rico para a idade, porém dificuldade em organizar narrativas escritas.',
-    social: 'Interação restrita. Prefere brincar sozinho ou conversar com adultos sobre tópicos de interesse específico.',
-    emotional: 'Baixa tolerância à frustração. Demonstra ansiedade ao ser corrigido publicamente.',
-    psychological: 'Sinais de rigidez cognitiva (necessidade de previsibilidade nas rotinas).',
-    physical: 'Sensibilidade auditiva em ambientes ruidosos. Uso de fones abafadores recomendado.'
+    academic: parseString('Desempenha bem em matérias exatas, porém apresenta lentidão em tarefas de leitura e escrita. Demonstra desmotivação nas aulas expositivas.'),
+    cognitive: parseString('Capacidade de raciocínio lógico-espacial avançada. Atenção flutuante em tarefas longas.'),
+    linguistic: parseString('Vocabulário rico para a idade, porém dificuldade em organizar narrativas escritas.'),
+    social: parseString('Interação restrita. Prefere brincar sozinho ou conversar com adultos sobre tópicos de interesse específico.'),
+    emotional: parseString('Baixa tolerância à frustração. Demonstra ansiedade ao ser corrigido publicamente.'),
+    psychological: parseString('Sinais de rigidez cognitiva (necessidade de previsibilidade nas rotinas).'),
+    physical: parseString('Sensibilidade auditiva em ambientes ruidosos. Uso de fones abafadores recomendado.')
   },
-  learningStyle: 'Predominantemente Visual e Ativo (Perfil N-ILS). Beneficia-se de mapas mentais e informações concretas.',
-  potentialsInterests: 'Alto interesse/hiperfoco em Astronomia e sistemas mecânicos. Memória prodigiosa para fatos de seu interesse.',
-  demandsBarriers: 'Barreira Atitudinal: rigidez de alguns professores quanto a métodos convencionais. \nBarreira de Comunicação: instruções muito longas ou apenas orais tendem a ser ignoradas.',
-  accessibilityStrategies: 'Uso de fones abafadores de ruído; fragmentação de tarefas com listas de verificação visuais; permissão para usar mapas mentais em vez de anotações convencionais.'
+  learningStyle: parseString('Predominantemente Visual e Ativo (Perfil N-ILS). Beneficia-se de mapas mentais e informações concretas.'),
+  potentialsInterests: parseString('Alto interesse/hiperfoco em Astronomia e sistemas mecânicos. Memória prodigiosa para fatos de seu interesse.'),
+  demandsBarriers: parseString('Barreira Atitudinal: rigidez de alguns professores quanto a métodos convencionais. \nBarreira de Comunicação: instruções muito longas ou apenas orais tendem a ser ignoradas.'),
+  accessibilityStrategies: {
+    instructional: parseString('Fragmentação de tarefas com listas de verificação visuais; permissão para usar mapas mentais em vez de anotações convencionais.'),
+    environmental: parseString('Uso de fones abafadores de ruído; sentar-se na frente ou extremidade da sala.'),
+    evaluation: parseString('Tempo estendido para provas; possibilidade de consulta ao esquema visual autorregulado.')
+  }
 };
 
 export default function ConvergenceEditor() {
@@ -94,12 +114,16 @@ export default function ConvergenceEditor() {
   // Generation & Right Column States
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
+  
+  const [activeTabMapping, setActiveTabMapping] = useState<'contexto' | 'estilos' | 'potencialidades' | 'demandas' | 'adaptacoes'>('contexto');
+  const [newTopicInput, setNewTopicInput] = useState('');
+
   const [caseStudySynthesis, setCaseStudySynthesis] = useState<CaseStudySynthesis>({
-    currentContext: { academic: '', cognitive: '', linguistic: '', social: '', emotional: '', psychological: '', physical: '' },
-    learningStyle: '',
-    potentialsInterests: '',
-    demandsBarriers: '',
-    accessibilityStrategies: ''
+    currentContext: { academic: [], cognitive: [], linguistic: [], social: [], emotional: [], psychological: [], physical: [] },
+    learningStyle: [],
+    potentialsInterests: [],
+    demandsBarriers: [],
+    accessibilityStrategies: { instructional: [], environmental: [], evaluation: [] }
   });
   const [lastConsolidation, setLastConsolidation] = useState<string | null>(null);
   const [showToast, setShowToast] = useState(false);
@@ -203,34 +227,48 @@ export default function ConvergenceEditor() {
     }, 3000);
   };
 
-  const handleChangeField = (field: keyof CaseStudySynthesis, value: string | any) => {
+  const handleTopicChange = (updater: (prev: CaseStudySynthesis) => CaseStudySynthesis) => {
     setCaseStudySynthesis(prev => {
-       const updated = { ...prev, [field]: value };
-       if (studentId) {
-         const saved = localStorage.getItem(`mapeamento_data_${studentId}`);
-         const parsed = saved ? JSON.parse(saved) : {};
-         parsed.caseStudySynthesis = updated;
-         localStorage.setItem(`mapeamento_data_${studentId}`, JSON.stringify(parsed));
-       }
-       return updated;
+      const updated = updater(prev);
+      if (studentId) {
+        const saved = localStorage.getItem(`mapeamento_data_${studentId}`);
+        const parsed = saved ? JSON.parse(saved) : {};
+        parsed.caseStudySynthesis = updated;
+        localStorage.setItem(`mapeamento_data_${studentId}`, JSON.stringify(parsed));
+      }
+      return updated;
     });
   };
 
-  const handleChangeContext = (subfield: keyof CaseStudySynthesis['currentContext'], value: string) => {
-    setCaseStudySynthesis(prev => {
-       const updated = { 
-         ...prev, 
-         currentContext: { ...prev.currentContext, [subfield]: value } 
-       };
-       if (studentId) {
-         const saved = localStorage.getItem(`mapeamento_data_${studentId}`);
-         const parsed = saved ? JSON.parse(saved) : {};
-         parsed.caseStudySynthesis = updated;
-         localStorage.setItem(`mapeamento_data_${studentId}`, JSON.stringify(parsed));
-       }
-       return updated;
-    });
-  };
+  const renderTopicList = (topics: TopicItem[], pathUpdater: (newTopics: TopicItem[]) => void, placeholder: string) => (
+    <div className="space-y-3">
+       {topics.map(t => (
+         <div key={t.id} className="flex items-start gap-3 bg-white border border-slate-200 p-3 rounded-xl shadow-sm transition-all focus-within:ring-2 focus-within:ring-primary/20">
+           <button aria-label={t.selected ? "Desmarcar tópico" : "Marcar tópico"} onClick={() => pathUpdater(topics.map(p => p.id === t.id ? {...p, selected: !p.selected} : p))} className={cn("mt-1 w-5 h-5 rounded flex items-center justify-center border shrink-0 transition-colors", t.selected ? "bg-primary border-primary text-white" : "border-slate-300 hover:border-slate-400")}>
+             {t.selected && <Check size={14}/>}
+           </button>
+           <textarea aria-label="Texto do tópico" placeholder="Texto do tópico" className={cn("flex-1 bg-transparent text-sm resize-none focus:outline-none transition-all leading-relaxed", !t.selected && "line-through text-slate-400")} value={t.text} onChange={e => pathUpdater(topics.map(p => p.id === t.id ? {...p, text: e.target.value} : p))} rows={2}/>
+           <button aria-label="Remover tópico" onClick={() => pathUpdater(topics.filter(p => p.id !== t.id))} className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg shrink-0 mt-0.5"><Trash2 size={16}/></button>
+         </div>
+       ))}
+       <div className="flex items-center gap-2 mt-4 pt-2 border-t border-slate-100">
+         <input type="text" placeholder={placeholder} className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" value={newTopicInput} onChange={e => setNewTopicInput(e.target.value)} onKeyDown={(e) => {
+           if(e.key === 'Enter' && newTopicInput.trim()) {
+             pathUpdater([...topics, { id: crypto.randomUUID(), text: newTopicInput.trim(), selected: true }]);
+             setNewTopicInput('');
+           }
+         }}/>
+         <button onClick={() => {
+             if(newTopicInput.trim()) {
+               pathUpdater([...topics, { id: crypto.randomUUID(), text: newTopicInput.trim(), selected: true }]);
+               setNewTopicInput('');
+             }
+         }} className="bg-slate-900 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors">
+            <Plus size={16}/> Adicionar
+         </button>
+       </div>
+    </div>
+  );
 
 
 
@@ -421,84 +459,129 @@ export default function ConvergenceEditor() {
                   initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
                   className="space-y-6"
                 >
-                   {/* Formulário de Síntese */}
-                   <div className="bg-white p-6 sm:p-8 rounded-[32px] border border-slate-100 atmospheric-shadow space-y-8 text-left animate-in fade-in slide-in-from-bottom-4 duration-300">
-                      
-                      {/* Contexto Atual (7 eixos) */}
-                      <div className="space-y-4">
-                        <h3 className="text-xl font-black text-slate-800 border-b border-slate-100 pb-3">Contexto Atual</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {[
-                            { key: 'academic', label: 'Acadêmico/Educacional' },
-                            { key: 'cognitive', label: 'Cognitivo' },
-                            { key: 'linguistic', label: 'Linguístico' },
-                            { key: 'social', label: 'Social' },
-                            { key: 'emotional', label: 'Emocional' },
-                            { key: 'psychological', label: 'Psicológico' },
-                            { key: 'physical', label: 'Físico/Sensorial' },
-                          ].map(({ key, label }) => (
-                            <div key={key} className="space-y-1">
-                               <label className="text-[10px] font-black uppercase text-slate-400 pl-2">{label}</label>
-                               <textarea 
-                                 rows={3} 
-                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                 value={caseStudySynthesis.currentContext[key as keyof CaseStudySynthesis['currentContext']]}
-                                 onChange={e => handleChangeContext(key as keyof CaseStudySynthesis['currentContext'], e.target.value)}
-                               />
+                    {/* Formulário de Síntese em Formato Checklist Curador */}
+                    <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden atmospheric-shadow animate-in fade-in slide-in-from-bottom-4 duration-300">
+                       
+                       {/* Tabs Menu */}
+                       <div className="flex border-b border-slate-100 bg-slate-50 overflow-x-auto">
+                         {[
+                           { id: 'contexto', label: 'Contexto Atual' },
+                           { id: 'estilos', label: 'Estilos de Aprendizagem' },
+                           { id: 'potencialidades', label: 'Potencialidades e Interesses' },
+                           { id: 'demandas', label: 'Demandas e Barreiras' },
+                           { id: 'adaptacoes', label: 'Acessibilidade' }
+                         ].map(tab => (
+                           <button
+                             key={tab.id}
+                             onClick={() => setActiveTabMapping(tab.id as typeof activeTabMapping)}
+                             className={cn(
+                               "px-6 py-4 text-sm font-bold uppercase tracking-widest transition-all whitespace-nowrap border-b-2",
+                               activeTabMapping === tab.id
+                                 ? "border-primary text-primary bg-white"
+                                 : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100/50"
+                             )}
+                           >
+                             {tab.label}
+                           </button>
+                         ))}
+                       </div>
+
+                       <div className="p-8 bg-slate-50/50">
+                         {activeTabMapping === 'contexto' && (
+                            <div className="space-y-8">
+                               <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Contexto Biopsicossocial e Educacional</h3>
+                               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                 {[
+                                   { key: 'academic', label: 'Acadêmico/Educacional' },
+                                   { key: 'cognitive', label: 'Cognitivo' },
+                                   { key: 'linguistic', label: 'Linguístico' },
+                                   { key: 'social', label: 'Social' },
+                                   { key: 'emotional', label: 'Emocional' },
+                                   { key: 'psychological', label: 'Psicológico' },
+                                   { key: 'physical', label: 'Físico/Sensorial' },
+                                 ].map(({ key, label }) => (
+                                   <div key={key} className="space-y-3">
+                                      <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest border-b border-slate-200 pb-2">{label}</h4>
+                                      {renderTopicList(
+                                        caseStudySynthesis.currentContext[key as keyof CaseStudySynthesis['currentContext']],
+                                        (newTopics) => handleTopicChange(prev => ({ 
+                                           ...prev, 
+                                           currentContext: { ...prev.currentContext, [key]: newTopics } 
+                                        })),
+                                        "Adicionar fato ao contexto..."
+                                      )}
+                                   </div>
+                                 ))}
+                               </div>
                             </div>
-                          ))}
-                        </div>
-                      </div>
+                         )}
 
-                      {/* Outras categorias */}
-                      <div className="space-y-4">
-                         <h3 className="text-xl font-black text-slate-800 border-b border-slate-100 pb-3">Estilos, Interesses e Barreiras</h3>
-                         <div className="space-y-4">
-                           <div className="space-y-1">
-                             <label className="text-[10px] font-black uppercase text-slate-400 pl-2">Estilo de Aprendizagem</label>
-                             <textarea 
-                               rows={2} 
-                               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                               value={caseStudySynthesis.learningStyle}
-                               onChange={e => handleChangeField('learningStyle', e.target.value)}
-                             />
-                           </div>
-                           <div className="space-y-1">
-                             <label className="text-[10px] font-black uppercase text-slate-400 pl-2">Potencialidades e Interesses (AH/SD)</label>
-                             <textarea 
-                               rows={2} 
-                               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                               value={caseStudySynthesis.potentialsInterests}
-                               onChange={e => handleChangeField('potentialsInterests', e.target.value)}
-                             />
-                           </div>
-                           <div className="space-y-1">
-                             <label className="text-[10px] font-black uppercase text-slate-400 pl-2">Demandas e Barreiras (LBI)</label>
-                             <textarea 
-                               rows={2} 
-                               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                               value={caseStudySynthesis.demandsBarriers}
-                               onChange={e => handleChangeField('demandsBarriers', e.target.value)}
-                             />
-                           </div>
-                         </div>
-                      </div>
+                         {activeTabMapping === 'estilos' && (
+                            <div>
+                               <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Estilos de Aprendizagem Identificados</h3>
+                               {renderTopicList(
+                                 caseStudySynthesis.learningStyle,
+                                 (newTopics) => handleTopicChange(prev => ({ ...prev, learningStyle: newTopics })),
+                                 "Adicionar característica..."
+                               )}
+                            </div>
+                         )}
 
-                      {/* Estratégias */}
-                      <div className="space-y-4">
-                        <h3 className="text-xl font-black text-slate-800 border-b border-slate-100 pb-3">Estratégias e Recursos (Acessibilidade)</h3>
-                        <div className="space-y-1">
-                           <label className="text-[10px] font-black uppercase text-slate-400 pl-2">Propostas para o PEI</label>
-                           <textarea 
-                             rows={3} 
-                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                             value={caseStudySynthesis.accessibilityStrategies}
-                             onChange={e => handleChangeField('accessibilityStrategies', e.target.value)}
-                           />
-                        </div>
-                      </div>
+                         {activeTabMapping === 'potencialidades' && (
+                            <div>
+                               <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Potencialidades, Interesses e Indicadores AH/SD</h3>
+                               {renderTopicList(
+                                 caseStudySynthesis.potentialsInterests,
+                                 (newTopics) => handleTopicChange(prev => ({ ...prev, potentialsInterests: newTopics })),
+                                 "Adicionar talento ou interesse..."
+                               )}
+                            </div>
+                         )}
 
-                   </div>
+                         {activeTabMapping === 'demandas' && (
+                            <div>
+                               <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Demandas e Barreiras Mapeadas (LBI)</h3>
+                               {renderTopicList(
+                                 caseStudySynthesis.demandsBarriers,
+                                 (newTopics) => handleTopicChange(prev => ({ ...prev, demandsBarriers: newTopics })),
+                                 "Adicionar barreira ou demanda..."
+                               )}
+                            </div>
+                         )}
+
+                         {activeTabMapping === 'adaptacoes' && (
+                            <div className="space-y-8">
+                               <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Propostas de Acessibilidade (Seção III do PEI)</h3>
+                               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                 <div className="space-y-4">
+                                   <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest border-b border-slate-200 pb-2">Adaptações Instrucionais</h4>
+                                   {renderTopicList(
+                                     caseStudySynthesis.accessibilityStrategies.instructional,
+                                     (newTopics) => handleTopicChange(prev => ({ ...prev, accessibilityStrategies: { ...prev.accessibilityStrategies, instructional: newTopics } })),
+                                     "Adicionar."
+                                   )}
+                                 </div>
+                                 <div className="space-y-4">
+                                   <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest border-b border-slate-200 pb-2">Adaptações Ambientais</h4>
+                                   {renderTopicList(
+                                     caseStudySynthesis.accessibilityStrategies.environmental,
+                                     (newTopics) => handleTopicChange(prev => ({ ...prev, accessibilityStrategies: { ...prev.accessibilityStrategies, environmental: newTopics } })),
+                                     "Adicionar."
+                                   )}
+                                 </div>
+                                 <div className="space-y-4">
+                                   <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest border-b border-slate-200 pb-2">Adaptações na Avaliação</h4>
+                                   {renderTopicList(
+                                     caseStudySynthesis.accessibilityStrategies.evaluation,
+                                     (newTopics) => handleTopicChange(prev => ({ ...prev, accessibilityStrategies: { ...prev.accessibilityStrategies, evaluation: newTopics } })),
+                                     "Adicionar."
+                                   )}
+                                 </div>
+                               </div>
+                            </div>
+                         )}
+                       </div>
+                    </div>
 
                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="pt-6">
                       <button 
