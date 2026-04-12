@@ -21,6 +21,9 @@ type DisciplineProfile = {
   justification: string; 
 };
 
+type TeamMember = { id: string; name: string; role: string; origin: string; };
+type AssessmentData = { id: string; source: string; date: string; summary: string; origin: string; };
+
 const getAllowedBnccCodes = (gradeNum: string): string[] => {
   const map: Record<string, string[]> = {
     '1': ['01', '15', '00'], // Incluímos '00' caso haja algo genérico
@@ -56,12 +59,28 @@ export default function PEIBuilder() {
   ];
 
   // Etapa 1 state
+  const [documentType, setDocumentType] = useState<'completo' | 'simplificado'>('completo');
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([
+    { id: 'm1', name: 'Maria Silva (Família)', role: 'Responsável', origin: 'auto-importado' },
+    { id: 'm2', name: 'Estudante', role: 'Estudante', origin: 'auto-importado' }
+  ]);
+  const [assessments, setAssessments] = useState<AssessmentData[]>([
+    { id: 'a1', source: 'IF-SAHS (Família)', date: '2026-03-25', summary: 'Inventário familiar apontou forte interesse por artes visuais e necessidades de mediação social.', origin: 'auto-importado' },
+    { id: 'a2', source: 'N-ILS (Estudante)', date: '2026-03-28', summary: 'Perfil predominante Visual/Sensitivo, prefere informações concretas e gráficos.', origin: 'auto-importado' }
+  ]);
+  
   const [academicYear, setAcademicYear] = useState('');
   const [alignmentMeetingDate, setAlignmentMeetingDate] = useState('');
   const [applicationStartDate, setApplicationStartDate] = useState('');
   const [evaluationFormat, setEvaluationFormat] = useState('Notas');
   const [validityType, setValidityType] = useState('Bimestral');
   const [validityPeriod, setValidityPeriod] = useState('1º');
+  
+  // Inline forms state
+  const [isAddingMember, setIsAddingMember] = useState(false);
+  const [newMember, setNewMember] = useState({ name: '', role: '' });
+  const [isAddingAssessment, setIsAddingAssessment] = useState(false);
+  const [newAssessment, setNewAssessment] = useState({ source: '', date: '', summary: '' });
 
   // Etapa 2 state
   const [disciplines, setDisciplines] = useState<DisciplineProfile[]>([
@@ -121,6 +140,9 @@ export default function PEIBuilder() {
     if (savedPEI) {
       try {
          const parsed = JSON.parse(savedPEI);
+         if (parsed.documentType) setDocumentType(parsed.documentType);
+         if (parsed.teamMembers && parsed.teamMembers.length > 0) setTeamMembers(parsed.teamMembers);
+         if (parsed.assessments && parsed.assessments.length > 0) setAssessments(parsed.assessments);
          if (parsed.academicYear) setAcademicYear(parsed.academicYear);
          if (parsed.alignmentMeetingDate) setAlignmentMeetingDate(parsed.alignmentMeetingDate);
          if (parsed.applicationStartDate) setApplicationStartDate(parsed.applicationStartDate);
@@ -251,6 +273,9 @@ export default function PEIBuilder() {
 
   const handleSaveData = () => {
     const dataToSave = {
+      documentType,
+      teamMembers,
+      assessments,
       academicYear,
       alignmentMeetingDate,
       applicationStartDate,
@@ -357,6 +382,29 @@ export default function PEIBuilder() {
                 <h2 className="text-2xl font-black text-on-surface flex items-center gap-3">
                    <ShieldCheck className="text-primary" /> Identificação e Caso
                 </h2>
+
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Modelo do Documento</h3>
+                    <p className="text-sm font-medium text-slate-500">Escolha o nível de detalhamento do PEI gerado.</p>
+                  </div>
+                  <div className="flex bg-white border border-slate-200 rounded-xl p-1 shadow-sm w-full md:w-auto">
+                    {(['completo', 'simplificado'] as const).map(type => (
+                      <button
+                        key={type}
+                        onClick={() => setDocumentType(type)}
+                        className={cn(
+                          "flex-1 md:flex-none px-6 py-2.5 rounded-lg text-sm font-bold uppercase tracking-widest transition-all",
+                          documentType === type 
+                            ? "bg-primary text-white shadow-sm" 
+                            : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                        )}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 
                 <div className="grid md:grid-cols-2 gap-6">
                   {/* Card 1: Dados do Estudante */}
@@ -482,6 +530,151 @@ export default function PEIBuilder() {
                     </div>
                   </div>
                 </div>
+
+                {documentType === 'simplificado' ? (
+                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-xl mt-6">
+                    <p className="text-sm font-bold text-yellow-800 flex items-center gap-2">
+                       <AlertTriangle size={18} /> A Equipe de Elaboração e os Dados de Avaliação Detalhados serão omitidos na versão simplificada deste documento.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-8 pt-4">
+                    {/* Tabela de Equipe */}
+                    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                      <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                        <div>
+                          <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Equipe de Elaboração</h3>
+                          <p className="text-xs font-medium text-slate-500">Profissionais e familiares envolvidos no PEI.</p>
+                        </div>
+                        <button onClick={() => setIsAddingMember(!isAddingMember)} className="text-primary bg-primary/10 hover:bg-primary/20 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2">
+                          {isAddingMember ? 'Cancelar' : '+ Adicionar Membro'}
+                        </button>
+                      </div>
+                      
+                      {isAddingMember && (
+                        <div className="p-4 bg-slate-50 border-b border-slate-200 flex gap-4 items-end">
+                          <div className="flex-1 space-y-1">
+                             <label className="text-[10px] font-black uppercase text-slate-400">Nome Mebro</label>
+                             <input type="text" value={newMember.name} onChange={e => setNewMember({...newMember, name: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm" placeholder="Ex: Dr. João Paulo"/>
+                          </div>
+                          <div className="flex-1 space-y-1">
+                             <label className="text-[10px] font-black uppercase text-slate-400">Função/Papel</label>
+                             <input type="text" value={newMember.role} onChange={e => setNewMember({...newMember, role: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm" placeholder="Ex: Psicólogo Escolar"/>
+                          </div>
+                          <button 
+                             onClick={() => {
+                               if(newMember.name && newMember.role) {
+                                  setTeamMembers([...teamMembers, { id: Date.now().toString(), origin: 'manual', ...newMember }]);
+                                  setNewMember({ name: '', role: '' });
+                                  setIsAddingMember(false);
+                               }
+                             }}
+                             className="bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm"
+                          >
+                            Salvar
+                          </button>
+                        </div>
+                      )}
+                      
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                          <thead className="bg-slate-50 border-b border-slate-100 uppercase text-[10px] font-black text-slate-500 tracking-widest">
+                             <tr>
+                               <th className="px-6 py-3">Nome</th>
+                               <th className="px-6 py-3">Função</th>
+                               <th className="px-6 py-3">Origem</th>
+                               <th className="px-6 py-3 text-right">Ação</th>
+                             </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                             {teamMembers.map(member => (
+                               <tr key={member.id} className="hover:bg-slate-50/50 transition-colors">
+                                  <td className="px-6 py-4 font-bold text-slate-700">{member.name}</td>
+                                  <td className="px-6 py-4 text-slate-600">{member.role}</td>
+                                  <td className="px-6 py-4">
+                                     <span className={cn("px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest", member.origin === 'auto-importado' ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600")}>
+                                       {member.origin}
+                                     </span>
+                                  </td>
+                                  <td className="px-6 py-4 text-right">
+                                     {member.origin === 'manual' && (
+                                       <button onClick={() => setTeamMembers(teamMembers.filter(m => m.id !== member.id))} title="Remover Membro" className="text-slate-400 hover:text-red-500 transition-colors p-1"><Trash2 size={16}/></button>
+                                     )}
+                                  </td>
+                               </tr>
+                             ))}
+                             {teamMembers.length === 0 && <tr><td colSpan={4} className="text-center py-6 text-slate-400">Nenhum membro listado</td></tr>}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Tabela de Avaliações */}
+                    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                      <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                        <div>
+                          <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Avaliações e Laudos Relevantes</h3>
+                          <p className="text-xs font-medium text-slate-500">Documentos e análises que embasam o PEI.</p>
+                        </div>
+                        <button onClick={() => setIsAddingAssessment(!isAddingAssessment)} className="text-primary bg-primary/10 hover:bg-primary/20 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2">
+                          {isAddingAssessment ? 'Cancelar' : '+ Adicionar Avaliação'}
+                        </button>
+                      </div>
+
+                      {isAddingAssessment && (
+                        <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col gap-4">
+                          <div className="flex gap-4">
+                            <div className="flex-1 space-y-1">
+                               <label className="text-[10px] font-black uppercase text-slate-400">Fonte (Ex: Laudo Médico)</label>
+                               <input type="text" value={newAssessment.source} onChange={e => setNewAssessment({...newAssessment, source: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm" />
+                            </div>
+                            <div className="w-48 space-y-1">
+                               <label className="text-[10px] font-black uppercase text-slate-400">Data</label>
+                               <input type="date" value={newAssessment.date} onChange={e => setNewAssessment({...newAssessment, date: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm" />
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                             <label className="text-[10px] font-black uppercase text-slate-400">Resumo dos Resultados</label>
+                             <textarea rows={2} value={newAssessment.summary} onChange={e => setNewAssessment({...newAssessment, summary: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm" />
+                          </div>
+                          <div className="flex justify-end">
+                            <button 
+                               onClick={() => {
+                                 if(newAssessment.source && newAssessment.summary) {
+                                    setAssessments([...assessments, { id: Date.now().toString(), origin: 'manual', ...newAssessment }]);
+                                    setNewAssessment({ source: '', date: '', summary: '' });
+                                    setIsAddingAssessment(false);
+                                 }
+                               }}
+                               className="bg-primary text-white px-6 py-2 rounded-xl text-sm font-bold shadow-sm"
+                            >
+                              Salvar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="p-6 grid grid-cols-1 gap-4">
+                        {assessments.map(ass => (
+                           <div key={ass.id} className="border border-slate-100 rounded-xl p-4 bg-slate-50/50 relative group">
+                             {ass.origin === 'manual' && (
+                               <button onClick={() => setAssessments(assessments.filter(a => a.id !== ass.id))} title="Remover Avaliação" className="absolute top-4 right-4 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16}/></button>
+                             )}
+                             <div className="flex items-center gap-3 mb-2">
+                               <h4 className="font-bold text-slate-800">{ass.source}</h4>
+                               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{ass.date}</span>
+                               <span className={cn("px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest", ass.origin === 'auto-importado' ? "bg-amber-100 text-amber-700" : "bg-slate-200 text-slate-600")}>
+                                 {ass.origin}
+                               </span>
+                             </div>
+                             <p className="text-sm text-slate-600 leading-relaxed">{ass.summary}</p>
+                           </div>
+                        ))}
+                        {assessments.length === 0 && <p className="text-center text-slate-400 py-4 text-sm">Nenhuma avaliação listada.</p>}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-6 pt-4">
                    <div className="flex items-center gap-2">
