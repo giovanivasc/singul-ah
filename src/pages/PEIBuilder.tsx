@@ -4,7 +4,7 @@ import {
   Target, LayoutGrid, Sparkles, 
   Plus, CheckCircle2, Lightbulb, 
   PencilRuler, BookOpen, Trash2, X, User as UserIcon,
-  Search, Clock, AlertTriangle, Check
+  Search, Clock, AlertTriangle, Check, Brain
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TopBar } from '../components/Navigation';
@@ -43,19 +43,17 @@ export default function PEIBuilder() {
   const navigate = useNavigate();
   const { studentId } = useParams();
 
-  const [activeStep, setActiveStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [activeStep, setActiveStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [studentInfo, setStudentInfo] = useState<any>(null);
-  const [mappedAxisData, setMappedAxisData] = useState<Record<'I' | 'II' | 'III' | 'IV', AxisItem[]>>({
-    I: [], II: [], III: [], IV: []
-  });
 
   const steps = [
-    { id: 1, title: 'Identificação e Caso', icon: ShieldCheck },
-    { id: 2, title: 'Perfil Assíncrono', icon: LayoutGrid },
-    { id: 3, title: 'Planejamento e SDI', icon: BookOpen },
-    { id: 4, title: 'Enriquecimento (Renzulli)', icon: Sparkles },
-    { id: 5, title: 'Metas e Apoio', icon: Target },
+    { id: 1, title: 'Identificação', icon: ShieldCheck },
+    { id: 2, title: 'Estudo de Caso', icon: Brain },
+    { id: 3, title: 'Perfil Curricular', icon: LayoutGrid },
+    { id: 4, title: 'Planejamento e SDI', icon: BookOpen },
+    { id: 5, title: 'Enriquecimento (Renzulli)', icon: Sparkles },
+    { id: 6, title: 'Metas e Apoio', icon: Target },
   ];
 
   // Etapa 1 state
@@ -82,7 +80,18 @@ export default function PEIBuilder() {
   const [isAddingAssessment, setIsAddingAssessment] = useState(false);
   const [newAssessment, setNewAssessment] = useState({ source: '', date: '', summary: '' });
 
-  // Etapa 2 state
+  // Etapa 2 state (Estudo de Caso)
+  const [caseStudySynthesis, setCaseStudySynthesis] = useState({
+    currentContext: { academic: '', cognitive: '', linguistic: '', social: '', emotional: '', psychological: '', physical: '' },
+    learningStyle: '',
+    potentialsInterests: '',
+    demandsBarriers: '',
+  });
+  const [instructionalAdaptations, setInstructionalAdaptations] = useState('');
+  const [environmentalAdaptations, setEnvironmentalAdaptations] = useState('');
+  const [evaluationAdaptations, setEvaluationAdaptations] = useState('');
+
+  // Etapa 3 state
   const [disciplines, setDisciplines] = useState<DisciplineProfile[]>([
     { name: 'Língua Portuguesa', status: 'padrao', justification: '' },
     { name: 'Matemática', status: 'padrao', justification: '' },
@@ -119,18 +128,26 @@ export default function PEIBuilder() {
   useEffect(() => {
     if (!studentId) return;
 
-    // Load Mapeamento (Axis)
+    // Load Mapeamento (Axis) / Estudo De Caso
     const savedMap = localStorage.getItem(`mapeamento_data_${studentId}`);
     if (savedMap) {
       try {
         const parsed = JSON.parse(savedMap);
-        if (parsed.axisData) {
-          setMappedAxisData(parsed.axisData);
-          // Auto-preencher recursos de acessibilidade do eixo IV se ainda não tiver nada salvo no PEI
-          const eixoIVResources = parsed.axisData['IV']
-            ?.filter((i: AxisItem) => i.selected)
-            .map((i: AxisItem) => i.text) || [];
-          setAccessibilityResources(eixoIVResources);
+        if (parsed.caseStudySynthesis) {
+           // Mescla o contexto default para evitar erros de tipagem
+           setCaseStudySynthesis({
+             currentContext: {
+               academic: '', cognitive: '', linguistic: '', social: '', emotional: '', psychological: '', physical: '',
+               ...(parsed.caseStudySynthesis.currentContext || {})
+             },
+             learningStyle: parsed.caseStudySynthesis.learningStyle || '',
+             potentialsInterests: parsed.caseStudySynthesis.potentialsInterests || '',
+             demandsBarriers: parsed.caseStudySynthesis.demandsBarriers || ''
+           });
+           
+           if(parsed.caseStudySynthesis.accessibilityStrategies && !instructionalAdaptations) {
+              setInstructionalAdaptations(parsed.caseStudySynthesis.accessibilityStrategies);
+           }
         }
       } catch(e) { console.error('Erro ao ler mapeamento:', e); }
     }
@@ -149,6 +166,12 @@ export default function PEIBuilder() {
          if (parsed.evaluationFormat) setEvaluationFormat(parsed.evaluationFormat);
          if (parsed.validityType) setValidityType(parsed.validityType);
          if (parsed.validityPeriod) setValidityPeriod(parsed.validityPeriod);
+         
+         if (parsed.caseStudySynthesis) setCaseStudySynthesis(parsed.caseStudySynthesis);
+         if (parsed.instructionalAdaptations) setInstructionalAdaptations(parsed.instructionalAdaptations);
+         if (parsed.environmentalAdaptations) setEnvironmentalAdaptations(parsed.environmentalAdaptations);
+         if (parsed.evaluationAdaptations) setEvaluationAdaptations(parsed.evaluationAdaptations);
+
          if (parsed.disciplines) setDisciplines(parsed.disciplines);
          if (parsed.planningContent) setPlanningContent(parsed.planningContent);
          if (parsed.selectedSkills) setSelectedSkills(parsed.selectedSkills);
@@ -282,6 +305,10 @@ export default function PEIBuilder() {
       evaluationFormat,
       validityType,
       validityPeriod,
+      caseStudySynthesis,
+      instructionalAdaptations,
+      environmentalAdaptations,
+      evaluationAdaptations,
       disciplines,
       planningContent,
       selectedSkills,
@@ -380,7 +407,7 @@ export default function PEIBuilder() {
             {activeStep === 1 && (
               <motion.div key="step-1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                 <h2 className="text-2xl font-black text-on-surface flex items-center gap-3">
-                   <ShieldCheck className="text-primary" /> Identificação e Caso
+                   <ShieldCheck className="text-primary" /> Identificação
                 </h2>
 
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -675,42 +702,92 @@ export default function PEIBuilder() {
                     </div>
                   </div>
                 )}
+              </motion.div>
+            )}
 
-                <div className="space-y-6 pt-4">
-                   <div className="flex items-center gap-2">
-                     <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Síntese do Mapeamento (Consultivo)</h3>
-                     <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Somente Leitura</span>
+            {/* ETAPA 2: Estudo de Caso */}
+            {activeStep === 2 && (
+              <motion.div key="step-case" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                <div>
+                   <h2 className="text-2xl font-black text-on-surface flex items-center gap-3">
+                     <Brain className="text-primary" /> Estudo de Caso (Seções II e III)
+                   </h2>
+                </div>
+
+                <div className="space-y-6">
+                   <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight border-b border-slate-100 pb-2">Seção II: Caracterização (Contexto Atual)</h3>
+                   <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {[
+                          { key: 'academic', label: 'Acadêmico/Educacional' },
+                          { key: 'cognitive', label: 'Cognitivo' },
+                          { key: 'linguistic', label: 'Linguístico' },
+                          { key: 'social', label: 'Social' },
+                          { key: 'emotional', label: 'Emocional' },
+                          { key: 'psychological', label: 'Psicológico' },
+                          { key: 'physical', label: 'Físico/Sensorial' },
+                        ].map(c => (
+                          <div key={c.key} className="space-y-1">
+                             <label className="text-[10px] font-black uppercase text-slate-400 pl-2">{c.label}</label>
+                             <textarea 
+                               rows={3}
+                               className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                               value={caseStudySynthesis?.currentContext?.[c.key as keyof typeof caseStudySynthesis.currentContext] || ''}
+                               onChange={e => setCaseStudySynthesis(prev => ({
+                                  ...prev, 
+                                  currentContext: { ...prev.currentContext, [c.key]: e.target.value }
+                               }))}
+                             />
+                          </div>
+                        ))}
+                      </div>
+                   </div>
+
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm space-y-2">
+                        <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-2">Estilo de Aprendizagem</h4>
+                        <textarea rows={4} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" value={caseStudySynthesis?.learningStyle} onChange={e => setCaseStudySynthesis(prev => ({...prev, learningStyle: e.target.value}))}/>
+                      </div>
+                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm space-y-2">
+                        <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-2">Potencialidades/Interesses</h4>
+                        <textarea rows={4} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" value={caseStudySynthesis?.potentialsInterests} onChange={e => setCaseStudySynthesis(prev => ({...prev, potentialsInterests: e.target.value}))}/>
+                      </div>
+                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm space-y-2">
+                        <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-2">Demandas e Barreiras</h4>
+                        <textarea rows={4} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" value={caseStudySynthesis?.demandsBarriers} onChange={e => setCaseStudySynthesis(prev => ({...prev, demandsBarriers: e.target.value}))}/>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="space-y-6 pt-6">
+                   <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight border-b border-slate-100 pb-2">Seção III: Estratégias e Recursos</h3>
+                   
+                   <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-xl">
+                      <p className="text-sm font-medium text-yellow-800 border-l pl-2">
+                        <strong>Nota Importante:</strong> Se não houver indicação contrária quanto ao programa curricular, o estudante deverá seguir a Base Nacional Comum Curricular - BNCC.
+                      </p>
                    </div>
                    
-                   <div className="grid md:grid-cols-2 gap-6">
-                     {[
-                       { id: 'I', title: 'I. Demandas Biopsic.', data: mappedAxisData.I },
-                       { id: 'II', title: 'II. Contexto (Barreiras)', data: mappedAxisData.II },
-                       { id: 'III', title: 'III. Potencialidades', data: mappedAxisData.III },
-                       { id: 'IV', title: 'IV. Ponte PEI', data: mappedAxisData.IV }
-                     ].map(eixo => (
-                        <div key={eixo.id} className="bg-slate-50 border border-slate-100 rounded-2xl p-5 shadow-sm">
-                           <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center font-black mb-4">{eixo.id}</div>
-                           <h4 className="font-bold text-sm text-slate-700 uppercase tracking-wider mb-3">{eixo.title}</h4>
-                           <ul className="space-y-2">
-                             {eixo.data.filter((i: AxisItem) => i.selected).map((item: AxisItem) => (
-                               <li key={item.id} className="text-sm text-slate-600 font-medium flex items-start gap-2">
-                                 <span className="text-primary">•</span>{item.text}
-                               </li>
-                             ))}
-                             {eixo.data.filter((i: AxisItem) => i.selected).length === 0 && (
-                               <li className="text-xs text-slate-400 italic">Nenhum item mapeado nesta área.</li>
-                             )}
-                           </ul>
-                        </div>
-                     ))}
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="space-y-1">
+                         <label className="text-xs font-black uppercase tracking-widest text-slate-500">Adaptações Instrucionais</label>
+                         <textarea rows={4} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm" value={instructionalAdaptations} onChange={e => setInstructionalAdaptations(e.target.value)} />
+                      </div>
+                      <div className="space-y-1">
+                         <label className="text-xs font-black uppercase tracking-widest text-slate-500">Adaptações Ambientais</label>
+                         <textarea rows={4} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm" value={environmentalAdaptations} onChange={e => setEnvironmentalAdaptations(e.target.value)} />
+                      </div>
+                      <div className="space-y-1">
+                         <label className="text-xs font-black uppercase tracking-widest text-slate-500">Adaptações para Avaliação</label>
+                         <textarea rows={4} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm" value={evaluationAdaptations} onChange={e => setEvaluationAdaptations(e.target.value)} />
+                      </div>
                    </div>
                 </div>
               </motion.div>
             )}
 
-            {/* ETAPA 2 */}
-            {activeStep === 2 && (
+            {/* ETAPA 3: Perfil Curricular Assíncrono */}
+            {activeStep === 3 && (
               <motion.div key="step-2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                 <div className="flex items-start justify-between">
                   <div>
@@ -764,8 +841,8 @@ export default function PEIBuilder() {
               </motion.div>
             )}
 
-            {/* ETAPA 3 */}
-            {activeStep === 3 && (
+            {/* ETAPA 4 */}
+            {activeStep === 4 && (
               <motion.div key="step-3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                 <div>
                   <h2 className="text-2xl font-black text-on-surface flex items-center gap-3">
@@ -999,8 +1076,8 @@ export default function PEIBuilder() {
               </motion.div>
             )}
 
-            {/* ETAPA 4 */}
-            {activeStep === 4 && (
+            {/* ETAPA 5 */}
+            {activeStep === 5 && (
               <motion.div key="step-4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                 <div>
                   <h2 className="text-2xl font-black text-on-surface flex items-center gap-3">
@@ -1080,8 +1157,8 @@ export default function PEIBuilder() {
               </motion.div>
             )}
 
-            {/* ETAPA 5 */}
-            {activeStep === 5 && (
+            {/* ETAPA 6 */}
+            {activeStep === 6 && (
               <motion.div key="step-5" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                 <div>
                   <h2 className="text-2xl font-black text-on-surface flex items-center gap-3">

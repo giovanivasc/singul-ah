@@ -55,26 +55,28 @@ const MOCK_SOURCES: DataSource[] = [
   }
 ];
 
-const mockIaResponse: Record<string, AxisItem[]> = {
-  I: [
-    { id: '1', text: 'Forte resistência em tarefas repetitivas e necessidade de previsibilidade.', selected: true, isManual: false },
-    { id: '2', text: 'Sobrecarga sensorial em ambientes muito ruidosos da escola convencional.', selected: true, isManual: false }
-  ],
-  II: [
-    { id: '3', text: 'Especificidade no ambiente de sala de aula regular em contraste com o AEE.', selected: true, isManual: false },
-    { id: '4', text: 'Barreiras Atitudinais: expectativas rígidas quanto ao método de estudo.', selected: true, isManual: false },
-    { id: '5', text: 'Barreiras de Comunicação/Informação: instruções longas que causam fadiga atencional.', selected: true, isManual: false }
-  ],
-  III: [
-    { id: '6', text: 'Vocabulário avançado para idade, raciocínio espacial muito acima da média.', selected: true, isManual: false },
-    { id: '7', text: 'Estilos N-ILS: Visual, Global.', selected: true, isManual: false },
-    { id: '8', text: 'Hiperfoco em Astronomia.', selected: true, isManual: false }
-  ],
-  IV: [
-    { id: '9', text: 'Fragmentação de tarefas com marcadores visuais (Combate à barreira de comunicação).', selected: true, isManual: false },
-    { id: '10', text: 'Liberação pontual para uso de fones abafadores (Combate à barreira sensorial).', selected: true, isManual: false },
-    { id: '11', text: 'Inserção de escolhas múltiplas de resolução em exames.', selected: true, isManual: false }
-  ]
+type CaseStudySynthesis = {
+  currentContext: { academic: string; cognitive: string; linguistic: string; social: string; emotional: string; psychological: string; physical: string };
+  learningStyle: string;
+  potentialsInterests: string;
+  demandsBarriers: string;
+  accessibilityStrategies: string;
+};
+
+const mockIaResponse: CaseStudySynthesis = {
+  currentContext: {
+    academic: 'Desempenha bem em matérias exatas, porém apresenta lentidão em tarefas de leitura e escrita. Demonstra desmotivação nas aulas expositivas.',
+    cognitive: 'Capacidade de raciocínio lógico-espacial avançada. Atenção flutuante em tarefas longas.',
+    linguistic: 'Vocabulário rico para a idade, porém dificuldade em organizar narrativas escritas.',
+    social: 'Interação restrita. Prefere brincar sozinho ou conversar com adultos sobre tópicos de interesse específico.',
+    emotional: 'Baixa tolerância à frustração. Demonstra ansiedade ao ser corrigido publicamente.',
+    psychological: 'Sinais de rigidez cognitiva (necessidade de previsibilidade nas rotinas).',
+    physical: 'Sensibilidade auditiva em ambientes ruidosos. Uso de fones abafadores recomendado.'
+  },
+  learningStyle: 'Predominantemente Visual e Ativo (Perfil N-ILS). Beneficia-se de mapas mentais e informações concretas.',
+  potentialsInterests: 'Alto interesse/hiperfoco em Astronomia e sistemas mecânicos. Memória prodigiosa para fatos de seu interesse.',
+  demandsBarriers: 'Barreira Atitudinal: rigidez de alguns professores quanto a métodos convencionais. \nBarreira de Comunicação: instruções muito longas ou apenas orais tendem a ser ignoradas.',
+  accessibilityStrategies: 'Uso de fones abafadores de ruído; fragmentação de tarefas com listas de verificação visuais; permissão para usar mapas mentais em vez de anotações convencionais.'
 };
 
 export default function ConvergenceEditor() {
@@ -92,10 +94,12 @@ export default function ConvergenceEditor() {
   // Generation & Right Column States
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
-  const [activeTab, setActiveTab] = useState<'I' | 'II' | 'III' | 'IV'>('I');
-  const [manualInput, setManualInput] = useState('');
-  const [axisData, setAxisData] = useState<Record<string, AxisItem[]>>({
-    I: [], II: [], III: [], IV: []
+  const [caseStudySynthesis, setCaseStudySynthesis] = useState<CaseStudySynthesis>({
+    currentContext: { academic: '', cognitive: '', linguistic: '', social: '', emotional: '', psychological: '', physical: '' },
+    learningStyle: '',
+    potentialsInterests: '',
+    demandsBarriers: '',
+    accessibilityStrategies: ''
   });
   const [lastConsolidation, setLastConsolidation] = useState<string | null>(null);
   const [showToast, setShowToast] = useState(false);
@@ -109,11 +113,9 @@ export default function ConvergenceEditor() {
     if (savedMap) {
       try {
         const parsed = JSON.parse(savedMap);
-        if (parsed.axisData) {
-          setAxisData(parsed.axisData);
-          if (Object.keys(parsed.axisData).some(k => parsed.axisData[k].length > 0)) {
-            setHasGenerated(true);
-          }
+        if (parsed.caseStudySynthesis) {
+          setCaseStudySynthesis(parsed.caseStudySynthesis);
+          setHasGenerated(true);
         }
         if (parsed.lastConsolidation) setLastConsolidation(parsed.lastConsolidation);
       } catch (e) {
@@ -184,26 +186,16 @@ export default function ConvergenceEditor() {
     setTimeout(() => {
       const now = new Date().toLocaleString('pt-BR');
       
-      setAxisData(prev => {
-        const newData = { ...prev };
-        for (const axis of ['I', 'II', 'III', 'IV']) {
-          const existingItems = newData[axis] ? newData[axis].map(i => ({ ...i, isNew: false })) : [];
-          const newItems = (mockIaResponse[axis] || [])
-            .filter(newItem => !existingItems.some(existing => existing.text.toLowerCase().trim() === newItem.text.toLowerCase().trim()))
-            .map(i => ({ ...i, id: Date.now().toString() + Math.random().toString().slice(2, 6), isNew: true, selected: true }));
-          newData[axis] = [...existingItems, ...newItems];
-        }
-        
-        if (studentId) {
-          const saved = localStorage.getItem(`mapeamento_data_${studentId}`);
-          const parsed = saved ? JSON.parse(saved) : {};
-          parsed.axisData = newData;
-          parsed.lastConsolidation = now;
-          parsed.snippets = snippets;
-          localStorage.setItem(`mapeamento_data_${studentId}`, JSON.stringify(parsed));
-        }
-        return newData;
-      });
+      setCaseStudySynthesis(mockIaResponse);
+      
+      if (studentId) {
+        const saved = localStorage.getItem(`mapeamento_data_${studentId}`);
+        const parsed = saved ? JSON.parse(saved) : {};
+        parsed.caseStudySynthesis = mockIaResponse;
+        parsed.lastConsolidation = now;
+        parsed.snippets = snippets;
+        localStorage.setItem(`mapeamento_data_${studentId}`, JSON.stringify(parsed));
+      }
 
       setHasGenerated(true);
       setIsGenerating(false);
@@ -211,30 +203,36 @@ export default function ConvergenceEditor() {
     }, 3000);
   };
 
-  const handleAddManualItem = () => {
-    if (manualInput.trim()) {
-      const newItem: AxisItem = {
-        id: Date.now().toString(),
-        text: manualInput.trim(),
-        selected: true,
-        isManual: true
-      };
-      setAxisData(prev => {
-        const newData = { ...prev, [activeTab]: [...(prev[activeTab] || []), newItem] };
-        
-        // Auto-save manual item
-        if (studentId) {
-          const saved = localStorage.getItem(`mapeamento_data_${studentId}`);
-          const parsed = saved ? JSON.parse(saved) : {};
-          parsed.axisData = newData;
-          localStorage.setItem(`mapeamento_data_${studentId}`, JSON.stringify(parsed));
-        }
-        
-        return newData;
-      });
-      setManualInput('');
-    }
+  const handleChangeField = (field: keyof CaseStudySynthesis, value: string | any) => {
+    setCaseStudySynthesis(prev => {
+       const updated = { ...prev, [field]: value };
+       if (studentId) {
+         const saved = localStorage.getItem(`mapeamento_data_${studentId}`);
+         const parsed = saved ? JSON.parse(saved) : {};
+         parsed.caseStudySynthesis = updated;
+         localStorage.setItem(`mapeamento_data_${studentId}`, JSON.stringify(parsed));
+       }
+       return updated;
+    });
   };
+
+  const handleChangeContext = (subfield: keyof CaseStudySynthesis['currentContext'], value: string) => {
+    setCaseStudySynthesis(prev => {
+       const updated = { 
+         ...prev, 
+         currentContext: { ...prev.currentContext, [subfield]: value } 
+       };
+       if (studentId) {
+         const saved = localStorage.getItem(`mapeamento_data_${studentId}`);
+         const parsed = saved ? JSON.parse(saved) : {};
+         parsed.caseStudySynthesis = updated;
+         localStorage.setItem(`mapeamento_data_${studentId}`, JSON.stringify(parsed));
+       }
+       return updated;
+    });
+  };
+
+
 
   const handleApproveAndProceed = () => {
     setShowToast(true);
@@ -423,149 +421,83 @@ export default function ConvergenceEditor() {
                   initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
                   className="space-y-6"
                 >
-                   {/* Tabs / Abas */}
-                   <div className="flex items-center justify-center gap-4 my-8 pb-2 border-b border-transparent">
-                     {[
-                       { id: 'I', label: 'I. Demandas' },
-                       { id: 'II', label: 'II. Contexto' },
-                       { id: 'III', label: 'III. Potencialidades/Interesses' },
-                       { id: 'IV', label: 'IV. Ponte PEI' },
-                     ].map(tab => (
-                       <button
-                         key={tab.id}
-                         onClick={() => setActiveTab(tab.id as 'I' | 'II' | 'III' | 'IV')}
-                         className={cn(
-                           "px-5 py-3 rounded-2xl font-bold text-sm transition-all whitespace-nowrap border",
-                           activeTab === tab.id 
-                             ? "bg-primary text-white border-primary shadow-md shadow-primary/20" 
-                             : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
-                         )}
-                       >
-                         {tab.label}
-                       </button>
-                     ))}
-                   </div>
+                   {/* Formulário de Síntese */}
+                   <div className="bg-white p-6 sm:p-8 rounded-[32px] border border-slate-100 atmospheric-shadow space-y-8 text-left animate-in fade-in slide-in-from-bottom-4 duration-300">
+                      
+                      {/* Contexto Atual (7 eixos) */}
+                      <div className="space-y-4">
+                        <h3 className="text-xl font-black text-slate-800 border-b border-slate-100 pb-3">Contexto Atual</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {[
+                            { key: 'academic', label: 'Acadêmico/Educacional' },
+                            { key: 'cognitive', label: 'Cognitivo' },
+                            { key: 'linguistic', label: 'Linguístico' },
+                            { key: 'social', label: 'Social' },
+                            { key: 'emotional', label: 'Emocional' },
+                            { key: 'psychological', label: 'Psicológico' },
+                            { key: 'physical', label: 'Físico/Sensorial' },
+                          ].map(({ key, label }) => (
+                            <div key={key} className="space-y-1">
+                               <label className="text-[10px] font-black uppercase text-slate-400 pl-2">{label}</label>
+                               <textarea 
+                                 rows={3} 
+                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                 value={caseStudySynthesis.currentContext[key as keyof CaseStudySynthesis['currentContext']]}
+                                 onChange={e => handleChangeContext(key as keyof CaseStudySynthesis['currentContext'], e.target.value)}
+                               />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
 
-                   {/* Conteúdo da Aba Ativa */}
-                   <div className="bg-white p-8 rounded-[32px] border border-slate-100 atmospheric-shadow animate-in fade-in slide-in-from-bottom-4 duration-300">
-                      <div className="flex items-center gap-4 mb-8 pb-4 border-b border-slate-100">
-                         <div className="w-12 h-12 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-xl shadow-lg shrink-0">{activeTab}</div>
-                         <div>
-                           <h3 className="text-lg font-black text-on-surface uppercase tracking-tight">
-                             {activeTab === 'I' && 'Demandas Biopsicossociais e Barreiras'}
-                             {activeTab === 'II' && 'Análise do Contexto Escolar (LBI)'}
-                             {activeTab === 'III' && 'Potencialidades, Interesses e Apoio'}
-                             {activeTab === 'IV' && 'Pontes para o PEI'}
-                           </h3>
-                           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
-                             {activeTab === 'I' && 'Identificação Inicial (Decreto 12.686/2025)'}
-                             {activeTab === 'II' && 'Tipificação legal das barreiras'}
-                             {activeTab === 'III' && 'Mapeamento como via de acesso pedagógico'}
-                             {activeTab === 'IV' && 'Recursos de minimização de barreiras (Acessibilidade)'}
-                           </p>
+                      {/* Outras categorias */}
+                      <div className="space-y-4">
+                         <h3 className="text-xl font-black text-slate-800 border-b border-slate-100 pb-3">Estilos, Interesses e Barreiras</h3>
+                         <div className="space-y-4">
+                           <div className="space-y-1">
+                             <label className="text-[10px] font-black uppercase text-slate-400 pl-2">Estilo de Aprendizagem</label>
+                             <textarea 
+                               rows={2} 
+                               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                               value={caseStudySynthesis.learningStyle}
+                               onChange={e => handleChangeField('learningStyle', e.target.value)}
+                             />
+                           </div>
+                           <div className="space-y-1">
+                             <label className="text-[10px] font-black uppercase text-slate-400 pl-2">Potencialidades e Interesses (AH/SD)</label>
+                             <textarea 
+                               rows={2} 
+                               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                               value={caseStudySynthesis.potentialsInterests}
+                               onChange={e => handleChangeField('potentialsInterests', e.target.value)}
+                             />
+                           </div>
+                           <div className="space-y-1">
+                             <label className="text-[10px] font-black uppercase text-slate-400 pl-2">Demandas e Barreiras (LBI)</label>
+                             <textarea 
+                               rows={2} 
+                               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                               value={caseStudySynthesis.demandsBarriers}
+                               onChange={e => handleChangeField('demandsBarriers', e.target.value)}
+                             />
+                           </div>
                          </div>
                       </div>
 
-                      <div className="space-y-3 mb-8">
-                        {axisData[activeTab]?.map(item => (
-                          <div 
-                            key={item.id}
-                            onClick={() => {
-                              setAxisData(prev => {
-                                const newData = {
-                                  ...prev,
-                                  [activeTab]: prev[activeTab].map(i => 
-                                    i.id === item.id ? { ...i, selected: !i.selected } : i
-                                  )
-                                };
-                                if (studentId) {
-                                  const saved = localStorage.getItem(`mapeamento_data_${studentId}`);
-                                  const parsed = saved ? JSON.parse(saved) : {};
-                                  parsed.axisData = newData;
-                                  localStorage.setItem(`mapeamento_data_${studentId}`, JSON.stringify(parsed));
-                                }
-                                return newData;
-                              });
-                            }}
-                            className={cn(
-                              "flex items-start gap-4 p-4 rounded-2xl border-2 transition-all cursor-pointer group relative",
-                              item.isNew && "bg-blue-50 border-blue-200",
-                              !item.isNew && item.selected && "border-primary bg-primary/5",
-                              !item.isNew && !item.selected && "border-slate-100 bg-white hover:border-slate-300"
-                            )}
-                          >
-                            <div className={cn(
-                              "w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-colors mt-0.5",
-                              item.selected ? "bg-primary text-white" : "border-2 border-slate-300 group-hover:border-slate-400"
-                            )}>
-                              {item.selected && <CheckCircle2 size={14} />}
-                            </div>
-                            <span className={cn(
-                              "text-sm font-semibold leading-relaxed flex-1",
-                              item.selected ? "text-slate-900" : "text-slate-500 line-through opacity-60"
-                            )}>
-                              {item.text}
-                            </span>
-                            <div className="flex items-center gap-2 shrink-0">
-                               {item.isNew && (
-                                  <span className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-100 px-2 py-1 rounded-md shadow-sm">
-                                    Novo
-                                  </span>
-                               )}
-                               {item.isManual && (
-                                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 px-2 py-1 rounded-md">
-                                    Manual
-                                  </span>
-                               )}
-                               <button
-                                 onClick={(e) => {
-                                   e.stopPropagation();
-                                   setAxisData(prev => {
-                                      const newData = {
-                                        ...prev,
-                                        [activeTab]: prev[activeTab].filter(i => i.id !== item.id)
-                                      };
-                                      if (studentId) {
-                                        const saved = localStorage.getItem(`mapeamento_data_${studentId}`);
-                                        const parsed = saved ? JSON.parse(saved) : {};
-                                        parsed.axisData = newData;
-                                        localStorage.setItem(`mapeamento_data_${studentId}`, JSON.stringify(parsed));
-                                      }
-                                      return newData;
-                                   });
-                                 }}
-                                 className="text-slate-300 hover:text-red-500 hover:bg-red-50 w-6 h-6 rounded-md flex items-center justify-center transition-colors"
-                                 title="Excluir Definitivamente"
-                               >
-                                  <X size={16} />
-                               </button>
-                            </div>
-                          </div>
-                        ))}
-                        {(!axisData[activeTab] || axisData[activeTab].length === 0) && (
-                          <div className="text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                             <p className="text-sm font-bold text-slate-400">Nenhum item mapeado nesta área.</p>
-                          </div>
-                        )}
+                      {/* Estratégias */}
+                      <div className="space-y-4">
+                        <h3 className="text-xl font-black text-slate-800 border-b border-slate-100 pb-3">Estratégias e Recursos (Acessibilidade)</h3>
+                        <div className="space-y-1">
+                           <label className="text-[10px] font-black uppercase text-slate-400 pl-2">Propostas para o PEI</label>
+                           <textarea 
+                             rows={3} 
+                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                             value={caseStudySynthesis.accessibilityStrategies}
+                             onChange={e => handleChangeField('accessibilityStrategies', e.target.value)}
+                           />
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="text"
-                          value={manualInput}
-                          onChange={(e) => setManualInput(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleAddManualItem()}
-                          placeholder="Adicionar item manualmente à lista..."
-                          className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-slate-400 text-slate-700"
-                        />
-                        <button
-                          onClick={handleAddManualItem}
-                          className="bg-slate-900 text-white px-6 py-4 rounded-xl font-bold text-sm tracking-wide hover:brightness-110 active:scale-95 transition-all flex items-center gap-2 shadow-lg"
-                        >
-                          <Plus size={18} />
-                          <span>Adicionar</span>
-                        </button>
-                      </div>
                    </div>
 
                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="pt-6">
@@ -577,7 +509,7 @@ export default function ConvergenceEditor() {
                          <ArrowRight size={24} />
                       </button>
                       <p className="text-center text-xs font-bold text-slate-400 mt-6 uppercase tracking-widest flex items-center justify-center gap-2">
-                        <ShieldCheck size={14} /> Os itens selecionados de todas as abas gerarão a planta base do PEI
+                        <ShieldCheck size={14} /> Os itens analisados alimentarão automaticamente a 'Seção II' do construtor de PEI.
                       </p>
                    </motion.div>
                 </motion.div>
