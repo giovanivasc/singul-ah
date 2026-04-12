@@ -23,6 +23,7 @@ type DisciplineProfile = {
 
 type TeamMember = { id: string; name: string; role: string; origin: string; };
 type AssessmentData = { id: string; source: string; date: string; summary: string; origin: string; };
+type TopicItem = { id: string; text: string; selected: boolean };
 
 const getAllowedBnccCodes = (gradeNum: string): string[] => {
   const map: Record<string, string[]> = {
@@ -80,16 +81,18 @@ export default function PEIBuilder() {
   const [isAddingAssessment, setIsAddingAssessment] = useState(false);
   const [newAssessment, setNewAssessment] = useState({ source: '', date: '', summary: '' });
 
-  // Etapa 2 state (Estudo de Caso)
-  const [caseStudySynthesis, setCaseStudySynthesis] = useState({
-    currentContext: { academic: '', cognitive: '', linguistic: '', social: '', emotional: '', psychological: '', physical: '' },
-    learningStyle: '',
-    potentialsInterests: '',
-    demandsBarriers: '',
-  });
-  const [instructionalAdaptations, setInstructionalAdaptations] = useState('');
-  const [environmentalAdaptations, setEnvironmentalAdaptations] = useState('');
-  const [evaluationAdaptations, setEvaluationAdaptations] = useState('');
+  // Etapa 2 state (Estudo de Caso - Refactored to Topics)
+  const [activeTabStep2, setActiveTabStep2] = useState<'contexto' | 'estilos' | 'potencialidades' | 'demandas' | 'adaptacoes'>('contexto');
+  const [contextTopics, setContextTopics] = useState<TopicItem[]>([]);
+  const [learningStyleTopics, setLearningStyleTopics] = useState<TopicItem[]>([]);
+  const [potentialTopics, setPotentialTopics] = useState<TopicItem[]>([]);
+  const [demandTopics, setDemandTopics] = useState<TopicItem[]>([]);
+  
+  const [instructionalTopics, setInstructionalTopics] = useState<TopicItem[]>([]);
+  const [environmentalTopics, setEnvironmentalTopics] = useState<TopicItem[]>([]);
+  const [evaluationTopics, setEvaluationTopics] = useState<TopicItem[]>([]);
+  
+  const [newTopicInput, setNewTopicInput] = useState('');
 
   // Etapa 3 state
   const [disciplines, setDisciplines] = useState<DisciplineProfile[]>([
@@ -134,19 +137,23 @@ export default function PEIBuilder() {
       try {
         const parsed = JSON.parse(savedMap);
         if (parsed.caseStudySynthesis) {
-           // Mescla o contexto default para evitar erros de tipagem
-           setCaseStudySynthesis({
-             currentContext: {
-               academic: '', cognitive: '', linguistic: '', social: '', emotional: '', psychological: '', physical: '',
-               ...(parsed.caseStudySynthesis.currentContext || {})
-             },
-             learningStyle: parsed.caseStudySynthesis.learningStyle || '',
-             potentialsInterests: parsed.caseStudySynthesis.potentialsInterests || '',
-             demandsBarriers: parsed.caseStudySynthesis.demandsBarriers || ''
-           });
+           const parseTextToTopics = (text: string) => {
+             if (!text) return [];
+             return text.split(/(?:\. |\n)/).filter(s => s.trim().length > 0).map(s => ({
+               id: crypto.randomUUID(),
+               text: s.trim() + (s.trim().endsWith('.') ? '' : '.'),
+               selected: true
+             }));
+           };
+
+           // Load from legacy fields only if not loaded from pei_data yet
+           setContextTopics(prev => prev.length ? prev : parseTextToTopics(Object.values(parsed.caseStudySynthesis.currentContext || {}).filter(Boolean).join('. ')));
+           setLearningStyleTopics(prev => prev.length ? prev : parseTextToTopics(parsed.caseStudySynthesis.learningStyle));
+           setPotentialTopics(prev => prev.length ? prev : parseTextToTopics(parsed.caseStudySynthesis.potentialsInterests));
+           setDemandTopics(prev => prev.length ? prev : parseTextToTopics(parsed.caseStudySynthesis.demandsBarriers));
            
-           if(parsed.caseStudySynthesis.accessibilityStrategies && !instructionalAdaptations) {
-              setInstructionalAdaptations(parsed.caseStudySynthesis.accessibilityStrategies);
+           if(parsed.caseStudySynthesis.accessibilityStrategies) {
+              setInstructionalTopics(prev => prev.length ? prev : parseTextToTopics(parsed.caseStudySynthesis.accessibilityStrategies));
            }
         }
       } catch(e) { console.error('Erro ao ler mapeamento:', e); }
@@ -167,10 +174,13 @@ export default function PEIBuilder() {
          if (parsed.validityType) setValidityType(parsed.validityType);
          if (parsed.validityPeriod) setValidityPeriod(parsed.validityPeriod);
          
-         if (parsed.caseStudySynthesis) setCaseStudySynthesis(parsed.caseStudySynthesis);
-         if (parsed.instructionalAdaptations) setInstructionalAdaptations(parsed.instructionalAdaptations);
-         if (parsed.environmentalAdaptations) setEnvironmentalAdaptations(parsed.environmentalAdaptations);
-         if (parsed.evaluationAdaptations) setEvaluationAdaptations(parsed.evaluationAdaptations);
+         if (parsed.contextTopics) setContextTopics(parsed.contextTopics);
+         if (parsed.learningStyleTopics) setLearningStyleTopics(parsed.learningStyleTopics);
+         if (parsed.potentialTopics) setPotentialTopics(parsed.potentialTopics);
+         if (parsed.demandTopics) setDemandTopics(parsed.demandTopics);
+         if (parsed.instructionalTopics) setInstructionalTopics(parsed.instructionalTopics);
+         if (parsed.environmentalTopics) setEnvironmentalTopics(parsed.environmentalTopics);
+         if (parsed.evaluationTopics) setEvaluationTopics(parsed.evaluationTopics);
 
          if (parsed.disciplines) setDisciplines(parsed.disciplines);
          if (parsed.planningContent) setPlanningContent(parsed.planningContent);
@@ -305,10 +315,13 @@ export default function PEIBuilder() {
       evaluationFormat,
       validityType,
       validityPeriod,
-      caseStudySynthesis,
-      instructionalAdaptations,
-      environmentalAdaptations,
-      evaluationAdaptations,
+      contextTopics,
+      learningStyleTopics,
+      potentialTopics,
+      demandTopics,
+      instructionalTopics,
+      environmentalTopics,
+      evaluationTopics,
       disciplines,
       planningContent,
       selectedSkills,
@@ -345,6 +358,36 @@ export default function PEIBuilder() {
     }
     return age;
   };
+  const renderTopicList = (topics: TopicItem[], setTopics: React.Dispatch<React.SetStateAction<TopicItem[]>>, placeholder: string) => (
+    <div className="space-y-3">
+       {topics.map(t => (
+         <div key={t.id} className="flex items-start gap-3 bg-white border border-slate-200 p-3 rounded-xl shadow-sm transition-all focus-within:ring-2 focus-within:ring-primary/20">
+           <button aria-label={t.selected ? "Desmarcar tópico" : "Marcar tópico"} onClick={() => setTopics(prev => prev.map(p => p.id === t.id ? {...p, selected: !p.selected} : p))} className={cn("mt-1 w-5 h-5 rounded flex items-center justify-center border shrink-0 transition-colors", t.selected ? "bg-primary border-primary text-white" : "border-slate-300 hover:border-slate-400")}>
+             {t.selected && <Check size={14}/>}
+           </button>
+           <textarea aria-label="Texto do tópico" placeholder="Texto do tópico" className={cn("flex-1 bg-transparent text-sm resize-none focus:outline-none transition-all leading-relaxed", !t.selected && "line-through text-slate-400")} value={t.text} onChange={e => setTopics(prev => prev.map(p => p.id === t.id ? {...p, text: e.target.value} : p))} rows={2}/>
+           <button aria-label="Remover tópico" onClick={() => setTopics(prev => prev.filter(p => p.id !== t.id))} className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg shrink-0 mt-0.5"><Trash2 size={16}/></button>
+         </div>
+       ))}
+       <div className="flex items-center gap-2 mt-4 pt-2 border-t border-slate-100">
+         <input type="text" placeholder={placeholder} className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" value={newTopicInput} onChange={e => setNewTopicInput(e.target.value)} onKeyDown={(e) => {
+           if(e.key === 'Enter' && newTopicInput.trim()) {
+             setTopics(prev => [...prev, { id: crypto.randomUUID(), text: newTopicInput.trim(), selected: true }]);
+             setNewTopicInput('');
+           }
+         }}/>
+         <button onClick={() => {
+             if(newTopicInput.trim()) {
+               setTopics(prev => [...prev, { id: crypto.randomUUID(), text: newTopicInput.trim(), selected: true }]);
+               setNewTopicInput('');
+             }
+         }} className="bg-slate-900 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors">
+            <Plus size={16}/> Adicionar
+         </button>
+       </div>
+    </div>
+  );
+
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -373,7 +416,7 @@ export default function PEIBuilder() {
              <div className="absolute top-1/2 left-0 right-0 h-1 bg-slate-200 -z-10 -translate-y-1/2 rounded-full" />
              <div 
                className="absolute top-1/2 left-0 h-1 bg-primary -z-10 -translate-y-1/2 rounded-full transition-all duration-500" 
-               style={{ width: `${((activeStep - 1) / 4) * 100}%` }}
+               style={{ width: `${((activeStep - 1) / 5) * 100}%` }}
              />
              
              {steps.map(step => {
@@ -710,77 +753,93 @@ export default function PEIBuilder() {
               <motion.div key="step-case" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                 <div>
                    <h2 className="text-2xl font-black text-on-surface flex items-center gap-3">
-                     <Brain className="text-primary" /> Estudo de Caso (Seções II e III)
+                     <Brain className="text-primary" /> Estudo de Caso (Checklist Curador)
                    </h2>
+                   <p className="text-sm font-medium text-slate-500 mt-2">
+                     Analise, edite e selecione as informações mais relevantes para constarem no PEI.
+                   </p>
                 </div>
 
-                <div className="space-y-6">
-                   <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight border-b border-slate-100 pb-2">Seção II: Caracterização (Contexto Atual)</h3>
-                   <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {[
-                          { key: 'academic', label: 'Acadêmico/Educacional' },
-                          { key: 'cognitive', label: 'Cognitivo' },
-                          { key: 'linguistic', label: 'Linguístico' },
-                          { key: 'social', label: 'Social' },
-                          { key: 'emotional', label: 'Emocional' },
-                          { key: 'psychological', label: 'Psicológico' },
-                          { key: 'physical', label: 'Físico/Sensorial' },
-                        ].map(c => (
-                          <div key={c.key} className="space-y-1">
-                             <label className="text-[10px] font-black uppercase text-slate-400 pl-2">{c.label}</label>
-                             <textarea 
-                               rows={3}
-                               className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                               value={caseStudySynthesis?.currentContext?.[c.key as keyof typeof caseStudySynthesis.currentContext] || ''}
-                               onChange={e => setCaseStudySynthesis(prev => ({
-                                  ...prev, 
-                                  currentContext: { ...prev.currentContext, [c.key]: e.target.value }
-                               }))}
-                             />
-                          </div>
-                        ))}
-                      </div>
-                   </div>
-
-                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm space-y-2">
-                        <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-2">Estilo de Aprendizagem</h4>
-                        <textarea rows={4} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" value={caseStudySynthesis?.learningStyle} onChange={e => setCaseStudySynthesis(prev => ({...prev, learningStyle: e.target.value}))}/>
-                      </div>
-                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm space-y-2">
-                        <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-2">Potencialidades/Interesses</h4>
-                        <textarea rows={4} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" value={caseStudySynthesis?.potentialsInterests} onChange={e => setCaseStudySynthesis(prev => ({...prev, potentialsInterests: e.target.value}))}/>
-                      </div>
-                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm space-y-2">
-                        <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-2">Demandas e Barreiras</h4>
-                        <textarea rows={4} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" value={caseStudySynthesis?.demandsBarriers} onChange={e => setCaseStudySynthesis(prev => ({...prev, demandsBarriers: e.target.value}))}/>
-                      </div>
-                   </div>
-                </div>
-
-                <div className="space-y-6 pt-6">
-                   <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight border-b border-slate-100 pb-2">Seção III: Estratégias e Recursos</h3>
-                   
-                   <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-xl">
-                      <p className="text-sm font-medium text-yellow-800 border-l pl-2">
-                        <strong>Nota Importante:</strong> Se não houver indicação contrária quanto ao programa curricular, o estudante deverá seguir a Base Nacional Comum Curricular - BNCC.
-                      </p>
+                <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden atmospheric-shadow">
+                   {/* Tabs Menu */}
+                   <div className="flex border-b border-slate-100 bg-slate-50 overflow-x-auto">
+                     {[
+                       { id: 'contexto', label: 'Contexto Atual' },
+                       { id: 'estilos', label: 'Estilos de Aprendizagem' },
+                       { id: 'potencialidades', label: 'Potencialidades e Interesses' },
+                       { id: 'demandas', label: 'Demandas e Barreiras' },
+                       { id: 'adaptacoes', label: 'Adaptações (PEI)' }
+                     ].map(tab => (
+                       <button
+                         key={tab.id}
+                         onClick={() => setActiveTabStep2(tab.id as typeof activeTabStep2)}
+                         className={cn(
+                           "px-6 py-4 text-sm font-bold uppercase tracking-widest transition-all whitespace-nowrap border-b-2",
+                           activeTabStep2 === tab.id
+                             ? "border-primary text-primary bg-white"
+                             : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100/50"
+                         )}
+                       >
+                         {tab.label}
+                       </button>
+                     ))}
                    </div>
                    
-                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="space-y-1">
-                         <label className="text-xs font-black uppercase tracking-widest text-slate-500">Adaptações Instrucionais</label>
-                         <textarea rows={4} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm" value={instructionalAdaptations} onChange={e => setInstructionalAdaptations(e.target.value)} />
-                      </div>
-                      <div className="space-y-1">
-                         <label className="text-xs font-black uppercase tracking-widest text-slate-500">Adaptações Ambientais</label>
-                         <textarea rows={4} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm" value={environmentalAdaptations} onChange={e => setEnvironmentalAdaptations(e.target.value)} />
-                      </div>
-                      <div className="space-y-1">
-                         <label className="text-xs font-black uppercase tracking-widest text-slate-500">Adaptações para Avaliação</label>
-                         <textarea rows={4} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm" value={evaluationAdaptations} onChange={e => setEvaluationAdaptations(e.target.value)} />
-                      </div>
+                   {/* Tab Content */}
+                   <div className="p-8 bg-slate-50/50">
+                     {activeTabStep2 === 'contexto' && (
+                        <div>
+                           <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Contexto Biopsicossocial e Educacional</h3>
+                           {renderTopicList(contextTopics, setContextTopics, "Adicionar novo fato ao contexto...")}
+                        </div>
+                     )}
+                     
+                     {activeTabStep2 === 'estilos' && (
+                        <div>
+                           <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Estilos de Aprendizagem Identificados</h3>
+                           {renderTopicList(learningStyleTopics, setLearningStyleTopics, "Adicionar um estilo ou característica...")}
+                        </div>
+                     )}
+
+                     {activeTabStep2 === 'potencialidades' && (
+                        <div>
+                           <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Potencialidades, Interesses e Indicadores AH/SD</h3>
+                           {renderTopicList(potentialTopics, setPotentialTopics, "Adicionar novo potencial ou interesse...")}
+                        </div>
+                     )}
+
+                     {activeTabStep2 === 'demandas' && (
+                        <div>
+                           <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Demandas e Barreiras Mapeadas</h3>
+                           {renderTopicList(demandTopics, setDemandTopics, "Adicionar nova demanda ou barreira...")}
+                        </div>
+                     )}
+
+                     {activeTabStep2 === 'adaptacoes' && (
+                        <div className="space-y-8">
+                           <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-xl flex items-start gap-3">
+                              <AlertTriangle size={20} className="text-amber-600 shrink-0 mt-0.5" />
+                              <p className="text-sm font-medium text-amber-800 leading-relaxed">
+                                <strong>Nota Importante:</strong> Presume-se que as adaptações propostas e validadas por este componente sejam as mesmas necessárias para a progressão do estudante e deverão ser formalizadas pela escola. Se não houver indicação metodológica contrária, o estudante seguirá o referencial padrão (BNCC).
+                              </p>
+                           </div>
+
+                           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                              <div className="space-y-4">
+                                <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest border-b border-slate-200 pb-2">Adaptações Instrucionais</h4>
+                                {renderTopicList(instructionalTopics, setInstructionalTopics, "A. Instrucional")}
+                              </div>
+                              <div className="space-y-4">
+                                <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest border-b border-slate-200 pb-2">Adaptações Ambientais</h4>
+                                {renderTopicList(environmentalTopics, setEnvironmentalTopics, "A. Ambiental")}
+                              </div>
+                              <div className="space-y-4">
+                                <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest border-b border-slate-200 pb-2">Adaptações na Avaliação</h4>
+                                {renderTopicList(evaluationTopics, setEvaluationTopics, "A. Avaliação")}
+                              </div>
+                           </div>
+                        </div>
+                     )}
                    </div>
                 </div>
               </motion.div>
