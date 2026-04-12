@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Brain, Sparkles, Database, Loader2, ArrowRight, Activity,
   Users, ShieldCheck, Plus, Highlighter, X, CheckCircle2, Info,
-  Maximize2, Trash2, Archive, RefreshCcw, ChevronLeft
+  Maximize2, Trash2, Archive, RefreshCcw, ChevronLeft, Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TopBar } from '../components/Navigation';
@@ -240,35 +240,38 @@ export default function ConvergenceEditor() {
     });
   };
 
-  const renderTopicList = (topics: TopicItem[], pathUpdater: (newTopics: TopicItem[]) => void, placeholder: string) => (
-    <div className="space-y-3">
-       {topics.map(t => (
-         <div key={t.id} className="flex items-start gap-3 bg-white border border-slate-200 p-3 rounded-xl shadow-sm transition-all focus-within:ring-2 focus-within:ring-primary/20">
-           <button aria-label={t.selected ? "Desmarcar tópico" : "Marcar tópico"} onClick={() => pathUpdater(topics.map(p => p.id === t.id ? {...p, selected: !p.selected} : p))} className={cn("mt-1 w-5 h-5 rounded flex items-center justify-center border shrink-0 transition-colors", t.selected ? "bg-primary border-primary text-white" : "border-slate-300 hover:border-slate-400")}>
-             {t.selected && <Check size={14}/>}
-           </button>
-           <textarea aria-label="Texto do tópico" placeholder="Texto do tópico" className={cn("flex-1 bg-transparent text-sm resize-none focus:outline-none transition-all leading-relaxed", !t.selected && "line-through text-slate-400")} value={t.text} onChange={e => pathUpdater(topics.map(p => p.id === t.id ? {...p, text: e.target.value} : p))} rows={2}/>
-           <button aria-label="Remover tópico" onClick={() => pathUpdater(topics.filter(p => p.id !== t.id))} className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg shrink-0 mt-0.5"><Trash2 size={16}/></button>
-         </div>
-       ))}
-       <div className="flex items-center gap-2 mt-4 pt-2 border-t border-slate-100">
-         <input type="text" placeholder={placeholder} className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" value={newTopicInput} onChange={e => setNewTopicInput(e.target.value)} onKeyDown={(e) => {
-           if(e.key === 'Enter' && newTopicInput.trim()) {
-             pathUpdater([...topics, { id: crypto.randomUUID(), text: newTopicInput.trim(), selected: true }]);
-             setNewTopicInput('');
-           }
-         }}/>
-         <button onClick={() => {
-             if(newTopicInput.trim()) {
-               pathUpdater([...topics, { id: crypto.randomUUID(), text: newTopicInput.trim(), selected: true }]);
+  const renderTopicList = (topics: TopicItem[], pathUpdater: (newTopics: TopicItem[]) => void, placeholder: string) => {
+    const safeTopics = Array.isArray(topics) ? topics : (typeof topics === 'string' ? parseString(topics) : []);
+    return (
+      <div className="space-y-3">
+         {safeTopics.map(t => (
+           <div key={t.id} className="flex items-start gap-3 bg-white border border-slate-200 p-3 rounded-xl shadow-sm transition-all focus-within:ring-2 focus-within:ring-primary/20">
+             <button aria-label={t.selected ? "Desmarcar tópico" : "Marcar tópico"} onClick={() => pathUpdater(safeTopics.map(p => p.id === t.id ? {...p, selected: !p.selected} : p))} className={cn("mt-1 w-5 h-5 rounded flex items-center justify-center border shrink-0 transition-colors", t.selected ? "bg-primary border-primary text-white" : "border-slate-300 hover:border-slate-400")}>
+               {t.selected && <Check size={14}/>}
+             </button>
+             <textarea aria-label="Texto do tópico" placeholder="Texto do tópico" className={cn("flex-1 bg-transparent text-sm resize-none focus:outline-none transition-all leading-relaxed", !t.selected && "line-through text-slate-400")} value={t.text} onChange={e => pathUpdater(safeTopics.map(p => p.id === t.id ? {...p, text: e.target.value} : p))} rows={2}/>
+             <button aria-label="Remover tópico" onClick={() => pathUpdater(safeTopics.filter(p => p.id !== t.id))} className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg shrink-0 mt-0.5"><Trash2 size={16}/></button>
+           </div>
+         ))}
+         <div className="flex items-center gap-2 mt-4 pt-2 border-t border-slate-100">
+           <input type="text" placeholder={placeholder} className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" value={newTopicInput} onChange={e => setNewTopicInput(e.target.value)} onKeyDown={(e) => {
+             if(e.key === 'Enter' && newTopicInput.trim()) {
+               pathUpdater([...safeTopics, { id: crypto.randomUUID(), text: newTopicInput.trim(), selected: true }]);
                setNewTopicInput('');
              }
-         }} className="bg-slate-900 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors">
-            <Plus size={16}/> Adicionar
-         </button>
-       </div>
-    </div>
-  );
+           }}/>
+           <button onClick={() => {
+               if(newTopicInput.trim()) {
+                 pathUpdater([...safeTopics, { id: crypto.randomUUID(), text: newTopicInput.trim(), selected: true }]);
+                 setNewTopicInput('');
+               }
+           }} className="bg-slate-900 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors">
+              <Plus size={16}/> Adicionar
+           </button>
+         </div>
+      </div>
+    );
+  };
 
 
 

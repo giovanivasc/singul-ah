@@ -327,8 +327,10 @@ export default function PEIBuilder() {
     }
     return age;
   };
-  const renderReadOnlyList = (topics?: TopicItem[]) => {
-    if (!topics || topics.length === 0) return <p className="text-sm text-slate-400 italic">Sem registros catalogados.</p>;
+  const renderReadOnlyList = (topics?: TopicItem[] | string) => {
+    if (!topics) return <p className="text-sm text-slate-400 italic">Sem registros catalogados.</p>;
+    if (!Array.isArray(topics)) return <p className="text-sm text-slate-400 italic text-wrap w-full">{String(topics)}</p>;
+    if (topics.length === 0) return <p className="text-sm text-slate-400 italic">Sem registros catalogados.</p>;
     const selected = topics.filter(t => t.selected);
     if (selected.length === 0) return <p className="text-sm text-slate-400 italic">Nenhum item selecionado para o PEI.</p>;
     
