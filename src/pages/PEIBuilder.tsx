@@ -357,9 +357,9 @@ export default function PEIBuilder() {
            return (
            <li key={t.id} className="flex items-start gap-3 bg-white border border-slate-100 p-4 rounded-xl shadow-sm text-sm text-slate-700 leading-relaxed">
              <CheckCircle2 size={18} className="text-primary mt-0.5 shrink-0" />
-             <span className="flex-1">{t.text}</span>
+             <span className="whitespace-normal break-words flex-1 leading-relaxed">{t.text}</span>
              {cat && (
-                <span className={cn("px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest shrink-0 self-center", cat.colorClass)}>
+                <span className={cn("text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 mt-0.5", cat.colorClass)}>
                   {cat.label}
                 </span>
              )}

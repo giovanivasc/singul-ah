@@ -128,15 +128,15 @@ function TopicEditorList({
              <button aria-label={t.selected ? "Desmarcar" : "Marcar"} onClick={() => onChange(safeTopics.map(p => p.id === t.id ? {...p, selected: !p.selected} : p))} className={cn("w-5 h-5 mt-0.5 rounded-full flex items-center justify-center border shrink-0 transition-colors", t.selected ? "bg-primary border-primary text-white" : "border-slate-300 hover:border-slate-400")}>
                {t.selected && <div className="w-2.5 h-2.5 bg-white rounded-full"/>}
              </button>
-             <textarea aria-label="Texto" placeholder="Texto..." className={cn("resize-none overflow-hidden h-auto w-full bg-transparent text-sm focus:outline-none transition-all leading-relaxed", !t.selected && "line-through text-slate-400")} onInput={(e) => { e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px'; }} value={t.text} onChange={e => onChange(safeTopics.map(p => p.id === t.id ? {...p, text: e.target.value} : p))} rows={1}/>
+             <textarea aria-label="Texto" title="Texto" placeholder="Texto..." className={cn("resize-none overflow-hidden h-auto bg-transparent text-sm focus:outline-none transition-all whitespace-normal break-words flex-1 leading-relaxed", !t.selected && "line-through text-slate-400")} onInput={(e) => { e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px'; }} value={t.text} onChange={e => onChange(safeTopics.map(p => p.id === t.id ? {...p, text: e.target.value} : p))} rows={1}/>
            </div>
-           <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-2 ml-8 sm:ml-0 mt-2 sm:mt-0">
+           <div className="flex items-start justify-between sm:justify-end w-full sm:w-auto gap-2 ml-8 sm:ml-0 mt-2 sm:mt-0">
              {categories && (
-                <select value={t.category || ''} onChange={(e) => onChange(safeTopics.map(p => p.id === t.id ? {...p, category: e.target.value} : p))} className={cn("text-[10px] uppercase tracking-widest font-bold rounded-lg px-2 py-1.5 outline-none cursor-pointer appearance-none text-center", cat ? cat.colorClass : "bg-slate-100 text-slate-600")}>
+                <select aria-label="Selecionar categoria" title="Selecionar categoria" value={t.category || ''} onChange={(e) => onChange(safeTopics.map(p => p.id === t.id ? {...p, category: e.target.value} : p))} className={cn("text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 outline-none cursor-pointer appearance-none text-center mt-0.5", cat ? cat.colorClass : "bg-slate-100 text-slate-600")}>
                   {categories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
                 </select>
              )}
-             <button aria-label="Remover" onClick={() => onChange(safeTopics.filter(p => p.id !== t.id))} className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg shrink-0"><Trash2 size={16}/></button>
+             <button aria-label="Remover" title="Remover" onClick={() => onChange(safeTopics.filter(p => p.id !== t.id))} className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg shrink-0 mt-0.5"><Trash2 size={16}/></button>
            </div>
          </div>
        )})}
