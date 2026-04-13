@@ -90,7 +90,7 @@ export default function PEIBuilder() {
     { id: 1, title: 'Identificação', icon: ShieldCheck },
     { id: 2, title: 'Estudo de Caso', icon: Brain },
     { id: 3, title: 'Programa Curricular', icon: LayoutGrid },
-    { id: 4, title: 'Serviços e Apoios', icon: BookOpen },
+    { id: 4, title: 'Serviços e Enriquecimento', icon: BookOpen },
     { id: 5, title: 'Interações', icon: Sparkles },
     { id: 6, title: 'Metas', icon: Target },
   ];
@@ -163,11 +163,16 @@ export default function PEIBuilder() {
     { id: 'geografia', name: 'Geografia', status: 'padrao', justification: '' },
     { id: 'arte', name: 'Arte', status: 'padrao', justification: '' },
     { id: 'edfisica', name: 'Ed. Física', status: 'padrao', justification: '' },
-    { id: 'ingles', name: 'Inglês', status: 'padrao', justification: '' },
+    { id: 'ingles', name: 'Língua Inglesa', status: 'padrao', justification: '' },
     { id: 'computacao', name: 'Computação', status: 'padrao', justification: '' },
   ]);
 
-  // Etapa 3 state
+  // Etapa 4 state
+  const [activeTabStep4, setActiveTabStep4] = useState<'servicos' | 'enriquecimento'>('servicos');
+  const [specializedServices, setSpecializedServices] = useState<{id: string, name: string, frequency: string, duration: string, location: string}[]>([]);
+  const [enrichmentServices, setEnrichmentServices] = useState<{id: string, name: string, startDate: string, frequency: string, duration: string}[]>([]);
+
+  // BNCC Search State
   const [planningContent, setPlanningContent] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState<'habilidade' | 'competencia'>('habilidade');
@@ -222,6 +227,10 @@ export default function PEIBuilder() {
 
          if (parsed.disciplines) setDisciplines(parsed.disciplines);
          if (parsed.curriculumPlans) setCurriculumPlans(parsed.curriculumPlans);
+         
+         if (parsed.specializedServices) setSpecializedServices(parsed.specializedServices);
+         if (parsed.enrichmentServices) setEnrichmentServices(parsed.enrichmentServices);
+
          if (parsed.planningContent) setPlanningContent(parsed.planningContent);
          if (parsed.selectedSkills) setSelectedSkills(parsed.selectedSkills);
          if (parsed.compactationTarget) setCompactationTarget(parsed.compactationTarget);
@@ -356,6 +365,8 @@ export default function PEIBuilder() {
       validityPeriod,
       disciplines,
       curriculumPlans,
+      specializedServices,
+      enrichmentServices,
       planningContent,
       selectedSkills,
       compactationTarget,
@@ -1065,236 +1076,136 @@ export default function PEIBuilder() {
 
             {/* ETAPA 4 */}
             {activeStep === 4 && (
-              <motion.div key="step-3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+              <motion.div key="step-4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                 <div>
                   <h2 className="text-2xl font-black text-on-surface flex items-center gap-3">
-                     <BookOpen className="text-primary" /> Planejamento Curricular e SDI
+                     <BookOpen className="text-primary" /> Serviços Especializados e Enriquecimento
                   </h2>
                   <p className="text-sm font-medium text-slate-500 mt-2">
-                     Organize as estratégias e conteúdos base da Base Nacional (BNCC).
+                     Especifique os apoios e atividades extracurriculares oferecidos ao estudante.
                   </p>
                 </div>
 
-                <div className="space-y-4">
-                  <label className="text-[10px] uppercase font-black tracking-widest text-slate-400 pl-2">Unidade Temática / Conteúdo do Bimestre</label>
-                  <textarea 
-                    rows={4}
-                    value={planningContent}
-                    onChange={e => setPlanningContent(e.target.value)}
-                    placeholder="Cole aqui o seu planejamento..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
+                <div className="bg-slate-50/50 p-2 rounded-2xl border border-slate-100 flex gap-2 w-fit">
+                    <button 
+                      onClick={() => setActiveTabStep4('servicos')}
+                      className={cn(
+                        "px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
+                        activeTabStep4 === 'servicos' 
+                          ? "bg-white text-primary shadow-sm border border-slate-200/60" 
+                          : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                      )}
+                    >
+                      Serviços Especializados
+                    </button>
+                    <button 
+                      onClick={() => setActiveTabStep4('enriquecimento')}
+                      className={cn(
+                        "px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
+                        activeTabStep4 === 'enriquecimento' 
+                          ? "bg-white text-primary shadow-sm border border-slate-200/60" 
+                          : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                      )}
+                    >
+                      Enriquecimento Extracurricular
+                    </button>
+                 </div>
 
-                <div className="space-y-6">
-                  <div className="flex flex-col gap-4">
-                    <label className="text-[10px] uppercase font-black tracking-widest text-slate-400 pl-2">Integração BNCC</label>
-                    
-                    {/* Seletor de Tipo de Busca */}
-                    <div className="flex p-1 bg-slate-100 rounded-xl w-fit">
-                      <button 
-                        onClick={() => setSearchType('habilidade')}
-                        className={cn(
-                          "px-4 py-2 rounded-lg text-xs font-black transition-all",
-                          searchType === 'habilidade' 
-                            ? "bg-white text-primary shadow-sm" 
-                            : "text-slate-500 hover:text-slate-700"
-                        )}
-                      >
-                        HABILIDADES
-                      </button>
-                      <button 
-                        onClick={() => setSearchType('competencia')}
-                        className={cn(
-                          "px-4 py-2 rounded-lg text-xs font-black transition-all",
-                          searchType === 'competencia' 
-                            ? "bg-white text-primary shadow-sm" 
-                            : "text-slate-500 hover:text-slate-700"
-                        )}
-                      >
-                        COMPETÊNCIAS
-                      </button>
-                    </div>
-
-                    {/* Toggle Aceleração (Só habilitado se houver suplementar) */}
-                    <div className="flex items-center justify-between bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl">
-                      <div className="flex items-center gap-3">
-                        <div className={cn(
-                          "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
-                          hasSuplementar ? "bg-amber-100 text-amber-600" : "bg-slate-200 text-slate-400"
-                        )}>
-                          <Sparkles size={20} />
-                        </div>
-                        <div>
-                          <p className="text-xs font-black text-slate-700 uppercase tracking-tight">Busca Avançada (Aceleração)</p>
-                          <p className="text-[10px] text-slate-500 font-medium">Permitir seleção de anos letivos superiores</p>
-                        </div>
+                 {activeTabStep4 === 'servicos' && (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+                      <div className="flex justify-between items-center">
+                        <label className="text-[10px] font-black tracking-widest uppercase text-slate-400">Tabela de Serviços Especializados</label>
+                        <button onClick={() => setSpecializedServices([...specializedServices, { id: crypto.randomUUID(), name: '', frequency: '', duration: '', location: '' }])} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors">
+                           <Plus size={14}/> Adicionar Serviço
+                        </button>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          className="sr-only peer"
-                          checked={allowAdvancedYears}
-                          disabled={!hasSuplementar}
-                          onChange={(e) => setAllowAdvancedYears(e.target.checked)}
-                        />
-                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary disabled:opacity-50"></div>
-                      </label>
-                    </div>
-
-                    <div className="relative">
-                       <div className="flex gap-3">
-                         <div className="relative flex-1">
-                            <Search className="absolute left-4 top-3 text-slate-400" size={18} />
-                            <input 
-                              type="text"
-                              value={searchTerm}
-                              onChange={e => setSearchTerm(e.target.value)}
-                              placeholder="Busque código ou texto (ex: Frações, EF05MA...)"
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
-                            />
-                         </div>
-                       </div>
-                       
-                       {/* BNCC Autocomplete Dropdown */}
-                       {searchResults.length > 0 && (
-                          <div className="absolute z-10 w-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-60 overflow-y-auto">
-                             {searchResults.map(item => (
-                               <button
-                                 key={item.codigo}
-                                 onClick={() => {
-                                   if (!selectedSkills.find(i => i.codigo === item.codigo)) {
-                                      setSelectedSkills([...selectedSkills, item]);
-                                   }
-                                   setSearchTerm('');
-                                   setSearchResults([]);
-                                 }}
-                                 className="w-full text-left px-4 py-3 hover:bg-primary/5 transition-colors border-b border-slate-50 last:border-0 flex flex-col gap-1"
-                               >
-                                  <div className="flex flex-wrap items-center gap-2 mb-1">
-                                    {item.tipo === 'competencia' ? (
-                                      <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-2 py-0.5 rounded uppercase tracking-tighter">Competência</span>
-                                    ) : (
-                                      <>
-                                        <span className="font-black text-primary text-xs uppercase tracking-widest">{item.codigo}</span>
-                                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{item.etapa}</span>
-                                        <span className={cn(
-                                          "text-xs px-2 py-1 rounded-full font-bold",
-                                          allowAdvancedYears && studentInfo?.grade && !item.ano.toLowerCase().includes(studentInfo.grade.toLowerCase().split(' ')[0])
-                                            ? "bg-red-100 text-red-700 border border-red-200 animate-pulse" 
-                                            : "bg-gray-100 text-gray-700"
-                                        )}>
-                                          {item.ano}
-                                        </span>
-                                        <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">{item.disciplina}</span>
-                                      </>
-                                    )}
-                                  </div>
-                                  <span className={cn(
-                                    "text-sm font-medium",
-                                    item.tipo === 'competencia' ? "text-slate-800 leading-relaxed" : "text-slate-600"
-                                  )}>
-                                    {item.descricao}
-                                  </span>
-                               </button>
-                             ))}
-                          </div>
-                       )}
-                    </div>
-
-                    {selectedSkills.length > 0 && (
-                      <div className="space-y-6 mt-4">
-                        {/* Habilidades Selecionadas */}
-                        {selectedSkills.some(s => s.tipo === 'habilidade') && (
-                          <div className="flex flex-col gap-2 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Habilidades Selecionadas</p>
-                            {selectedSkills.filter(s => s.tipo === 'habilidade').map((item) => (
-                              <div key={item.codigo} className="bg-white border border-slate-200 p-3 rounded-xl flex items-center justify-between gap-4 shadow-sm group">
-                                <div className="flex-1">
-                                  <div className="flex flex-wrap items-center gap-2 mb-1">
-                                    <span className="font-black text-primary text-xs mr-2">{item.codigo}</span>
-                                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{item.etapa}</span>
-                                    <span className={cn(
-                                      "text-xs px-2 py-1 rounded-full font-bold",
-                                      studentInfo?.grade && !item.ano.toLowerCase().includes(studentInfo.grade.toLowerCase().split(' ')[0])
-                                        ? "bg-red-100 text-red-700 border border-red-200" 
-                                        : "bg-gray-100 text-gray-700"
-                                    )}>
-                                      {item.ano}
-                                    </span>
-                                    <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">{item.disciplina}</span>
-                                  </div>
-                                  <p className="text-sm text-slate-600 font-medium line-clamp-2 transition-all group-hover:line-clamp-none">{item.descricao}</p>
-                                </div>
-                                <button onClick={() => setSelectedSkills(selectedSkills.filter(i => i.codigo !== item.codigo))} className="text-slate-300 hover:text-red-500 rounded-md p-1 transition-all group-hover:bg-red-50 shrink-0"><X size={18} /></button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Competências Selecionadas */}
-                        {selectedSkills.some(s => s.tipo === 'competencia') && (
-                          <div className="flex flex-col gap-2 bg-amber-50/30 p-4 rounded-2xl border border-amber-100">
-                            <p className="text-[10px] font-black uppercase text-amber-500/70 tracking-widest mb-1">Competências Gerais / Específicas</p>
-                            {selectedSkills.filter(s => s.tipo === 'competencia').map((item) => (
-                              <div key={item.codigo} className="bg-white border border-amber-100 p-3 rounded-xl flex items-center justify-between gap-4 shadow-sm group">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-[9px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded uppercase">{item.etapa}</span>
-                                    <span className="text-[9px] font-black text-amber-600/50 uppercase tracking-widest">{item.disciplina}</span>
-                                  </div>
-                                  <p className="text-sm text-slate-800 font-bold leading-relaxed line-clamp-2 transition-all group-hover:line-clamp-none">{item.descricao}</p>
-                                </div>
-                                <button onClick={() => setSelectedSkills(selectedSkills.filter(i => i.codigo !== item.codigo))} className="text-slate-300 hover:text-red-500 rounded-md p-1 transition-all group-hover:bg-red-50 shrink-0"><X size={18} /></button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Reactividade: Mostrar disciplinas suplementares conectadas à Compactação */}
-                {hasSuplementar && (
-                  <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mt-8 space-y-6">
-                    <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
-                      <div className="flex items-center gap-3">
-                        <Sparkles className="text-green-600" size={24} />
-                        <h3 className="text-lg font-black text-green-800 uppercase tracking-tight">Compactação Curricular</h3>
-                      </div>
-                      <div className="flex gap-2 flex-wrap">
-                         {suplementarDisciplines.map(d => (
-                            <span key={d.name} className="bg-white border border-green-200 text-green-700 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-1.5">
-                               Foco: {d.name}
-                            </span>
-                         ))}
+                      <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
+                        <table className="w-full text-left text-sm min-w-[700px]">
+                            <thead className="bg-slate-50 border-b border-slate-100 uppercase text-[10px] font-black text-slate-500 tracking-widest leading-relaxed">
+                              <tr>
+                                <th className="p-4 min-w-[200px]">Serviço especializado</th>
+                                <th className="p-4 w-40">Frequência</th>
+                                <th className="p-4 w-40">Duração</th>
+                                <th className="p-4 w-48">Local</th>
+                                <th className="p-4 w-10"></th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {specializedServices.length === 0 && (
+                                  <tr><td colSpan={5} className="p-6 text-center text-slate-400 font-medium pb-8 border-none"><ShieldCheck className="mx-auto mb-2 opacity-50" size={32}/>Nenhum serviço cadastrado.</td></tr>
+                                )}
+                                {specializedServices.map((svc, sIdx) => (
+                                  <tr key={svc.id} className="hover:bg-slate-50/50 transition-colors align-top">
+                                    <td className="p-2 border-r border-slate-50">
+                                       <AutoResizeTextarea value={svc.name} onChange={e => { const n = [...specializedServices]; n[sIdx].name = e.target.value; setSpecializedServices(n); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[40px]" placeholder="Ex: Fonoaudiologia..." />
+                                    </td>
+                                    <td className="p-2 border-r border-slate-50">
+                                       <AutoResizeTextarea value={svc.frequency} onChange={e => { const n = [...specializedServices]; n[sIdx].frequency = e.target.value; setSpecializedServices(n); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[40px]" placeholder="Ex: 2x por semana..." />
+                                    </td>
+                                    <td className="p-2 border-r border-slate-50">
+                                       <AutoResizeTextarea value={svc.duration} onChange={e => { const n = [...specializedServices]; n[sIdx].duration = e.target.value; setSpecializedServices(n); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[40px]" placeholder="Ex: 50 minutos..." />
+                                    </td>
+                                    <td className="p-2">
+                                       <AutoResizeTextarea value={svc.location} onChange={e => { const n = [...specializedServices]; n[sIdx].location = e.target.value; setSpecializedServices(n); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[40px]" placeholder="Ex: Clínica X..." />
+                                    </td>
+                                    <td className="p-2 align-middle">
+                                       <button onClick={() => setSpecializedServices(specializedServices.filter(s => s.id !== svc.id))} className="text-slate-300 hover:text-red-500 rounded p-1"><Trash2 size={16}/></button>
+                                    </td>
+                                  </tr>
+                                ))}
+                            </tbody>
+                        </table>
                       </div>
                     </div>
-                    <p className="text-sm font-bold text-green-700/80 -mt-2">Disciplinas suplementares marcadadas anteriormente exigem estratégias de compactação para evitar tédio e promover o avanço.</p>
-                    
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-[10px] uppercase font-black tracking-widest text-green-700/60 pl-2">O que será compactado?</label>
-                        <textarea 
-                          rows={3} 
-                          value={compactationTarget}
-                          onChange={e => setCompactationTarget(e.target.value)}
-                          className="w-full bg-white border border-green-200 rounded-xl p-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-400/50"
-                        />
+                 )}
+
+                 {activeTabStep4 === 'enriquecimento' && (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+                      <div className="flex justify-between items-center">
+                        <label className="text-[10px] font-black tracking-widest uppercase text-slate-400">Tabela de Enriquecimento Extracurricular</label>
+                        <button onClick={() => setEnrichmentServices([...enrichmentServices, { id: crypto.randomUUID(), name: '', startDate: '', frequency: '', duration: '' }])} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors">
+                           <Plus size={14}/> Adicionar Enriquecimento
+                        </button>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] uppercase font-black tracking-widest text-green-700/60 pl-2">Como o domínio prévio foi avaliado?</label>
-                        <textarea 
-                          rows={3} 
-                          value={evaluationMethod}
-                          onChange={e => setEvaluationMethod(e.target.value)}
-                          className="w-full bg-white border border-green-200 rounded-xl p-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-400/50"
-                        />
+                      <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
+                        <table className="w-full text-left text-sm min-w-[700px]">
+                            <thead className="bg-slate-50 border-b border-slate-100 uppercase text-[10px] font-black text-slate-500 tracking-widest leading-relaxed">
+                              <tr>
+                                <th className="p-4 min-w-[200px]">Enriquecimento extracurricular</th>
+                                <th className="p-4 w-40">Data de início</th>
+                                <th className="p-4 w-40">Frequência</th>
+                                <th className="p-4 w-40">Duração</th>
+                                <th className="p-4 w-10"></th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {enrichmentServices.length === 0 && (
+                                  <tr><td colSpan={5} className="p-6 text-center text-slate-400 font-medium pb-8 border-none"><Sparkles className="mx-auto mb-2 opacity-50" size={32}/>Nenhuma atividade cadastrada.</td></tr>
+                                )}
+                                {enrichmentServices.map((svc, sIdx) => (
+                                  <tr key={svc.id} className="hover:bg-slate-50/50 transition-colors align-top">
+                                    <td className="p-2 border-r border-slate-50">
+                                       <AutoResizeTextarea value={svc.name} onChange={e => { const n = [...enrichmentServices]; n[sIdx].name = e.target.value; setEnrichmentServices(n); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[40px]" placeholder="Ex: Robótica..." />
+                                    </td>
+                                    <td className="p-2 border-r border-slate-50">
+                                       <AutoResizeTextarea value={svc.startDate} onChange={e => { const n = [...enrichmentServices]; n[sIdx].startDate = e.target.value; setEnrichmentServices(n); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[40px]" placeholder="Ex: Março/2026..." />
+                                    </td>
+                                    <td className="p-2 border-r border-slate-50">
+                                       <AutoResizeTextarea value={svc.frequency} onChange={e => { const n = [...enrichmentServices]; n[sIdx].frequency = e.target.value; setEnrichmentServices(n); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[40px]" placeholder="Ex: 1x na semana..." />
+                                    </td>
+                                    <td className="p-2">
+                                       <AutoResizeTextarea value={svc.duration} onChange={e => { const n = [...enrichmentServices]; n[sIdx].duration = e.target.value; setEnrichmentServices(n); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[40px]" placeholder="Ex: 2 horas..." />
+                                    </td>
+                                    <td className="p-2 align-middle">
+                                       <button onClick={() => setEnrichmentServices(enrichmentServices.filter(s => s.id !== svc.id))} className="text-slate-300 hover:text-red-500 rounded p-1"><Trash2 size={16}/></button>
+                                    </td>
+                                  </tr>
+                                ))}
+                            </tbody>
+                        </table>
                       </div>
                     </div>
-                  </div>
-                )}
+                 )}
               </motion.div>
             )}
 
