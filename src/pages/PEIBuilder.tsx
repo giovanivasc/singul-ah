@@ -16,10 +16,49 @@ import { BnccSkill, unifiedBnccData } from '../data/bnccData';
 import { supabase } from '../lib/supabase';
 
 type DisciplineProfile = { 
+  id: string;
   name: string; 
-  status: 'suplementar' | 'padrao' | 'complementar'; 
+  status: 'padrao' | 'adaptacao' | 'modificacao'; 
   justification: string; 
 };
+
+type CurriculumPlanRow = {
+  id: string;
+  content: string;
+  objectives: BnccSkill[];
+  strategies: string;
+  resources: string;
+  evaluation: string;
+  timeline: string;
+}
+
+type CurriculumPlan = {
+  disciplineId: string;
+  annualGoal: string;
+  rows: CurriculumPlanRow[];
+}
+
+import { useRef } from 'react';
+function AutoResizeTextarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.style.height = 'auto';
+      ref.current.style.height = ref.current.scrollHeight + 'px';
+    }
+  }, [props.value]);
+  return (
+    <textarea
+      {...props}
+      ref={ref}
+      onInput={(e) => {
+        e.currentTarget.style.height = 'auto';
+        e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px';
+        if (props.onInput) props.onInput(e);
+      }}
+    />
+  );
+}
 
 type TeamMember = { id: string; name: string; role: string; origin: string; };
 type AssessmentData = { id: string; source: string; date: string; summary: string; origin: string; };
@@ -49,12 +88,12 @@ export default function PEIBuilder() {
   const [studentInfo, setStudentInfo] = useState<any>(null);
 
   const steps = [
-    { id: 1, title: 'Seção I: Identificação', icon: ShieldCheck },
-    { id: 2, title: 'Seções II e III: Estudo de Caso', icon: Brain },
-    { id: 3, title: 'Seção IV: Perfil Curricular', icon: LayoutGrid },
-    { id: 4, title: 'Seções V e VI: SDI', icon: BookOpen },
-    { id: 5, title: 'Seções VII e VIII', icon: Sparkles },
-    { id: 6, title: 'Seção IX: Metas', icon: Target },
+    { id: 1, title: 'Identificação', icon: ShieldCheck },
+    { id: 2, title: 'Estudo de Caso', icon: Brain },
+    { id: 3, title: 'Programa Curricular', icon: LayoutGrid },
+    { id: 4, title: 'Serviços e Apoios', icon: BookOpen },
+    { id: 5, title: 'Interações', icon: Sparkles },
+    { id: 6, title: 'Metas', icon: Target },
   ];
 
   // Etapa 1 state
@@ -111,14 +150,22 @@ export default function PEIBuilder() {
   const [caseStudySynthesis, setCaseStudySynthesis] = useState<CaseStudySynthesis | null>(null);
 
   // Etapa 3 state
+  const [activeTabStep3, setActiveTabStep3] = useState<'perfil' | 'construcao'>('perfil');
+  const [curriculumPlans, setCurriculumPlans] = useState<CurriculumPlan[]>([]);
+  const [selectedPlanDisciplineId, setSelectedPlanDisciplineId] = useState<string>('');
+  const [isAddingDiscipline, setIsAddingDiscipline] = useState(false);
+  const [newDisciplineName, setNewDisciplineName] = useState('');
+
   const [disciplines, setDisciplines] = useState<DisciplineProfile[]>([
-    { name: 'Língua Portuguesa', status: 'padrao', justification: '' },
-    { name: 'Matemática', status: 'padrao', justification: '' },
-    { name: 'Ciências', status: 'padrao', justification: '' },
-    { name: 'História', status: 'padrao', justification: '' },
-    { name: 'Geografia', status: 'padrao', justification: '' },
-    { name: 'Artes', status: 'padrao', justification: '' },
-    { name: 'Educação Física', status: 'padrao', justification: '' },
+    { id: 'portugues', name: 'Língua Portuguesa', status: 'padrao', justification: '' },
+    { id: 'matematica', name: 'Matemática', status: 'padrao', justification: '' },
+    { id: 'ciencias', name: 'Ciências', status: 'padrao', justification: '' },
+    { id: 'historia', name: 'História', status: 'padrao', justification: '' },
+    { id: 'geografia', name: 'Geografia', status: 'padrao', justification: '' },
+    { id: 'arte', name: 'Arte', status: 'padrao', justification: '' },
+    { id: 'edfisica', name: 'Ed. Física', status: 'padrao', justification: '' },
+    { id: 'ingles', name: 'Inglês', status: 'padrao', justification: '' },
+    { id: 'computacao', name: 'Computação', status: 'padrao', justification: '' },
   ]);
 
   // Etapa 3 state
@@ -175,6 +222,7 @@ export default function PEIBuilder() {
          if (parsed.validityPeriod) setValidityPeriod(parsed.validityPeriod);
 
          if (parsed.disciplines) setDisciplines(parsed.disciplines);
+         if (parsed.curriculumPlans) setCurriculumPlans(parsed.curriculumPlans);
          if (parsed.planningContent) setPlanningContent(parsed.planningContent);
          if (parsed.selectedSkills) setSelectedSkills(parsed.selectedSkills);
          if (parsed.compactationTarget) setCompactationTarget(parsed.compactationTarget);
@@ -308,6 +356,7 @@ export default function PEIBuilder() {
       validityType,
       validityPeriod,
       disciplines,
+      curriculumPlans,
       planningContent,
       selectedSkills,
       compactationTarget,
@@ -813,57 +862,262 @@ export default function PEIBuilder() {
               </motion.div>
             )}
 
-            {/* ETAPA 3: Perfil Curricular Assíncrono */}
+            {/* ETAPA 3: Programa Curricular */}
             {activeStep === 3 && (
-              <motion.div key="step-2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h2 className="text-2xl font-black text-on-surface flex items-center gap-3">
-                       <LayoutGrid className="text-primary" /> Perfil Curricular Assíncrono
-                    </h2>
-                    <p className="text-sm font-medium text-slate-500 mt-2">
-                       Ajuste o status de necessidade do aluno para cada componente curricular.
-                    </p>
-                  </div>
+              <motion.div key="step-3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                <div>
+                  <h2 className="text-2xl font-black text-on-surface flex items-center gap-3">
+                     <LayoutGrid className="text-primary" /> Programa Curricular
+                  </h2>
+                  <p className="text-sm font-medium text-slate-500 mt-2">
+                     Defina o perfil de cada disciplina e planeje o currículo para as áreas com modificação.
+                  </p>
                 </div>
 
-                <div className="space-y-4">
-                  {disciplines.map((disc, idx) => (
-                    <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col xl:flex-row gap-6 items-start xl:items-center shadow-sm hover:border-primary/30 transition-all">
-                      <div className="w-full xl:w-48 font-black text-slate-800 text-sm uppercase tracking-wide">
-                        {disc.name}
-                      </div>
-                      
-                      <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-xl">
-                        {(['suplementar', 'padrao', 'complementar'] as const).map(status => (
-                          <button
-                            key={status}
-                            onClick={() => handleUpdateDiscipline(idx, { status })}
-                            className={cn(
-                              "px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all tracking-widest",
-                              disc.status === status 
-                                ? status === 'suplementar' ? "bg-green-100 text-green-700 shadow-sm" : 
-                                  status === 'padrao' ? "bg-slate-200 text-slate-700 shadow-sm" : 
-                                  "bg-red-100 text-red-700 shadow-sm"
-                                : "text-slate-500 hover:bg-slate-200/50"
-                            )}
-                          >
-                            {status === 'suplementar' && '🟢 Suplementar'}
-                            {status === 'padrao' && '⚪ Padrão'}
-                            {status === 'complementar' && '🔴 Complementar'}
-                          </button>
-                        ))}
-                      </div>
+                <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden atmospheric-shadow">
+                   <div className="flex border-b border-slate-200 bg-slate-100 overflow-x-auto pt-2 px-2 gap-1">
+                     <button
+                       onClick={() => setActiveTabStep3('perfil')}
+                       className={cn(
+                         "px-5 py-3 text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap rounded-t-xl border-t border-x",
+                         activeTabStep3 === 'perfil' ? "bg-white border-slate-200 text-primary shadow-[0_4px_0_0_#ffffff] translate-y-[1px] relative z-10" : "bg-slate-50 border-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+                       )}
+                     >
+                       Perfil Curricular
+                     </button>
+                     <button
+                       onClick={() => setActiveTabStep3('construcao')}
+                       className={cn(
+                         "px-5 py-3 text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap rounded-t-xl border-t border-x",
+                         activeTabStep3 === 'construcao' ? "bg-white border-slate-200 text-primary shadow-[0_4px_0_0_#ffffff] translate-y-[1px] relative z-10" : "bg-slate-50 border-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+                       )}
+                     >
+                       Construção do Currículo
+                     </button>
+                   </div>
 
-                      <input 
-                        type="text"
-                        placeholder="Justificativa ou observação..."
-                        value={disc.justification}
-                        onChange={e => handleUpdateDiscipline(idx, { justification: e.target.value })}
-                        className="flex-1 w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
-                  ))}
+                   <div className="p-8 bg-slate-50/50">
+                     {activeTabStep3 === 'perfil' && (
+                       <div className="space-y-6">
+                         <div className="flex justify-between items-center mb-6">
+                           <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Status dos Componentes Curriculares</h3>
+                           <button onClick={() => setIsAddingDiscipline(!isAddingDiscipline)} className="text-primary bg-primary/10 hover:bg-primary/20 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2">
+                             {isAddingDiscipline ? 'Cancelar' : '+ Adicionar Disciplina'}
+                           </button>
+                         </div>
+
+                         {isAddingDiscipline && (
+                           <div className="p-4 bg-white border border-slate-200 rounded-xl flex gap-4 items-end mb-6">
+                             <div className="flex-1 space-y-1">
+                                <label className="text-[10px] font-black uppercase text-slate-400">Nome da Disciplina</label>
+                                <input type="text" value={newDisciplineName} onChange={e => setNewDisciplineName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm" placeholder="Ex: Projeto de Vida"/>
+                             </div>
+                             <button 
+                                onClick={() => {
+                                  if(newDisciplineName.trim()) {
+                                     setDisciplines([...disciplines, { id: crypto.randomUUID(), name: newDisciplineName, status: 'padrao', justification: '' }]);
+                                     setNewDisciplineName('');
+                                     setIsAddingDiscipline(false);
+                                  }
+                                }}
+                                className="bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm"
+                             >Adicionar</button>
+                           </div>
+                         )}
+
+                         <div className="space-y-4">
+                           {disciplines.map((disc, idx) => (
+                             <div key={disc.id} className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col xl:flex-row gap-6 items-start xl:items-center shadow-sm relative group">
+                               <button onClick={() => setDisciplines(disciplines.filter(d => d.id !== disc.id))} className="absolute top-4 right-4 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16}/></button>
+                               <div className="w-full xl:w-48 font-black text-slate-800 text-sm uppercase tracking-wide pr-6">
+                                 {disc.name}
+                               </div>
+                               
+                               <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-xl">
+                                 {(['padrao', 'adaptacao', 'modificacao'] as const).map(status => (
+                                   <button
+                                     key={status}
+                                     onClick={() => handleUpdateDiscipline(idx, { status })}
+                                     className={cn(
+                                       "px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all tracking-widest",
+                                       disc.status === status 
+                                         ? status === 'padrao' ? "bg-slate-200 text-slate-700 shadow-sm" : 
+                                           status === 'adaptacao' ? "bg-blue-100 text-blue-700 shadow-sm" : 
+                                           "bg-orange-100 text-orange-700 shadow-sm"
+                                         : "text-slate-500 hover:bg-slate-200/50"
+                                     )}
+                                   >
+                                     {status === 'padrao' && '⚪ Padrão'}
+                                     {status === 'adaptacao' && '🔵 Adaptação'}
+                                     {status === 'modificacao' && '🟠 Modificação'}
+                                   </button>
+                                 ))}
+                               </div>
+
+                               <input 
+                                 type="text"
+                                 placeholder="Justificativa..."
+                                 value={disc.justification}
+                                 onChange={e => handleUpdateDiscipline(idx, { justification: e.target.value })}
+                                 className="flex-1 w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
+                               />
+                             </div>
+                           ))}
+                         </div>
+                       </div>
+                     )}
+
+                     {activeTabStep3 === 'construcao' && (() => {
+                        const modifiedDisciplines = disciplines.filter(d => d.status === 'modificacao');
+                        if (modifiedDisciplines.length === 0) {
+                           return (
+                             <div className="text-center py-12">
+                               <CheckCircle2 size={48} className="mx-auto text-slate-300 mb-4" />
+                               <h3 className="text-lg font-black text-slate-700">Nenhuma adaptação curricular profunda necessária</h3>
+                               <p className="text-slate-500 mt-2">O aluno seguirá o currículo padrão em todas as disciplinas selecionadas sem necessidade de planejamento alternativo (Modificação).</p>
+                             </div>
+                           );
+                        }
+
+                        // Inicializar plano se não existir
+                        if (selectedPlanDisciplineId && !curriculumPlans.find(p => p.disciplineId === selectedPlanDisciplineId)) {
+                           setCurriculumPlans([...curriculumPlans, {
+                             disciplineId: selectedPlanDisciplineId,
+                             annualGoal: '',
+                             rows: [{ id: crypto.randomUUID(), content: '', objectives: [], strategies: '', resources: '', timeline: '', evaluation: '' }]
+                           }]);
+                        }
+                        
+                        // Atual disciplin ID
+                        const currentDiscId = selectedPlanDisciplineId || modifiedDisciplines[0].id;
+                        if (!selectedPlanDisciplineId) setSelectedPlanDisciplineId(currentDiscId);
+                        
+                        const currentPlan = curriculumPlans.find(p => p.disciplineId === currentDiscId) || {
+                             disciplineId: currentDiscId,
+                             annualGoal: '',
+                             rows: [{ id: crypto.randomUUID(), content: '', objectives: [], strategies: '', resources: '', timeline: '', evaluation: '' }]
+                        };
+                        const handlePlanChange = (updates: Partial<CurriculumPlan>) => {
+                           setCurriculumPlans(prev => prev.find(p => p.disciplineId === currentDiscId) 
+                             ? prev.map(p => p.disciplineId === currentDiscId ? { ...p, ...updates } : p)
+                             : [...prev, { ...currentPlan, ...updates } as CurriculumPlan]
+                           );
+                        }
+
+                        return (
+                          <div className="space-y-8">
+                             <div className="flex items-center gap-4 border-b border-slate-200 pb-6">
+                               <label className="text-sm font-black text-slate-700 uppercase tracking-widest shrink-0">Disciplina:</label>
+                               <select 
+                                 value={currentDiscId} 
+                                 onChange={e => setSelectedPlanDisciplineId(e.target.value)}
+                                 className="bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 flex-1 outline-none focus:ring-2 focus:ring-primary/20"
+                               >
+                                 {modifiedDisciplines.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                               </select>
+                             </div>
+
+                             <div className="space-y-2">
+                               <label className="text-[10px] font-black tracking-widest uppercase text-slate-400">Meta Anual para {modifiedDisciplines.find(d => d.id === currentDiscId)?.name}</label>
+                               <AutoResizeTextarea
+                                 rows={2}
+                                 value={currentPlan.annualGoal}
+                                 onChange={e => handlePlanChange({ annualGoal: e.target.value })}
+                                 placeholder="Ex: O aluno será capaz de compreender operações matemáticas básicas aplicadas..."
+                                 className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none overflow-hidden"
+                               />
+                             </div>
+
+                             <div className="space-y-4">
+                               <div className="flex justify-between items-center">
+                                  <label className="text-[10px] font-black tracking-widest uppercase text-slate-400">Tabela de Planejamento (Por Unidade/Bimestre)</label>
+                                  <button onClick={() => handlePlanChange({ rows: [...currentPlan.rows, { id: crypto.randomUUID(), content: '', objectives: [], strategies: '', resources: '', timeline: '', evaluation: '' }]})} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors">
+                                     <Plus size={14}/> Nova Linha
+                                  </button>
+                               </div>
+
+                               <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
+                                  <table className="w-full text-left text-sm min-w-[900px]">
+                                     <thead className="bg-slate-50 border-b border-slate-100 uppercase text-[10px] font-black text-slate-500 tracking-widest leading-relaxed">
+                                        <tr>
+                                          <th className="p-4 w-48">Conteúdo / Eixos</th>
+                                          <th className="p-4 min-w-[250px]">Objetivos (BNCC)</th>
+                                          <th className="p-4 w-48">Estratégias/Metodologia</th>
+                                          <th className="p-4 w-40">Recursos</th>
+                                          <th className="p-4 w-40">Cronograma</th>
+                                          <th className="p-4 w-48">Avaliação</th>
+                                          <th className="p-4 w-10"></th>
+                                        </tr>
+                                     </thead>
+                                     <tbody className="divide-y divide-slate-100">
+                                        {currentPlan.rows.map((row, rIdx) => (
+                                           <tr key={row.id} className="align-top hover:bg-slate-50/50 transition-colors">
+                                             <td className="p-2 border-r border-slate-50">
+                                                <AutoResizeTextarea value={row.content} onChange={e => { const nr = [...currentPlan.rows]; nr[rIdx].content = e.target.value; handlePlanChange({ rows: nr }); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[60px]" placeholder="Conteúdos..." />
+                                             </td>
+                                             <td className="p-2 border-r border-slate-50">
+                                                {/* BNCC Tooling Inline */}
+                                                <div className="flex flex-col gap-2 p-2">
+                                                   <div className="relative">
+                                                      <input type="text" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); if(e.target.value.length < 3) setSearchResults([]); }} placeholder="Buscar código bncc..." className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-1.5 text-[10px] font-medium outline-none" />
+                                                      {searchTerm.length >= 3 && searchResults.length > 0 && (
+                                                         <div className="absolute z-50 left-0 top-full mt-1 w-[300px] bg-white border border-slate-200 shadow-xl max-h-48 overflow-y-auto rounded-lg">
+                                                           {searchResults.map(bItem => (
+                                                              <div key={bItem.codigo} onClick={() => {
+                                                                 if (!row.objectives.find(o => o.codigo === bItem.codigo)) {
+                                                                    const nr = [...currentPlan.rows];
+                                                                    nr[rIdx].objectives.push(bItem);
+                                                                    handlePlanChange({ rows: nr });
+                                                                 }
+                                                                 setSearchTerm('');
+                                                                 setSearchResults([]);
+                                                              }} className="p-2 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0 text-xs">
+                                                                <span className="font-bold text-primary mr-1">{bItem.codigo}</span>
+                                                                <span className="text-slate-600 line-clamp-2 leading-tight">{bItem.descricao}</span>
+                                                              </div>
+                                                           ))}
+                                                         </div>
+                                                      )}
+                                                   </div>
+                                                   {row.objectives.length > 0 && (
+                                                     <div className="flex flex-col gap-1 mt-1">
+                                                       {row.objectives.map((obj, oIdx) => (
+                                                          <div key={obj.codigo} className="bg-blue-50 text-blue-800 text-[10px] p-2 rounded relative group pr-6 leading-tighest border border-blue-100">
+                                                            <strong className="block mb-0.5">{obj.codigo}</strong>
+                                                            <span className="line-clamp-3">{obj.descricao}</span>
+                                                            <button onClick={() => { const nr = [...currentPlan.rows]; nr[rIdx].objectives.splice(oIdx, 1); handlePlanChange({ rows: nr }); }} className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 text-blue-400 hover:text-red-500"><X size={12}/></button>
+                                                          </div>
+                                                       ))}
+                                                     </div>
+                                                   )}
+                                                   <AutoResizeTextarea value={row.evaluation /* reusing evaluation? wait, the row doesn't have an objective free-text, BNCC code only. Let's add free text for objective too */} onChange={e => { /* Optional generic objective text goes to 'content' or we add a specific field, here we just show BNCC */ }} className="hidden" />
+                                                </div>
+                                             </td>
+                                             <td className="p-2 border-r border-slate-50">
+                                                <AutoResizeTextarea value={row.strategies} onChange={e => { const nr = [...currentPlan.rows]; nr[rIdx].strategies = e.target.value; handlePlanChange({ rows: nr }); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[60px]" placeholder="Metodologia..." />
+                                             </td>
+                                             <td className="p-2 border-r border-slate-50">
+                                                <AutoResizeTextarea value={row.resources} onChange={e => { const nr = [...currentPlan.rows]; nr[rIdx].resources = e.target.value; handlePlanChange({ rows: nr }); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[60px]" placeholder="Material Dourado..." />
+                                             </td>
+                                             <td className="p-2 border-r border-slate-50">
+                                                <AutoResizeTextarea value={row.timeline} onChange={e => { const nr = [...currentPlan.rows]; nr[rIdx].timeline = e.target.value; handlePlanChange({ rows: nr }); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[60px]" placeholder="2º Bimestre..." />
+                                             </td>
+                                             <td className="p-2">
+                                                <AutoResizeTextarea value={row.evaluation} onChange={e => { const nr = [...currentPlan.rows]; nr[rIdx].evaluation = e.target.value; handlePlanChange({ rows: nr }); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[60px]" placeholder="Avaliação..." />
+                                             </td>
+                                             <td className="p-2 align-middle">
+                                                {currentPlan.rows.length > 1 && <button onClick={() => { const nr = [...currentPlan.rows]; nr.splice(rIdx, 1); handlePlanChange({ rows: nr }); }} className="text-slate-300 hover:text-red-500 rounded p-1"><Trash2 size={16}/></button>}
+                                             </td>
+                                           </tr>
+                                        ))}
+                                     </tbody>
+                                  </table>
+                               </div>
+                             </div>
+                          </div>
+                        );
+                     })()}
+                   </div>
                 </div>
               </motion.div>
             )}
