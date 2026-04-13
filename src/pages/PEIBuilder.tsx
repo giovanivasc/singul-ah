@@ -686,59 +686,13 @@ export default function PEIBuilder() {
                              </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
-                                        {currentPlan.rows.map((row, rIdx) => (
-                                           <tr key={row.id} className="align-top hover:bg-slate-50/50 transition-colors">
-                                             <td className="p-2 border-r border-slate-50">
-                                                {/* BNCC Tooling Inline */}
-                                                <div className="flex flex-col gap-2 p-2">
-                                                   <div className="relative">
-                                                      <input type="text" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); if(e.target.value.length < 3) setSearchResults([]); }} placeholder="Buscar código bncc..." className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-1.5 text-[10px] font-medium outline-none" />
-                                                      {searchTerm.length >= 3 && searchResults.length > 0 && (
-                                                         <div className="absolute z-50 left-0 top-full mt-1 w-[300px] bg-white border border-slate-200 shadow-xl max-h-48 overflow-y-auto rounded-lg">
-                                                           {searchResults.map(bItem => (
-                                                              <div key={bItem.codigo} onClick={() => {
-                                                                 if (!row.objectives.find(o => o.codigo === bItem.codigo)) {
-                                                                    const nr = [...currentPlan.rows];
-                                                                    nr[rIdx].objectives.push(bItem);
-                                                                    handlePlanChange({ rows: nr });
-                                                                 }
-                                                                 setSearchTerm('');
-                                                                 setSearchResults([]);
-                                                              }} className="p-2 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0 text-xs">
-                                                                <span className="font-bold text-primary mr-1">{bItem.codigo}</span>
-                                                                <span className="text-slate-600 line-clamp-2 leading-tight">{bItem.descricao}</span>
-                                                              </div>
-                                                           ))}
-                                                         </div>
-                                                      )}
-                                                   </div>
-                                                   {row.objectives.length > 0 && (
-                                                     <div className="flex flex-col gap-1 mt-1">
-                                                       {row.objectives.map((obj, oIdx) => (
-                                                          <div key={obj.codigo} className="bg-blue-50 text-blue-800 text-[10px] p-2 rounded relative group pr-6 leading-tighest border border-blue-100">
-                                                            <strong className="block mb-0.5">{obj.codigo}</strong>
-                                                            <span className="line-clamp-3">{obj.descricao}</span>
-                                                            <button onClick={() => { const nr = [...currentPlan.rows]; nr[rIdx].objectives.splice(oIdx, 1); handlePlanChange({ rows: nr }); }} className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 text-blue-400 hover:text-red-500"><X size={12}/></button>
-                                                          </div>
-                                                       ))}
-                                                     </div>
-                                                   )}
-                                                </div>
-                                             </td>
-                                             <td className="p-2 border-r border-slate-50">
-                                                <AutoResizeTextarea value={row.indicators} onChange={e => { const nr = [...currentPlan.rows]; nr[rIdx].indicators = e.target.value; handlePlanChange({ rows: nr }); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[60px]" placeholder="Metas e marcos..." />
-                                             </td>
-                                             <td className="p-2 border-r border-slate-50">
-                                                <AutoResizeTextarea value={row.timeline} onChange={e => { const nr = [...currentPlan.rows]; nr[rIdx].timeline = e.target.value; handlePlanChange({ rows: nr }); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[60px]" placeholder="Ex: 1º Bimestre..." />
-                                             </td>
-                                             <td className="p-2 border-r border-slate-50">
-                                                <AutoResizeTextarea value={row.strategies} onChange={e => { const nr = [...currentPlan.rows]; nr[rIdx].strategies = e.target.value; handlePlanChange({ rows: nr }); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[60px]" placeholder="Estratégias de ensino..." />
-                                             </td>
-                                             <td className="p-2">
-                                                <AutoResizeTextarea value={row.evaluation} onChange={e => { const nr = [...currentPlan.rows]; nr[rIdx].evaluation = e.target.value; handlePlanChange({ rows: nr }); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[60px]" placeholder="Métodos..." />
-                                             </td>
-                                             <td className="p-2 align-middle">
-                                                {currentPlan.rows.length > 1 && <button onClick={() => { const nr = [...currentPlan.rows]; nr.splice(rIdx, 1); handlePlanChange({ rows: nr }); }} className="text-slate-300 hover:text-red-500 rounded p-1"><Trash2 size={16}/></button>}
+                                        {teamMembers.map((member, mIdx) => (
+                                           <tr key={member.id} className="hover:bg-slate-50 transition-colors">
+                                             <td className="px-6 py-4 font-medium text-slate-800">{member.name}</td>
+                                             <td className="px-6 py-4 text-slate-600">{member.role}</td>
+                                             <td className="px-6 py-4 text-slate-600">{member.origin}</td>
+                                             <td className="px-6 py-4 text-right">
+                                               <button onClick={() => setTeamMembers(teamMembers.filter(m => m.id !== member.id))} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors"><Trash2 size={16}/></button>
                                              </td>
                                            </tr>
                                         ))}
