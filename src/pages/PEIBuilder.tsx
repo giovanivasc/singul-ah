@@ -91,7 +91,7 @@ export default function PEIBuilder() {
     { id: 2, title: 'Estudo de Caso', icon: Brain },
     { id: 3, title: 'Programa Curricular', icon: LayoutGrid },
     { id: 4, title: 'Serviços e Enriquecimento', icon: BookOpen },
-    { id: 5, title: 'Interações', icon: Sparkles },
+    { id: 5, title: 'Tecnologia e Assistiva', icon: Sparkles },
     { id: 6, title: 'Metas', icon: Target },
   ];
 
@@ -172,6 +172,9 @@ export default function PEIBuilder() {
   const [specializedServices, setSpecializedServices] = useState<{id: string, name: string, frequency: string, duration: string, location: string}[]>([]);
   const [enrichmentServices, setEnrichmentServices] = useState<{id: string, name: string, startDate: string, frequency: string, duration: string}[]>([]);
 
+  // Etapa 5 state
+  const [techResources, setTechResources] = useState<{id: string, tool: string, objective: string, frequency: string, location: string}[]>([]);
+
   // BNCC Search State
   const [planningContent, setPlanningContent] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -230,6 +233,7 @@ export default function PEIBuilder() {
          
          if (parsed.specializedServices) setSpecializedServices(parsed.specializedServices);
          if (parsed.enrichmentServices) setEnrichmentServices(parsed.enrichmentServices);
+         if (parsed.techResources) setTechResources(parsed.techResources);
 
          if (parsed.planningContent) setPlanningContent(parsed.planningContent);
          if (parsed.selectedSkills) setSelectedSkills(parsed.selectedSkills);
@@ -367,6 +371,7 @@ export default function PEIBuilder() {
       curriculumPlans,
       specializedServices,
       enrichmentServices,
+      techResources,
       planningContent,
       selectedSkills,
       compactationTarget,
@@ -1211,85 +1216,63 @@ export default function PEIBuilder() {
 
             {/* ETAPA 5 */}
             {activeStep === 5 && (
-              <motion.div key="step-4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+              <motion.div key="step-5" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                 <div>
                   <h2 className="text-2xl font-black text-on-surface flex items-center gap-3">
-                     <Sparkles className="text-primary" /> Tríade de Renzulli (Enriquecimento)
+                     <Sparkles className="text-primary" /> Recursos Tecnológicos e T.A.
                   </h2>
                   <p className="text-sm font-medium text-slate-500 mt-2">
-                     Planeje projetos enriquecedores focados em aprofundar interesses.
+                     Planeje os recursos tecnológicos e de Tecnologia Assistiva (T.A.) que o estudante necessita.
                   </p>
                 </div>
-                
-                {hasSuplementar && (
-                  <div className="flex flex-wrap gap-2 pt-2 border-b border-slate-100 pb-6 mb-6">
-                     <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center">Disciplinas Alvo:</span>
-                     {suplementarDisciplines.map(d => (
-                        <span key={d.name} className="bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg">
-                           {d.name}
-                        </span>
-                     ))}
-                  </div>
-                )}
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {/* Tipo 1 */}
-                  <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:border-primary/30 transition-all flex flex-col gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center mb-2">
-                      <Lightbulb size={20} />
-                    </div>
-                    <h3 className="font-black text-lg text-slate-800">Tipo I: Exploratório</h3>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed flex-1">
-                      Atividades para despertar novos interesses.
-                    </p>
-                    <textarea 
-                      rows={5}
-                      value={renzulliTypeI}
-                      onChange={e => setRenzulliTypeI(e.target.value)}
-                      placeholder="Ex: Trazer um palestrante sobre astronomia..."
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-200"
-                    />
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-black tracking-widest uppercase text-slate-400">Aplicação de Recursos e Tecnologia Assistiva</label>
+                    <button onClick={() => setTechResources([...techResources, { id: crypto.randomUUID(), tool: '', objective: '', frequency: '', location: '' }])} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors">
+                       <Plus size={14}/> Adicionar Recurso
+                    </button>
                   </div>
-
-                  {/* Tipo 2 */}
-                  <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:border-primary/30 transition-all flex flex-col gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center mb-2">
-                      <PencilRuler size={20} />
-                    </div>
-                    <h3 className="font-black text-lg text-slate-800">Tipo II: Treinamento</h3>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed flex-1">
-                      Desenvolvimento de habilidades metodológicas ou socioemocionais.
-                    </p>
-                    <textarea 
-                      rows={5}
-                      value={renzulliTypeII}
-                      onChange={e => setRenzulliTypeII(e.target.value)}
-                      placeholder="Ex: Treinar uso de biblioteca e bases de dados..."
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                    />
-                  </div>
-
-                  {/* Tipo 3 */}
-                  <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:border-primary/30 transition-all flex flex-col gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-green-100 text-green-600 flex items-center justify-center mb-2">
-                      <Target size={20} />
-                    </div>
-                    <h3 className="font-black text-lg text-slate-800">Tipo III: Investigação</h3>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed flex-1">
-                      Projetos práticos e resolução de problemas reais.
-                    </p>
-                    <textarea 
-                      rows={5}
-                      value={renzulliTypeIII}
-                      onChange={e => setRenzulliTypeIII(e.target.value)}
-                      placeholder="Ex: Criar um minidocumentário sobre poluição local..."
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-200"
-                    />
+                  <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
+                    <table className="w-full text-left text-sm min-w-[700px]">
+                        <thead className="bg-slate-50 border-b border-slate-100 uppercase text-[10px] font-black text-slate-500 tracking-widest leading-relaxed">
+                          <tr>
+                            <th className="p-4 min-w-[200px]">Ferramenta</th>
+                            <th className="p-4 w-64">Objetivo</th>
+                            <th className="p-4 w-40">Frequência</th>
+                            <th className="p-4 w-40">Local</th>
+                            <th className="p-4 w-10"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {techResources.length === 0 && (
+                              <tr><td colSpan={5} className="p-6 text-center text-slate-400 font-medium pb-8 border-none"><Sparkles className="mx-auto mb-2 opacity-50" size={32}/>Nenhum recurso cadastrado.</td></tr>
+                            )}
+                            {techResources.map((svc, sIdx) => (
+                              <tr key={svc.id} className="hover:bg-slate-50/50 transition-colors align-top">
+                                <td className="p-2 border-r border-slate-50">
+                                   <AutoResizeTextarea value={svc.tool} onChange={e => { const n = [...techResources]; n[sIdx].tool = e.target.value; setTechResources(n); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[40px]" placeholder="Ex: Prancha de C.A..." />
+                                </td>
+                                <td className="p-2 border-r border-slate-50">
+                                   <AutoResizeTextarea value={svc.objective} onChange={e => { const n = [...techResources]; n[sIdx].objective = e.target.value; setTechResources(n); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[40px]" placeholder="Ex: Apoio visual..." />
+                                </td>
+                                <td className="p-2 border-r border-slate-50">
+                                   <AutoResizeTextarea value={svc.frequency} onChange={e => { const n = [...techResources]; n[sIdx].frequency = e.target.value; setTechResources(n); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[40px]" placeholder="Ex: Contínua..." />
+                                </td>
+                                <td className="p-2">
+                                   <AutoResizeTextarea value={svc.location} onChange={e => { const n = [...techResources]; n[sIdx].location = e.target.value; setTechResources(n); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[40px]" placeholder="Ex: Sala de Aula..." />
+                                </td>
+                                <td className="p-2 align-middle">
+                                   <button onClick={() => setTechResources(techResources.filter(s => s.id !== svc.id))} className="text-slate-300 hover:text-red-500 rounded p-1"><Trash2 size={16}/></button>
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                    </table>
                   </div>
                 </div>
               </motion.div>
             )}
-
             {/* ETAPA 6 */}
             {activeStep === 6 && (
               <motion.div key="step-5" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
