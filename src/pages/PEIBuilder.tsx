@@ -23,7 +23,7 @@ type DisciplineProfile = {
 
 type TeamMember = { id: string; name: string; role: string; origin: string; };
 type AssessmentData = { id: string; source: string; date: string; summary: string; origin: string; };
-type TopicItem = { id: string; text: string; selected: boolean };
+type TopicItem = { id: string; text: string; selected: boolean; category?: string };
 
 const getAllowedBnccCodes = (gradeNum: string): string[] => {
   const map: Record<string, string[]> = {
@@ -85,12 +85,28 @@ export default function PEIBuilder() {
   const [activeTabStep2, setActiveTabStep2] = useState<'contexto' | 'estilos' | 'potencialidades' | 'demandas' | 'adaptacoes'>('contexto');
   
   type CaseStudySynthesis = {
-    currentContext: { academic: TopicItem[]; cognitive: TopicItem[]; linguistic: TopicItem[]; social: TopicItem[]; emotional: TopicItem[]; psychological: TopicItem[]; physical: TopicItem[]; };
+    currentContext: TopicItem[];
     learningStyle: TopicItem[];
     potentialsInterests: TopicItem[];
     demandsBarriers: TopicItem[];
-    accessibilityStrategies: { instructional: TopicItem[]; environmental: TopicItem[]; evaluation: TopicItem[]; };
+    accessibilityStrategies: TopicItem[];
   };
+  
+  const CONTEXT_CATEGORIES = [
+    { id: 'acadêmico', label: 'Acadêmico', colorClass: 'bg-blue-100 text-blue-800' },
+    { id: 'cognitivo', label: 'Cognitivo', colorClass: 'bg-purple-100 text-purple-800' },
+    { id: 'linguístico', label: 'Linguístico', colorClass: 'bg-pink-100 text-pink-800' },
+    { id: 'social', label: 'Social', colorClass: 'bg-emerald-100 text-emerald-800' },
+    { id: 'emocional', label: 'Emocional', colorClass: 'bg-orange-100 text-orange-800' },
+    { id: 'psicológico', label: 'Psicológico', colorClass: 'bg-yellow-100 text-yellow-800' },
+    { id: 'físico', label: 'Físico/Sensorial', colorClass: 'bg-cyan-100 text-cyan-800' }
+  ];
+
+  const ACCESSIBILITY_CATEGORIES = [
+    { id: 'instrucional', label: 'Instrucional', colorClass: 'bg-indigo-100 text-indigo-800' },
+    { id: 'ambiental', label: 'Ambiental', colorClass: 'bg-teal-100 text-teal-800' },
+    { id: 'avaliação', label: 'Avaliação', colorClass: 'bg-rose-100 text-rose-800' }
+  ];
   
   const [caseStudySynthesis, setCaseStudySynthesis] = useState<CaseStudySynthesis | null>(null);
 
@@ -327,7 +343,7 @@ export default function PEIBuilder() {
     }
     return age;
   };
-  const renderReadOnlyList = (topics?: TopicItem[] | string) => {
+  const renderReadOnlyList = (topics?: TopicItem[] | string, categories?: {id: string, label: string, colorClass: string}[]) => {
     if (!topics) return <p className="text-sm text-slate-400 italic">Sem registros catalogados.</p>;
     if (!Array.isArray(topics)) return <p className="text-sm text-slate-400 italic text-wrap w-full">{String(topics)}</p>;
     if (topics.length === 0) return <p className="text-sm text-slate-400 italic">Sem registros catalogados.</p>;
@@ -336,12 +352,19 @@ export default function PEIBuilder() {
     
     return (
       <ul className="space-y-3">
-        {selected.map(t => (
-           <li key={t.id} className="flex items-start gap-3 bg-white border border-slate-100 p-3 rounded-xl shadow-sm text-sm text-slate-700 leading-relaxed">
-             <CheckCircle2 size={16} className="text-primary mt-0.5 shrink-0" />
+        {selected.map(t => {
+           const cat = categories && t.category ? categories.find(c => c.id === t.category) : null;
+           return (
+           <li key={t.id} className="flex items-start gap-3 bg-white border border-slate-100 p-4 rounded-xl shadow-sm text-sm text-slate-700 leading-relaxed">
+             <CheckCircle2 size={18} className="text-primary mt-0.5 shrink-0" />
              <span className="flex-1">{t.text}</span>
+             {cat && (
+                <span className={cn("px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest shrink-0 self-center", cat.colorClass)}>
+                  {cat.label}
+                </span>
+             )}
            </li>
-        ))}
+        )})}
       </ul>
     );
   };
@@ -719,8 +742,8 @@ export default function PEIBuilder() {
                 </div>
 
                 <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden atmospheric-shadow">
-                   {/* Tabs Menu */}
-                   <div className="flex border-b border-slate-100 bg-slate-50 overflow-x-auto">
+                   {/* Tabs Menu - Estilo Fichário */}
+                   <div className="flex border-b border-slate-200 bg-slate-100 overflow-x-auto pt-2 px-2 gap-1">
                      {[
                        { id: 'contexto', label: 'Caracterização: Contexto' },
                        { id: 'estilos', label: 'Estilos e Interesses' },
@@ -731,10 +754,10 @@ export default function PEIBuilder() {
                          key={tab.id}
                          onClick={() => setActiveTabStep2(tab.id as typeof activeTabStep2)}
                          className={cn(
-                           "px-6 py-4 text-sm font-bold uppercase tracking-widest transition-all whitespace-nowrap border-b-2",
+                           "px-5 py-3 text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap rounded-t-xl border-t border-x",
                            activeTabStep2 === tab.id
-                             ? "border-primary text-primary bg-white"
-                             : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100/50"
+                             ? "bg-white border-slate-200 text-primary shadow-[0_4px_0_0_#ffffff] translate-y-[1px] relative z-10"
+                             : "bg-slate-50 border-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-600"
                          )}
                        >
                          {tab.label}
@@ -747,22 +770,7 @@ export default function PEIBuilder() {
                      {activeTabStep2 === 'contexto' && (
                         <div className="space-y-6">
                            <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Contexto Biopsicossocial e Educacional</h3>
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                             {[
-                               { key: 'academic', label: 'Acadêmico/Educacional' },
-                               { key: 'cognitive', label: 'Cognitivo' },
-                               { key: 'linguistic', label: 'Linguístico' },
-                               { key: 'social', label: 'Social' },
-                               { key: 'emotional', label: 'Emocional' },
-                               { key: 'psychological', label: 'Psicológico' },
-                               { key: 'physical', label: 'Físico/Sensorial' },
-                             ].map(({ key, label }) => (
-                               <div key={key} className="space-y-3">
-                                  <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest border-b border-slate-200 pb-2">{label}</h4>
-                                  {renderReadOnlyList(caseStudySynthesis?.currentContext?.[key as keyof CaseStudySynthesis['currentContext']])}
-                               </div>
-                             ))}
-                           </div>
+                           {renderReadOnlyList(caseStudySynthesis?.currentContext, CONTEXT_CATEGORIES)}
                         </div>
                      )}
                      
@@ -772,7 +780,7 @@ export default function PEIBuilder() {
                              <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Estilos de Aprendizagem Identificados</h3>
                              {renderReadOnlyList(caseStudySynthesis?.learningStyle)}
                            </div>
-                           <div className="pt-4 border-t border-slate-100">
+                           <div className="pt-4 border-t border-slate-200">
                              <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Potencialidades, Interesses e Indicadores AH/SD</h3>
                              {renderReadOnlyList(caseStudySynthesis?.potentialsInterests)}
                            </div>
@@ -795,19 +803,8 @@ export default function PEIBuilder() {
                               </p>
                            </div>
 
-                           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                              <div className="space-y-4">
-                                <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest border-b border-slate-200 pb-2">Adaptações Instrucionais</h4>
-                                {renderReadOnlyList(caseStudySynthesis?.accessibilityStrategies?.instructional)}
-                              </div>
-                              <div className="space-y-4">
-                                <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest border-b border-slate-200 pb-2">Adaptações Ambientais</h4>
-                                {renderReadOnlyList(caseStudySynthesis?.accessibilityStrategies?.environmental)}
-                              </div>
-                              <div className="space-y-4">
-                                <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest border-b border-slate-200 pb-2">Adaptações na Avaliação</h4>
-                                {renderReadOnlyList(caseStudySynthesis?.accessibilityStrategies?.evaluation)}
-                              </div>
+                           <div className="space-y-4">
+                             {renderReadOnlyList(caseStudySynthesis?.accessibilityStrategies, ACCESSIBILITY_CATEGORIES)}
                            </div>
                         </div>
                      )}

@@ -55,49 +55,116 @@ const MOCK_SOURCES: DataSource[] = [
   }
 ];
 
-type TopicItem = { id: string; text: string; selected: boolean; source?: string };
+type TopicItem = { id: string; text: string; selected: boolean; source?: string; category?: string };
 
 type CaseStudySynthesis = {
-  currentContext: {
-    academic: TopicItem[];
-    cognitive: TopicItem[];
-    linguistic: TopicItem[];
-    social: TopicItem[];
-    emotional: TopicItem[];
-    psychological: TopicItem[];
-    physical: TopicItem[];
-  };
+  currentContext: TopicItem[];
   learningStyle: TopicItem[];
   potentialsInterests: TopicItem[];
   demandsBarriers: TopicItem[];
-  accessibilityStrategies: {
-    instructional: TopicItem[];
-    environmental: TopicItem[];
-    evaluation: TopicItem[];
-  };
+  accessibilityStrategies: TopicItem[];
 };
 
-const parseString = (str: string): TopicItem[] => str.split(/(?:\. |\n)/).filter(Boolean).map(s => ({ id: crypto.randomUUID(), text: s.trim() + (s.trim().endsWith('.') ? '' : '.'), selected: true }));
+export const CONTEXT_CATEGORIES = [
+  { id: 'acadêmico', label: 'Acadêmico', colorClass: 'bg-blue-100 text-blue-800' },
+  { id: 'cognitivo', label: 'Cognitivo', colorClass: 'bg-purple-100 text-purple-800' },
+  { id: 'linguístico', label: 'Linguístico', colorClass: 'bg-pink-100 text-pink-800' },
+  { id: 'social', label: 'Social', colorClass: 'bg-emerald-100 text-emerald-800' },
+  { id: 'emocional', label: 'Emocional', colorClass: 'bg-orange-100 text-orange-800' },
+  { id: 'psicológico', label: 'Psicológico', colorClass: 'bg-yellow-100 text-yellow-800' },
+  { id: 'físico', label: 'Físico/Sensorial', colorClass: 'bg-cyan-100 text-cyan-800' }
+];
+
+export const ACCESSIBILITY_CATEGORIES = [
+  { id: 'instrucional', label: 'Instrucional', colorClass: 'bg-indigo-100 text-indigo-800' },
+  { id: 'ambiental', label: 'Ambiental', colorClass: 'bg-teal-100 text-teal-800' },
+  { id: 'avaliação', label: 'Avaliação', colorClass: 'bg-rose-100 text-rose-800' }
+];
+
+const parseString = (str: string, category?: string): TopicItem[] => str.split(/(?:\. |\n)/).filter(Boolean).map(s => ({ id: crypto.randomUUID(), text: s.trim() + (s.trim().endsWith('.') ? '' : '.'), selected: true, category }));
 
 const mockIaResponse: CaseStudySynthesis = {
-  currentContext: {
-    academic: parseString('Desempenha bem em matérias exatas, porém apresenta lentidão em tarefas de leitura e escrita. Demonstra desmotivação nas aulas expositivas.'),
-    cognitive: parseString('Capacidade de raciocínio lógico-espacial avançada. Atenção flutuante em tarefas longas.'),
-    linguistic: parseString('Vocabulário rico para a idade, porém dificuldade em organizar narrativas escritas.'),
-    social: parseString('Interação restrita. Prefere brincar sozinho ou conversar com adultos sobre tópicos de interesse específico.'),
-    emotional: parseString('Baixa tolerância à frustração. Demonstra ansiedade ao ser corrigido publicamente.'),
-    psychological: parseString('Sinais de rigidez cognitiva (necessidade de previsibilidade nas rotinas).'),
-    physical: parseString('Sensibilidade auditiva em ambientes ruidosos. Uso de fones abafadores recomendado.')
-  },
+  currentContext: [
+    ...parseString('Desempenha bem em matérias exatas, porém apresenta lentidão em tarefas de leitura e escrita. Demonstra desmotivação nas aulas expositivas.', 'acadêmico'),
+    ...parseString('Capacidade de raciocínio lógico-espacial avançada. Atenção flutuante em tarefas longas.', 'cognitivo'),
+    ...parseString('Vocabulário rico para a idade, porém dificuldade em organizar narrativas escritas.', 'linguístico'),
+    ...parseString('Interação restrita. Prefere brincar sozinho ou conversar com adultos sobre tópicos de interesse específico.', 'social'),
+    ...parseString('Baixa tolerância à frustração. Demonstra ansiedade ao ser corrigido publicamente.', 'emocional'),
+    ...parseString('Sinais de rigidez cognitiva (necessidade de previsibilidade nas rotinas).', 'psicológico'),
+    ...parseString('Sensibilidade auditiva em ambientes ruidosos. Uso de fones abafadores recomendado.', 'físico')
+  ],
   learningStyle: parseString('Predominantemente Visual e Ativo (Perfil N-ILS). Beneficia-se de mapas mentais e informações concretas.'),
   potentialsInterests: parseString('Alto interesse/hiperfoco em Astronomia e sistemas mecânicos. Memória prodigiosa para fatos de seu interesse.'),
   demandsBarriers: parseString('Barreira Atitudinal: rigidez de alguns professores quanto a métodos convencionais. \nBarreira de Comunicação: instruções muito longas ou apenas orais tendem a ser ignoradas.'),
-  accessibilityStrategies: {
-    instructional: parseString('Fragmentação de tarefas com listas de verificação visuais; permissão para usar mapas mentais em vez de anotações convencionais.'),
-    environmental: parseString('Uso de fones abafadores de ruído; sentar-se na frente ou extremidade da sala.'),
-    evaluation: parseString('Tempo estendido para provas; possibilidade de consulta ao esquema visual autorregulado.')
-  }
+  accessibilityStrategies: [
+    ...parseString('Fragmentação de tarefas com listas de verificação visuais; permissão para usar mapas mentais em vez de anotações convencionais.', 'instrucional'),
+    ...parseString('Uso de fones abafadores de ruído; sentar-se na frente ou extremidade da sala.', 'ambiental'),
+    ...parseString('Tempo estendido para provas; possibilidade de consulta ao esquema visual autorregulado.', 'avaliação')
+  ]
 };
+
+function TopicEditorList({
+  topics,
+  onChange,
+  placeholder,
+  categories
+}: {
+  topics: TopicItem[];
+  onChange: (topics: TopicItem[]) => void;
+  placeholder: string;
+  categories?: { id: string; label: string; colorClass: string; }[];
+}) {
+  const [newTopicInput, setNewTopicInput] = useState('');
+  const [newTopicCategory, setNewTopicCategory] = useState(categories ? categories[0].id : '');
+  const safeTopics = Array.isArray(topics) ? topics : [];
+
+  return (
+    <div className="space-y-3">
+       {safeTopics.map(t => {
+         const cat = categories?.find(c => c.id === t.category);
+         return (
+         <div key={t.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-white border border-slate-200 p-3 rounded-xl shadow-sm transition-all focus-within:ring-2 focus-within:ring-primary/20">
+           <div className="flex items-center gap-3 w-full sm:w-auto flex-1">
+             <button aria-label={t.selected ? "Desmarcar" : "Marcar"} onClick={() => onChange(safeTopics.map(p => p.id === t.id ? {...p, selected: !p.selected} : p))} className={cn("w-5 h-5 rounded-full flex items-center justify-center border shrink-0 transition-colors", t.selected ? "bg-primary border-primary text-white" : "border-slate-300 hover:border-slate-400")}>
+               {t.selected && <div className="w-2.5 h-2.5 bg-white rounded-full"/>}
+             </button>
+             <textarea aria-label="Texto" placeholder="Texto..." className={cn("flex-1 bg-transparent text-sm resize-none focus:outline-none transition-all leading-relaxed", !t.selected && "line-through text-slate-400")} value={t.text} onChange={e => onChange(safeTopics.map(p => p.id === t.id ? {...p, text: e.target.value} : p))} rows={2}/>
+           </div>
+           <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-2 ml-8 sm:ml-0 mt-2 sm:mt-0">
+             {categories && (
+                <select value={t.category || ''} onChange={(e) => onChange(safeTopics.map(p => p.id === t.id ? {...p, category: e.target.value} : p))} className={cn("text-[10px] uppercase tracking-widest font-bold rounded-lg px-2 py-1.5 outline-none cursor-pointer appearance-none text-center", cat ? cat.colorClass : "bg-slate-100 text-slate-600")}>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                </select>
+             )}
+             <button aria-label="Remover" onClick={() => onChange(safeTopics.filter(p => p.id !== t.id))} className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg shrink-0"><Trash2 size={16}/></button>
+           </div>
+         </div>
+       )})}
+       <div className="flex flex-col sm:flex-row items-center gap-2 mt-4 pt-4 border-t border-slate-100">
+         <input type="text" placeholder={placeholder} className="flex-1 w-full sm:w-auto bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" value={newTopicInput} onChange={e => setNewTopicInput(e.target.value)} onKeyDown={(e) => {
+           if(e.key === 'Enter' && newTopicInput.trim()) {
+             if (categories && !newTopicCategory) return;
+             onChange([...safeTopics, { id: crypto.randomUUID(), text: newTopicInput.trim(), selected: true, category: categories ? newTopicCategory : undefined }]);
+             setNewTopicInput('');
+           }
+         }}/>
+         {categories && (
+            <select value={newTopicCategory} onChange={(e) => setNewTopicCategory(e.target.value)} className="w-full sm:w-auto bg-slate-50 border border-slate-200 text-xs font-bold text-slate-600 py-3 px-3 rounded-xl outline-none cursor-pointer focus:ring-2 focus:ring-primary/20">
+              {categories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+            </select>
+         )}
+         <button onClick={() => {
+             if(newTopicInput.trim() && (!categories || newTopicCategory)) {
+               onChange([...safeTopics, { id: crypto.randomUUID(), text: newTopicInput.trim(), selected: true, category: categories ? newTopicCategory : undefined }]);
+               setNewTopicInput('');
+             }
+         }} className="w-full sm:w-auto bg-slate-900 text-white px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors shrink-0">
+            <Plus size={16}/> Adicionar
+         </button>
+       </div>
+    </div>
+  );
+}
 
 export default function ConvergenceEditor() {
   const navigate = useNavigate();
@@ -116,14 +183,13 @@ export default function ConvergenceEditor() {
   const [hasGenerated, setHasGenerated] = useState(false);
   
   const [activeTabMapping, setActiveTabMapping] = useState<'contexto' | 'estilos' | 'potencialidades' | 'demandas' | 'adaptacoes'>('contexto');
-  const [newTopicInput, setNewTopicInput] = useState('');
 
   const [caseStudySynthesis, setCaseStudySynthesis] = useState<CaseStudySynthesis>({
-    currentContext: { academic: [], cognitive: [], linguistic: [], social: [], emotional: [], psychological: [], physical: [] },
+    currentContext: [],
     learningStyle: [],
     potentialsInterests: [],
     demandsBarriers: [],
-    accessibilityStrategies: { instructional: [], environmental: [], evaluation: [] }
+    accessibilityStrategies: []
   });
   const [lastConsolidation, setLastConsolidation] = useState<string | null>(null);
   const [showToast, setShowToast] = useState(false);
@@ -238,39 +304,6 @@ export default function ConvergenceEditor() {
       }
       return updated;
     });
-  };
-
-  const renderTopicList = (topics: TopicItem[], pathUpdater: (newTopics: TopicItem[]) => void, placeholder: string) => {
-    const safeTopics = Array.isArray(topics) ? topics : (typeof topics === 'string' ? parseString(topics) : []);
-    return (
-      <div className="space-y-3">
-         {safeTopics.map(t => (
-           <div key={t.id} className="flex items-start gap-3 bg-white border border-slate-200 p-3 rounded-xl shadow-sm transition-all focus-within:ring-2 focus-within:ring-primary/20">
-             <button aria-label={t.selected ? "Desmarcar tópico" : "Marcar tópico"} onClick={() => pathUpdater(safeTopics.map(p => p.id === t.id ? {...p, selected: !p.selected} : p))} className={cn("mt-1 w-5 h-5 rounded flex items-center justify-center border shrink-0 transition-colors", t.selected ? "bg-primary border-primary text-white" : "border-slate-300 hover:border-slate-400")}>
-               {t.selected && <Check size={14}/>}
-             </button>
-             <textarea aria-label="Texto do tópico" placeholder="Texto do tópico" className={cn("flex-1 bg-transparent text-sm resize-none focus:outline-none transition-all leading-relaxed", !t.selected && "line-through text-slate-400")} value={t.text} onChange={e => pathUpdater(safeTopics.map(p => p.id === t.id ? {...p, text: e.target.value} : p))} rows={2}/>
-             <button aria-label="Remover tópico" onClick={() => pathUpdater(safeTopics.filter(p => p.id !== t.id))} className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg shrink-0 mt-0.5"><Trash2 size={16}/></button>
-           </div>
-         ))}
-         <div className="flex items-center gap-2 mt-4 pt-2 border-t border-slate-100">
-           <input type="text" placeholder={placeholder} className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" value={newTopicInput} onChange={e => setNewTopicInput(e.target.value)} onKeyDown={(e) => {
-             if(e.key === 'Enter' && newTopicInput.trim()) {
-               pathUpdater([...safeTopics, { id: crypto.randomUUID(), text: newTopicInput.trim(), selected: true }]);
-               setNewTopicInput('');
-             }
-           }}/>
-           <button onClick={() => {
-               if(newTopicInput.trim()) {
-                 pathUpdater([...safeTopics, { id: crypto.randomUUID(), text: newTopicInput.trim(), selected: true }]);
-                 setNewTopicInput('');
-               }
-           }} className="bg-slate-900 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors">
-              <Plus size={16}/> Adicionar
-           </button>
-         </div>
-      </div>
-    );
   };
 
 
@@ -465,8 +498,8 @@ export default function ConvergenceEditor() {
                     {/* Formulário de Síntese em Formato Checklist Curador */}
                     <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden atmospheric-shadow animate-in fade-in slide-in-from-bottom-4 duration-300">
                        
-                       {/* Tabs Menu */}
-                       <div className="flex border-b border-slate-100 bg-slate-50 overflow-x-auto">
+                       {/* Tabs Menu - Estilo Fichário */}
+                       <div className="flex border-b border-slate-200 bg-slate-100 overflow-x-auto pt-2 px-2 gap-1">
                          {[
                            { id: 'contexto', label: 'Contexto Atual' },
                            { id: 'estilos', label: 'Estilos de Aprendizagem' },
@@ -478,10 +511,10 @@ export default function ConvergenceEditor() {
                              key={tab.id}
                              onClick={() => setActiveTabMapping(tab.id as typeof activeTabMapping)}
                              className={cn(
-                               "px-6 py-4 text-sm font-bold uppercase tracking-widest transition-all whitespace-nowrap border-b-2",
+                               "px-5 py-3 text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap rounded-t-xl border-t border-x",
                                activeTabMapping === tab.id
-                                 ? "border-primary text-primary bg-white"
-                                 : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100/50"
+                                 ? "bg-white border-slate-200 text-primary shadow-[0_4px_0_0_#ffffff] translate-y-[1px] relative z-10"
+                                 : "bg-slate-50 border-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-600"
                              )}
                            >
                              {tab.label}
@@ -491,96 +524,65 @@ export default function ConvergenceEditor() {
 
                        <div className="p-8 bg-slate-50/50">
                          {activeTabMapping === 'contexto' && (
-                            <div className="space-y-8">
+                            <div className="space-y-6">
                                <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Contexto Biopsicossocial e Educacional</h3>
-                               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                 {[
-                                   { key: 'academic', label: 'Acadêmico/Educacional' },
-                                   { key: 'cognitive', label: 'Cognitivo' },
-                                   { key: 'linguistic', label: 'Linguístico' },
-                                   { key: 'social', label: 'Social' },
-                                   { key: 'emotional', label: 'Emocional' },
-                                   { key: 'psychological', label: 'Psicológico' },
-                                   { key: 'physical', label: 'Físico/Sensorial' },
-                                 ].map(({ key, label }) => (
-                                   <div key={key} className="space-y-3">
-                                      <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest border-b border-slate-200 pb-2">{label}</h4>
-                                      {renderTopicList(
-                                        caseStudySynthesis.currentContext[key as keyof CaseStudySynthesis['currentContext']],
-                                        (newTopics) => handleTopicChange(prev => ({ 
-                                           ...prev, 
-                                           currentContext: { ...prev.currentContext, [key]: newTopics } 
-                                        })),
-                                        "Adicionar fato ao contexto..."
-                                      )}
-                                   </div>
-                                 ))}
-                               </div>
+                               <TopicEditorList
+                                 topics={caseStudySynthesis.currentContext}
+                                 onChange={(newTopics) => handleTopicChange(prev => ({ ...prev, currentContext: newTopics }))}
+                                 placeholder="Descreva o contexto acadêmico, social, cognitivo..."
+                                 categories={CONTEXT_CATEGORIES}
+                               />
                             </div>
                          )}
 
                          {activeTabMapping === 'estilos' && (
-                            <div>
-                               <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Estilos de Aprendizagem Identificados</h3>
-                               {renderTopicList(
-                                 caseStudySynthesis.learningStyle,
-                                 (newTopics) => handleTopicChange(prev => ({ ...prev, learningStyle: newTopics })),
-                                 "Adicionar característica..."
-                               )}
+                            <div className="space-y-6">
+                               <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Estilos de Aprendizagem Identificados</h3>
+                               <TopicEditorList
+                                 topics={caseStudySynthesis.learningStyle}
+                                 onChange={(newTopics) => handleTopicChange(prev => ({ ...prev, learningStyle: newTopics }))}
+                                 placeholder="Adicionar característica de estilo..."
+                               />
                             </div>
                          )}
 
                          {activeTabMapping === 'potencialidades' && (
-                            <div>
-                               <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Potencialidades, Interesses e Indicadores AH/SD</h3>
-                               {renderTopicList(
-                                 caseStudySynthesis.potentialsInterests,
-                                 (newTopics) => handleTopicChange(prev => ({ ...prev, potentialsInterests: newTopics })),
-                                 "Adicionar talento ou interesse..."
-                               )}
+                            <div className="space-y-6">
+                               <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Potencialidades, Interesses e Indicadores AH/SD</h3>
+                               <TopicEditorList
+                                 topics={caseStudySynthesis.potentialsInterests}
+                                 onChange={(newTopics) => handleTopicChange(prev => ({ ...prev, potentialsInterests: newTopics }))}
+                                 placeholder="Adicionar talento ou interesse..."
+                               />
                             </div>
                          )}
 
                          {activeTabMapping === 'demandas' && (
-                            <div>
-                               <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Demandas e Barreiras Mapeadas (LBI)</h3>
-                               {renderTopicList(
-                                 caseStudySynthesis.demandsBarriers,
-                                 (newTopics) => handleTopicChange(prev => ({ ...prev, demandsBarriers: newTopics })),
-                                 "Adicionar barreira ou demanda..."
-                               )}
+                            <div className="space-y-6">
+                               <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Demandas e Barreiras Mapeadas (LBI)</h3>
+                               <TopicEditorList
+                                 topics={caseStudySynthesis.demandsBarriers}
+                                 onChange={(newTopics) => handleTopicChange(prev => ({ ...prev, demandsBarriers: newTopics }))}
+                                 placeholder="Adicionar barreira ou demanda..."
+                               />
                             </div>
                          )}
 
                          {activeTabMapping === 'adaptacoes' && (
-                            <div className="space-y-8">
-                               <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Propostas de Acessibilidade (Seção III do PEI)</h3>
-                               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                 <div className="space-y-4">
-                                   <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest border-b border-slate-200 pb-2">Adaptações Instrucionais</h4>
-                                   {renderTopicList(
-                                     caseStudySynthesis.accessibilityStrategies.instructional,
-                                     (newTopics) => handleTopicChange(prev => ({ ...prev, accessibilityStrategies: { ...prev.accessibilityStrategies, instructional: newTopics } })),
-                                     "Adicionar."
-                                   )}
-                                 </div>
-                                 <div className="space-y-4">
-                                   <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest border-b border-slate-200 pb-2">Adaptações Ambientais</h4>
-                                   {renderTopicList(
-                                     caseStudySynthesis.accessibilityStrategies.environmental,
-                                     (newTopics) => handleTopicChange(prev => ({ ...prev, accessibilityStrategies: { ...prev.accessibilityStrategies, environmental: newTopics } })),
-                                     "Adicionar."
-                                   )}
-                                 </div>
-                                 <div className="space-y-4">
-                                   <h4 className="text-sm font-black text-slate-700 uppercase tracking-widest border-b border-slate-200 pb-2">Adaptações na Avaliação</h4>
-                                   {renderTopicList(
-                                     caseStudySynthesis.accessibilityStrategies.evaluation,
-                                     (newTopics) => handleTopicChange(prev => ({ ...prev, accessibilityStrategies: { ...prev.accessibilityStrategies, evaluation: newTopics } })),
-                                     "Adicionar."
-                                   )}
-                                 </div>
+                            <div className="space-y-6">
+                               <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-xl flex items-start gap-3 mb-6">
+                                  <Info size={20} className="text-amber-600 shrink-0 mt-0.5" />
+                                  <p className="text-sm font-medium text-amber-800 leading-relaxed">
+                                    Presume-se que as adaptações propostas e validadas por este componente sejam as mesmas necessárias para a progressão do estudante e deverão ser formalizadas pela escola. Recomenda-se catalogar aqui para cruzamento no PEI.
+                                  </p>
                                </div>
+                               <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Propostas de Acessibilidade (Seção III do PEI)</h3>
+                               <TopicEditorList
+                                 topics={caseStudySynthesis.accessibilityStrategies}
+                                 onChange={(newTopics) => handleTopicChange(prev => ({ ...prev, accessibilityStrategies: newTopics }))}
+                                 placeholder="Descreva a estratégia ou recurso de apoio..."
+                                 categories={ACCESSIBILITY_CATEGORIES}
+                               />
                             </div>
                          )}
                        </div>
