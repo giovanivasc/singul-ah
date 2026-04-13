@@ -368,9 +368,9 @@ export default function ConvergenceEditor() {
       <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-8 flex flex-col gap-6">
         <StudentPageHeader title="Mapeamento Assistido" studentId={studentId} />
         
-        <div className="flex flex-col lg:flex-row gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
           {/* COLUNA ESQUERDA: Fontes de Dados e Snippets */}
-          <div className="w-full lg:w-1/3 flex flex-col gap-6">
+          <div className="lg:col-span-4 flex flex-col gap-6">
           
           <div className="bg-white rounded-[32px] p-8 border border-slate-100 atmospheric-shadow flex flex-col gap-6">
             <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
@@ -457,7 +457,7 @@ export default function ConvergenceEditor() {
         </div>
 
         {/* COLUNA DIREITA: Resultado Legal Art. 11 e Checklists */}
-        <div className="w-full lg:w-2/3 flex flex-col gap-6">
+        <div className="lg:col-span-8 flex flex-col gap-6">
           <div className="bg-white rounded-[32px] p-8 border border-slate-100 atmospheric-shadow flex flex-col items-center justify-center text-center">
              <ShieldCheck size={32} className="text-primary mb-3" />
              <h2 className="text-2xl font-black text-on-surface tracking-tight">Síntese do Estudo de Caso</h2>
