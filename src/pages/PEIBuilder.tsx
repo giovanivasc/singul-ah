@@ -82,7 +82,7 @@ export default function PEIBuilder() {
   const navigate = useNavigate();
   const { studentId } = useParams();
 
-  const [activeStep, setActiveStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1);
+  const [activeStep, setActiveStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7>(1);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [studentInfo, setStudentInfo] = useState<any>(null);
 
@@ -93,6 +93,7 @@ export default function PEIBuilder() {
     { id: 4, title: 'Serviços e Enriquecimento', icon: BookOpen },
     { id: 5, title: 'Tecnologia e Assistiva', icon: Sparkles },
     { id: 6, title: 'Plano de Transição', icon: Target },
+    { id: 7, title: 'Registro e Assinaturas', icon: PencilRuler },
   ];
 
   // Etapa 1 state
@@ -178,6 +179,11 @@ export default function PEIBuilder() {
   // Etapa 6 state
   const [enableTransitionPlan, setEnableTransitionPlan] = useState<boolean>(false);
 
+  // Etapa 7 state (Registro e Assinaturas)
+  const [enableHistory, setEnableHistory] = useState<boolean>(false);
+  const [historyLog, setHistoryLog] = useState<{id: string, date: string, description: string, result: string}[]>([]);
+  const [signatories, setSignatories] = useState<{id: string, name: string, role: string}[]>([]);
+
   // BNCC Search State
   const [planningContent, setPlanningContent] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -238,6 +244,9 @@ export default function PEIBuilder() {
          if (parsed.enrichmentServices) setEnrichmentServices(parsed.enrichmentServices);
          if (parsed.techResources) setTechResources(parsed.techResources);
          if (parsed.enableTransitionPlan !== undefined) setEnableTransitionPlan(parsed.enableTransitionPlan);
+         if (parsed.enableHistory !== undefined) setEnableHistory(parsed.enableHistory);
+         if (parsed.historyLog) setHistoryLog(parsed.historyLog);
+         if (parsed.signatories) setSignatories(parsed.signatories);
 
          if (parsed.planningContent) setPlanningContent(parsed.planningContent);
          if (parsed.selectedSkills) setSelectedSkills(parsed.selectedSkills);
@@ -377,6 +386,9 @@ export default function PEIBuilder() {
       enrichmentServices,
       techResources,
       enableTransitionPlan,
+      enableHistory,
+      historyLog,
+      signatories,
       planningContent,
       selectedSkills,
       compactationTarget,
@@ -1333,6 +1345,141 @@ export default function PEIBuilder() {
                    )}
                 </div>
 
+
+              </motion.div>
+            )}
+
+            {/* ETAPA 7 */}
+            {activeStep === 7 && (
+              <motion.div key="step-7" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                <div>
+                  <h2 className="text-2xl font-black text-on-surface flex items-center gap-3">
+                     <PencilRuler className="text-primary" /> Registro e Assinaturas
+                  </h2>
+                  <p className="text-sm font-medium text-slate-500 mt-2">
+                     Acompanhamentos metodológicos e anuência de responsabilidades.
+                  </p>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-3xl p-8 space-y-6 shadow-sm">
+                   <div className="flex items-center justify-between">
+                     <div>
+                       <h3 className="font-black text-lg text-slate-800 tracking-tight">Histórico de Acompanhamento</h3>
+                       <p className="text-xs font-medium text-slate-500">Mantenha ou desative a tabela de registros para acompanhamentos contínuos.</p>
+                     </div>
+                     <button 
+                       onClick={() => setEnableHistory(!enableHistory)}
+                       className={cn(
+                         "relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none",
+                         enableHistory ? "bg-primary" : "bg-slate-200"
+                       )}
+                     >
+                       <span className={cn(
+                         "inline-block h-6 w-6 transform rounded-full bg-white transition-transform shadow-sm",
+                         enableHistory ? "translate-x-7" : "translate-x-1"
+                       )} />
+                     </button>
+                   </div>
+                   
+                   {enableHistory && (
+                     <div className="space-y-4 animate-in fade-in slide-in-from-top-2 pt-4">
+                        <div className="flex justify-end">
+                           <button onClick={() => setHistoryLog([...historyLog, { id: crypto.randomUUID(), date: '', description: '', result: '' }])} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors">
+                              <Plus size={14}/> Adicionar Registro
+                           </button>
+                        </div>
+                        <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
+                          <table className="w-full text-left text-sm min-w-[700px]">
+                              <thead className="bg-slate-50 border-b border-slate-100 uppercase text-[10px] font-black text-slate-500 tracking-widest leading-relaxed">
+                                <tr>
+                                  <th className="p-4 w-40">Data</th>
+                                  <th className="p-4 min-w-[300px]">Descrição ou Ação</th>
+                                  <th className="p-4 w-60">Resultado</th>
+                                  <th className="p-4 w-10"></th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100">
+                                  {historyLog.length === 0 && (
+                                    <tr><td colSpan={4} className="p-6 text-center text-slate-400 font-medium pb-8 border-none"><Clock className="mx-auto mb-2 opacity-50" size={32}/>Nenhum evento registrado.</td></tr>
+                                  )}
+                                  {historyLog.map((log, lIdx) => (
+                                    <tr key={log.id} className="hover:bg-slate-50/50 transition-colors align-top">
+                                      <td className="p-2 border-r border-slate-50">
+                                         <input type="date" value={log.date} onChange={e => { const n = [...historyLog]; n[lIdx].date = e.target.value; setHistoryLog(n); }} className="w-full bg-transparent outline-none text-xs p-2 text-slate-700 font-medium" />
+                                      </td>
+                                      <td className="p-2 border-r border-slate-50">
+                                         <AutoResizeTextarea value={log.description} onChange={e => { const n = [...historyLog]; n[lIdx].description = e.target.value; setHistoryLog(n); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[40px]" placeholder="Ex: Reunião de alinhamento..." />
+                                      </td>
+                                      <td className="p-2 border-r border-slate-50">
+                                         <AutoResizeTextarea value={log.result} onChange={e => { const n = [...historyLog]; n[lIdx].result = e.target.value; setHistoryLog(n); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[40px]" placeholder="Ex: Metas ajustadas..." />
+                                      </td>
+                                      <td className="p-2 align-middle">
+                                         <button onClick={() => setHistoryLog(historyLog.filter(l => l.id !== log.id))} className="text-slate-300 hover:text-red-500 rounded p-1"><Trash2 size={16}/></button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                              </tbody>
+                          </table>
+                        </div>
+                     </div>
+                   )}
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-3xl p-8 space-y-6 shadow-sm">
+                   <div className="flex items-center justify-between">
+                     <div>
+                       <h3 className="font-black text-lg text-slate-800 tracking-tight">Signatários do PEI</h3>
+                       <p className="text-xs font-medium text-slate-500">Adicione os responsáveis que validarão a ativação e execução deste documento.</p>
+                     </div>
+                     <button onClick={() => setSignatories([...signatories, { id: crypto.randomUUID(), name: '', role: '' }])} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors">
+                        <Plus size={14}/> Adicionar Signatário
+                     </button>
+                   </div>
+                   
+                   <div className="space-y-3 pt-2">
+                      {signatories.length === 0 && (
+                        <div className="text-center text-slate-400 font-medium py-6 bg-slate-50 rounded-2xl border border-slate-100 border-dashed">
+                          <UserIcon className="mx-auto mb-2 opacity-50" size={32}/>
+                          Ainda não há assinaturas requeridas.
+                        </div>
+                      )}
+                      {signatories.map((sig, sIdx) => (
+                         <div key={sig.id} className="flex gap-4 items-center bg-slate-50/50 p-3 rounded-2xl border border-slate-100 hover:border-slate-200 transition-colors">
+                            <div className="w-10 h-10 bg-white border border-slate-200 rounded-full flex items-center justify-center shrink-0 shadow-sm">
+                               <PencilRuler className="text-slate-400" size={16} />
+                            </div>
+                            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                               <input 
+                                  type="text" 
+                                  value={sig.name} 
+                                  onChange={e => { const n = [...signatories]; n[sIdx].name = e.target.value; setSignatories(n); }}
+                                  placeholder="Nome Completo..."
+                                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                               />
+                               <select 
+                                  value={sig.role}
+                                  onChange={e => { const n = [...signatories]; n[sIdx].role = e.target.value; setSignatories(n); }}
+                                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 text-slate-600"
+                                  title="Função"
+                               >
+                                  <option value="">Selecione a Relação...</option>
+                                  <option value="Professor AEE">Professor AEE</option>
+                                  <option value="Professor Regente">Professor Regente</option>
+                                  <option value="Coordenador">Coordenador Pedagógico</option>
+                                  <option value="Responsável Legal">Responsável Legal</option>
+                                  <option value="Estudante">Estudante</option>
+                                  <option value="Gestor Escolar">Gestor Escolar</option>
+                                  <option value="Outro">Outro</option>
+                               </select>
+                            </div>
+                            <button onClick={() => setSignatories(signatories.filter(s => s.id !== sig.id))} className="text-slate-300 hover:text-red-500 rounded-xl hover:bg-red-50 p-2.5 transition-colors">
+                               <Trash2 size={18}/>
+                            </button>
+                         </div>
+                      ))}
+                   </div>
+                </div>
+
                 <div className="pt-10 flex flex-col sm:flex-row justify-end gap-4">
                    <button 
                      onClick={() => { handleSaveData(); alert("Progresso salvo no navegador!"); }}
@@ -1348,7 +1495,8 @@ export default function PEIBuilder() {
                    </button>
                 </div>
               </motion.div>
-            )}
+            )
+}
           </AnimatePresence>
         </div>
 
@@ -1367,7 +1515,7 @@ export default function PEIBuilder() {
              <ChevronLeft size={16} /> Passo Anterior
            </button>
            
-           {activeStep < 6 && (
+           {activeStep < 7 && (
              <button 
                onClick={nextStep}
                className="bg-primary text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-2 shadow-xl shadow-primary/20 hover:brightness-110 active:scale-95 transition-all duration-300"
