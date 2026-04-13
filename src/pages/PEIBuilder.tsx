@@ -92,7 +92,7 @@ export default function PEIBuilder() {
     { id: 3, title: 'Programa Curricular', icon: LayoutGrid },
     { id: 4, title: 'Serviços e Enriquecimento', icon: BookOpen },
     { id: 5, title: 'Tecnologia e Assistiva', icon: Sparkles },
-    { id: 6, title: 'Metas', icon: Target },
+    { id: 6, title: 'Plano de Transição', icon: Target },
   ];
 
   // Etapa 1 state
@@ -175,6 +175,9 @@ export default function PEIBuilder() {
   // Etapa 5 state
   const [techResources, setTechResources] = useState<{id: string, tool: string, objective: string, frequency: string, location: string}[]>([]);
 
+  // Etapa 6 state
+  const [enableTransitionPlan, setEnableTransitionPlan] = useState<boolean>(false);
+
   // BNCC Search State
   const [planningContent, setPlanningContent] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -234,6 +237,7 @@ export default function PEIBuilder() {
          if (parsed.specializedServices) setSpecializedServices(parsed.specializedServices);
          if (parsed.enrichmentServices) setEnrichmentServices(parsed.enrichmentServices);
          if (parsed.techResources) setTechResources(parsed.techResources);
+         if (parsed.enableTransitionPlan !== undefined) setEnableTransitionPlan(parsed.enableTransitionPlan);
 
          if (parsed.planningContent) setPlanningContent(parsed.planningContent);
          if (parsed.selectedSkills) setSelectedSkills(parsed.selectedSkills);
@@ -372,6 +376,7 @@ export default function PEIBuilder() {
       specializedServices,
       enrichmentServices,
       techResources,
+      enableTransitionPlan,
       planningContent,
       selectedSkills,
       compactationTarget,
@@ -1275,91 +1280,57 @@ export default function PEIBuilder() {
             )}
             {/* ETAPA 6 */}
             {activeStep === 6 && (
-              <motion.div key="step-5" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+              <motion.div key="step-6" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                 <div>
                   <h2 className="text-2xl font-black text-on-surface flex items-center gap-3">
-                     <Target className="text-primary" /> Metas SMART e Apoio
+                     <Target className="text-primary" /> Plano de Transição e Aconselhamento
                   </h2>
                   <p className="text-sm font-medium text-slate-500 mt-2">
-                     Defina os objetivos globais finais e inspecione os recursos de acessibilidade.
+                     Avalie a necessidade e estabeleça objetivos para a transição dos anos escolares ou preparação profissional.
                   </p>
                 </div>
 
-                <div className="space-y-6 bg-slate-50 border border-slate-100 rounded-3xl p-8">
-                   <h3 className="font-black text-lg text-slate-800 uppercase tracking-tight">Metas SMART (Específicas, Mensuráveis, Alcançáveis, Relevantes e Temporais)</h3>
-                   <div className="space-y-3">
-                     {smartGoals.map((goal, idx) => (
-                       <div key={idx} className="flex gap-3">
-                         <input 
-                           type="text"
-                           value={goal}
-                           onChange={e => {
-                             const newGoals = [...smartGoals];
-                             newGoals[idx] = e.target.value;
-                             setSmartGoals(newGoals);
-                           }}
-                           placeholder="Ex: O aluno deverá dominar frações complexas com 90% de precisão até o fim do bimestre..."
-                           className="flex-1 bg-white border border-slate-200 rounded-xl p-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-sm"
-                         />
-                         <button 
-                           onClick={() => setSmartGoals(smartGoals.filter((_, i) => i !== idx))} 
-                           className="w-14 flex items-center justify-center bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:bg-red-50 hover:border-red-200 rounded-xl transition-all shadow-sm"
-                           title="Remover Meta"
-                         >
-                           <Trash2 size={20} />
-                         </button>
+                <div className="bg-white border border-slate-200 rounded-3xl p-8 space-y-6 shadow-sm">
+                   <div className="flex items-center justify-between">
+                     <div>
+                       <h3 className="font-black text-lg text-slate-800 tracking-tight">Ativar Plano de Transição?</h3>
+                       <p className="text-xs font-medium text-slate-500">Selecione se haverá um plano de transição formal para este estudante.</p>
+                     </div>
+                     <button 
+                       onClick={() => setEnableTransitionPlan(!enableTransitionPlan)}
+                       className={cn(
+                         "relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none",
+                         enableTransitionPlan ? "bg-primary" : "bg-slate-200"
+                       )}
+                     >
+                       <span className={cn(
+                         "inline-block h-6 w-6 transform rounded-full bg-white transition-transform shadow-sm",
+                         enableTransitionPlan ? "translate-x-7" : "translate-x-1"
+                       )} />
+                     </button>
+                   </div>
+
+                   {!enableTransitionPlan ? (
+                     <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 flex items-center gap-4 animate-in fade-in">
+                       <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                         <ShieldCheck className="text-slate-400" size={20} />
                        </div>
-                     ))}
-                   </div>
-                   <button 
-                     onClick={() => setSmartGoals([...smartGoals, ''])}
-                     className="px-6 py-4 bg-white border border-dashed border-slate-300 text-slate-500 rounded-xl font-bold text-sm tracking-wide hover:border-slate-400 hover:text-slate-700 transition-all flex items-center gap-2 shadow-sm w-full justify-center"
-                   >
-                     <Plus size={18} /> Adicionar Nova Meta
-                   </button>
-                </div>
-
-                <div className="bg-blue-50 border border-blue-200 rounded-[24px] p-8 space-y-6">
-                   <div className="flex items-center gap-3">
-                     <ShieldCheck className="text-blue-600" size={28} />
-                     <h3 className="font-black text-xl text-blue-900 uppercase tracking-tight">Recursos de Acessibilidade (LBI)</h3>
-                   </div>
-                   <p className="text-sm text-blue-800/80 font-medium bg-white/50 p-3 rounded-lg border border-blue-100/50">
-                     O sistema inseriu bases do <strong>Mapeamento Consolidado (Eixo IV)</strong>. Abaixo você pode rever ou adicionar manualmente se julgar necessário.
-                   </p>
-                   
-                   <ul className="space-y-3">
-                     {accessibilityResources.map((res, idx) => (
-                       <li key={idx} className="flex items-start gap-4 bg-white p-4 rounded-xl border border-blue-100 shadow-sm transition-all hover:shadow-md">
-                         <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
-                           <CheckCircle2 size={14} />
+                       <p className="text-sm text-slate-500 font-medium leading-relaxed">
+                         O plano de transição está desativado para este documento. Geralmente é ativado apenas para séries avançadas (Ensino Médio), mudanças drásticas de ciclo ou aconselhamento profissional iminente.
+                       </p>
+                     </div>
+                   ) : (
+                     <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                       <p className="text-sm font-bold text-primary">Plano Ativado: A estrutura base será gerada na exportação.</p>
+                       <div className="border-2 border-dashed border-slate-200 rounded-2xl p-12 flex flex-col items-center justify-center text-center gap-3">
+                         <Target className="text-slate-300 mx-auto" size={40} />
+                         <div>
+                           <p className="text-sm font-bold text-slate-600">Espaço Reservado para Estruturação</p>
+                           <p className="text-xs text-slate-400 mt-1 max-w-md">Os eixos de transição (Curricular, Profissionalizante e Autonomia) serão preenchidos em uma atualização futura do sistema.</p>
                          </div>
-                         <span className="text-sm font-bold text-slate-700 flex-1 pt-0.5">{res}</span>
-                         <button 
-                           onClick={() => setAccessibilityResources(accessibilityResources.filter((_, i) => i !== idx))} 
-                           className="text-slate-300 hover:text-red-500 transition-colors p-1"
-                         >
-                           <X size={18} />
-                         </button>
-                       </li>
-                     ))}
-                   </ul>
-
-                   <div className="flex gap-3 mt-4 pt-4 border-t border-blue-200/50">
-                      <input 
-                        type="text" 
-                        value={newResource}
-                        onChange={e => setNewResource(e.target.value)}
-                        placeholder="Novo recurso (Ex: Mesa adaptada)..."
-                        className="flex-1 bg-white border border-blue-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 shadow-sm"
-                      />
-                      <button 
-                        onClick={() => { if(newResource) { setAccessibilityResources([...accessibilityResources, newResource]); setNewResource(''); } }}
-                        className="px-6 bg-blue-600 text-white rounded-xl font-bold text-sm tracking-wide hover:bg-blue-700 hover:shadow-md active:scale-95 transition-all flex items-center gap-2"
-                      >
-                        <Plus size={18} /> Adicionar
-                      </button>
-                   </div>
+                       </div>
+                     </div>
+                   )}
                 </div>
 
                 <div className="pt-10 flex flex-col sm:flex-row justify-end gap-4">
@@ -1396,7 +1367,7 @@ export default function PEIBuilder() {
              <ChevronLeft size={16} /> Passo Anterior
            </button>
            
-           {activeStep < 5 && (
+           {activeStep < 6 && (
              <button 
                onClick={nextStep}
                className="bg-primary text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-2 shadow-xl shadow-primary/20 hover:brightness-110 active:scale-95 transition-all duration-300"
