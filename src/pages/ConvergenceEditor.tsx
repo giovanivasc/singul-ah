@@ -123,12 +123,12 @@ function TopicEditorList({
        {safeTopics.map(t => {
          const cat = categories?.find(c => c.id === t.category);
          return (
-         <div key={t.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-white border border-slate-200 p-3 rounded-xl shadow-sm transition-all focus-within:ring-2 focus-within:ring-primary/20">
-           <div className="flex items-center gap-3 w-full sm:w-auto flex-1">
-             <button aria-label={t.selected ? "Desmarcar" : "Marcar"} onClick={() => onChange(safeTopics.map(p => p.id === t.id ? {...p, selected: !p.selected} : p))} className={cn("w-5 h-5 rounded-full flex items-center justify-center border shrink-0 transition-colors", t.selected ? "bg-primary border-primary text-white" : "border-slate-300 hover:border-slate-400")}>
+         <div key={t.id} className="flex flex-col sm:flex-row items-start gap-3 bg-white border border-slate-200 p-3 rounded-xl shadow-sm transition-all focus-within:ring-2 focus-within:ring-primary/20 h-auto">
+           <div className="flex items-start gap-3 w-full sm:w-auto flex-1">
+             <button aria-label={t.selected ? "Desmarcar" : "Marcar"} onClick={() => onChange(safeTopics.map(p => p.id === t.id ? {...p, selected: !p.selected} : p))} className={cn("w-5 h-5 mt-0.5 rounded-full flex items-center justify-center border shrink-0 transition-colors", t.selected ? "bg-primary border-primary text-white" : "border-slate-300 hover:border-slate-400")}>
                {t.selected && <div className="w-2.5 h-2.5 bg-white rounded-full"/>}
              </button>
-             <textarea aria-label="Texto" placeholder="Texto..." className={cn("flex-1 bg-transparent text-sm resize-none focus:outline-none transition-all leading-relaxed", !t.selected && "line-through text-slate-400")} value={t.text} onChange={e => onChange(safeTopics.map(p => p.id === t.id ? {...p, text: e.target.value} : p))} rows={2}/>
+             <textarea aria-label="Texto" placeholder="Texto..." className={cn("resize-none overflow-hidden h-auto w-full bg-transparent text-sm focus:outline-none transition-all leading-relaxed", !t.selected && "line-through text-slate-400")} onInput={(e) => { e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px'; }} value={t.text} onChange={e => onChange(safeTopics.map(p => p.id === t.id ? {...p, text: e.target.value} : p))} rows={1}/>
            </div>
            <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-2 ml-8 sm:ml-0 mt-2 sm:mt-0">
              {categories && (
