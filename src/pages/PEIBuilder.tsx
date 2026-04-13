@@ -359,7 +359,7 @@ export default function PEIBuilder() {
              <CheckCircle2 size={18} className="text-primary mt-0.5 shrink-0" />
              <span className="whitespace-normal break-words flex-1 leading-relaxed">{t.text}</span>
              {cat && (
-                <span className={cn("text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 mt-0.5", cat.colorClass)}>
+                <span className={cn("text-[10px] capitalize font-bold tracking-wider px-1.5 py-0 rounded-full whitespace-nowrap shrink-0 mt-0.5", cat.colorClass)}>
                   {cat.label}
                 </span>
              )}
