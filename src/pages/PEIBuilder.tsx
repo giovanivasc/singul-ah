@@ -931,29 +931,32 @@ export default function PEIBuilder() {
                   </p>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden atmospheric-shadow">
-                   <div className="flex border-b border-slate-200 bg-slate-100 overflow-x-auto pt-2 px-2 gap-1">
-                     <button
-                       onClick={() => setActiveTabStep3('perfil')}
-                       className={cn(
-                         "px-5 py-3 text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap rounded-t-xl border-t border-x",
-                         activeTabStep3 === 'perfil' ? "bg-white border-slate-200 text-primary shadow-[0_4px_0_0_#ffffff] translate-y-[1px] relative z-10" : "bg-slate-50 border-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-600"
-                       )}
-                     >
-                       Perfil Curricular
-                     </button>
-                     <button
-                       onClick={() => setActiveTabStep3('construcao')}
-                       className={cn(
-                         "px-5 py-3 text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap rounded-t-xl border-t border-x",
-                         activeTabStep3 === 'construcao' ? "bg-white border-slate-200 text-primary shadow-[0_4px_0_0_#ffffff] translate-y-[1px] relative z-10" : "bg-slate-50 border-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-600"
-                       )}
-                     >
-                       Construção do Currículo
-                     </button>
-                   </div>
+                <div className="bg-slate-50/50 p-2 rounded-2xl border border-slate-100 flex flex-wrap justify-center gap-2 w-fit mx-auto mb-6">
+                    <button 
+                      onClick={() => setActiveTabStep3('perfil')}
+                      className={cn(
+                        "px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
+                        activeTabStep3 === 'perfil' 
+                          ? "bg-white text-primary shadow-sm border border-slate-200/60" 
+                          : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                      )}
+                    >
+                      Perfil Curricular
+                    </button>
+                    <button 
+                      onClick={() => setActiveTabStep3('construcao')}
+                      className={cn(
+                        "px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
+                        activeTabStep3 === 'construcao' 
+                          ? "bg-white text-primary shadow-sm border border-slate-200/60" 
+                          : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                      )}
+                    >
+                      Construção do Currículo
+                    </button>
+                 </div>
 
-                   <div className="p-8 bg-slate-50/50">
+                 <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden atmospheric-shadow p-8">
                      {activeTabStep3 === 'perfil' && (
                        <div className="space-y-6">
                          <div className="flex justify-between items-center mb-6">
@@ -1124,7 +1127,6 @@ export default function PEIBuilder() {
                         );
                      })()}
                    </div>
-                </div>
               </motion.div>
             )}
 
@@ -1140,7 +1142,7 @@ export default function PEIBuilder() {
                   </p>
                 </div>
 
-                <div className="bg-slate-50/50 p-2 rounded-2xl border border-slate-100 flex gap-2 w-fit">
+                <div className="bg-slate-50/50 p-2 rounded-2xl border border-slate-100 flex flex-wrap justify-center gap-2 w-fit mx-auto mb-6">
                     <button 
                       onClick={() => setActiveTabStep4('servicos')}
                       className={cn(
