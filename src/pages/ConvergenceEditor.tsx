@@ -205,7 +205,8 @@ export default function ConvergenceEditor() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
   
-  const [activeTabMapping, setActiveTabMapping] = useState<'contexto' | 'estilos' | 'potencialidades' | 'demandas' | 'adaptacoes'>('contexto');
+  const [activeSegmentMapping, setActiveSegmentMapping] = useState<'contexto' | 'estrategias'>('contexto');
+  const [activeTabMapping, setActiveTabMapping] = useState<'caracterizacao' | 'estilos' | 'potencialidades' | 'demandas'>('caracterizacao');
 
   const [caseStudySynthesis, setCaseStudySynthesis] = useState<CaseStudySynthesis>({
     currentContext: [],
@@ -519,97 +520,124 @@ export default function ConvergenceEditor() {
                   className="space-y-6"
                 >
                     {/* Formulário de Síntese em Formato Checklist Curador */}
-                    <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden atmospheric-shadow animate-in fade-in slide-in-from-bottom-4 duration-300">
-                       
-                       {/* Tabs Menu - Estilo Fichário */}
-                       <div className="flex border-b border-slate-200 bg-slate-100 overflow-x-auto pt-2 px-2 gap-1">
-                         {[
-                           { id: 'contexto', label: 'Contexto Atual' },
-                           { id: 'estilos', label: 'Estilos de Aprendizagem' },
-                           { id: 'potencialidades', label: 'Potencialidades e Interesses' },
-                           { id: 'demandas', label: 'Demandas e Barreiras' },
-                           { id: 'adaptacoes', label: 'Acessibilidade' }
-                         ].map(tab => (
-                           <button
-                             key={tab.id}
-                             onClick={() => setActiveTabMapping(tab.id as typeof activeTabMapping)}
-                             className={cn(
-                               "px-5 py-3 text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap rounded-t-xl border-t border-x",
-                               activeTabMapping === tab.id
-                                 ? "bg-white border-slate-200 text-primary shadow-[0_4px_0_0_#ffffff] translate-y-[1px] relative z-10"
-                                 : "bg-slate-50 border-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-600"
-                             )}
-                           >
-                             {tab.label}
-                           </button>
-                         ))}
-                       </div>
-
-                       <div className="p-8 bg-slate-50/50">
-                         {activeTabMapping === 'contexto' && (
-                            <div className="space-y-6">
-                               <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Contexto Biopsicossocial e Educacional</h3>
-                               <TopicEditorList
-                                 topics={caseStudySynthesis.currentContext}
-                                 onChange={(newTopics) => handleTopicChange(prev => ({ ...prev, currentContext: newTopics }))}
-                                 placeholder="Descreva o contexto acadêmico, social, cognitivo..."
-                                 categories={CONTEXT_CATEGORIES}
-                               />
-                            </div>
-                         )}
-
-                         {activeTabMapping === 'estilos' && (
-                            <div className="space-y-6">
-                               <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Estilos de Aprendizagem Identificados</h3>
-                               <TopicEditorList
-                                 topics={caseStudySynthesis.learningStyle}
-                                 onChange={(newTopics) => handleTopicChange(prev => ({ ...prev, learningStyle: newTopics }))}
-                                 placeholder="Adicionar característica de estilo..."
-                               />
-                            </div>
-                         )}
-
-                         {activeTabMapping === 'potencialidades' && (
-                            <div className="space-y-6">
-                               <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Potencialidades, Interesses e Indicadores AH/SD</h3>
-                               <TopicEditorList
-                                 topics={caseStudySynthesis.potentialsInterests}
-                                 onChange={(newTopics) => handleTopicChange(prev => ({ ...prev, potentialsInterests: newTopics }))}
-                                 placeholder="Adicionar talento ou interesse..."
-                               />
-                            </div>
-                         )}
-
-                         {activeTabMapping === 'demandas' && (
-                            <div className="space-y-6">
-                               <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Demandas e Barreiras Mapeadas (LBI)</h3>
-                               <TopicEditorList
-                                 topics={caseStudySynthesis.demandsBarriers}
-                                 onChange={(newTopics) => handleTopicChange(prev => ({ ...prev, demandsBarriers: newTopics }))}
-                                 placeholder="Adicionar barreira ou demanda..."
-                               />
-                            </div>
-                         )}
-
-                         {activeTabMapping === 'adaptacoes' && (
-                            <div className="space-y-6">
-                               <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-xl flex items-start gap-3 mb-6">
-                                  <Info size={20} className="text-amber-600 shrink-0 mt-0.5" />
-                                  <p className="text-sm font-medium text-amber-800 leading-relaxed">
-                                    Presume-se que as adaptações propostas e validadas por este componente sejam as mesmas necessárias para a progressão do estudante e deverão ser formalizadas pela escola. Recomenda-se catalogar aqui para cruzamento no PEI.
-                                  </p>
-                               </div>
-                               <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Propostas de Acessibilidade (Seção III do PEI)</h3>
-                               <TopicEditorList
-                                 topics={caseStudySynthesis.accessibilityStrategies}
-                                 onChange={(newTopics) => handleTopicChange(prev => ({ ...prev, accessibilityStrategies: newTopics }))}
-                                 placeholder="Descreva a estratégia ou recurso de apoio..."
-                                 categories={ACCESSIBILITY_CATEGORIES}
-                               />
-                            </div>
-                         )}
-                       </div>
+                    <div className="bg-slate-50/50 p-2 rounded-2xl border border-slate-100 flex gap-2 w-fit mb-4">
+                        <button 
+                          onClick={() => setActiveSegmentMapping('contexto')}
+                          className={cn(
+                            "px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
+                            activeSegmentMapping === 'contexto' 
+                              ? "bg-white text-primary shadow-sm border border-slate-200/60" 
+                              : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                          )}
+                        >
+                          Contexto Biopsicossocial e Educacional
+                        </button>
+                        <button 
+                          onClick={() => setActiveSegmentMapping('estrategias')}
+                          className={cn(
+                            "px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
+                            activeSegmentMapping === 'estrategias' 
+                              ? "bg-white text-primary shadow-sm border border-slate-200/60" 
+                              : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                          )}
+                        >
+                          Estratégias e Recursos de Acessibilidade
+                        </button>
                     </div>
+
+                    {activeSegmentMapping === 'contexto' && (
+                      <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden atmospheric-shadow animate-in fade-in slide-in-from-bottom-4 duration-300">
+                         {/* Tabs Menu - Estilo Fichário */}
+                         <div className="flex border-b border-slate-200 bg-slate-100 overflow-x-auto pt-2 px-2 gap-1">
+                           {[
+                             { id: 'caracterizacao', label: 'Caracterização' },
+                             { id: 'estilos', label: 'Estilos de aprendizagem' },
+                             { id: 'potencialidades', label: 'Potencialidades e Interesses' },
+                             { id: 'demandas', label: 'Demandas e barreiras' }
+                           ].map(tab => (
+                             <button
+                               key={tab.id}
+                               onClick={() => setActiveTabMapping(tab.id as typeof activeTabMapping)}
+                               className={cn(
+                                 "px-5 py-3 text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap rounded-t-xl border-t border-x",
+                                 activeTabMapping === tab.id
+                                   ? "bg-white border-slate-200 text-primary shadow-[0_4px_0_0_#ffffff] translate-y-[1px] relative z-10"
+                                   : "bg-slate-50 border-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+                               )}
+                             >
+                               {tab.label}
+                             </button>
+                           ))}
+                         </div>
+
+                         <div className="p-8 bg-slate-50/50">
+                           {activeTabMapping === 'caracterizacao' && (
+                              <div className="space-y-6">
+                                 <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Caracterização</h3>
+                                 <TopicEditorList
+                                   topics={caseStudySynthesis.currentContext}
+                                   onChange={(newTopics) => handleTopicChange(prev => ({ ...prev, currentContext: newTopics }))}
+                                   placeholder="Descreva o contexto acadêmico, social, cognitivo..."
+                                   categories={CONTEXT_CATEGORIES}
+                                 />
+                              </div>
+                           )}
+
+                           {activeTabMapping === 'estilos' && (
+                              <div className="space-y-6">
+                                 <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Estilos de Aprendizagem Identificados</h3>
+                                 <TopicEditorList
+                                   topics={caseStudySynthesis.learningStyle}
+                                   onChange={(newTopics) => handleTopicChange(prev => ({ ...prev, learningStyle: newTopics }))}
+                                   placeholder="Adicionar característica de estilo..."
+                                 />
+                              </div>
+                           )}
+
+                           {activeTabMapping === 'potencialidades' && (
+                              <div className="space-y-6">
+                                 <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Potencialidades e Interesses</h3>
+                                 <TopicEditorList
+                                   topics={caseStudySynthesis.potentialsInterests}
+                                   onChange={(newTopics) => handleTopicChange(prev => ({ ...prev, potentialsInterests: newTopics }))}
+                                   placeholder="Adicionar talento ou interesse..."
+                                 />
+                              </div>
+                           )}
+
+                           {activeTabMapping === 'demandas' && (
+                              <div className="space-y-6">
+                                 <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Demandas e Barreiras Mapeadas (LBI)</h3>
+                                 <TopicEditorList
+                                   topics={caseStudySynthesis.demandsBarriers}
+                                   onChange={(newTopics) => handleTopicChange(prev => ({ ...prev, demandsBarriers: newTopics }))}
+                                   placeholder="Adicionar barreira ou demanda..."
+                                 />
+                              </div>
+                           )}
+                         </div>
+                      </div>
+                    )}
+
+                    {activeSegmentMapping === 'estrategias' && (
+                      <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden atmospheric-shadow p-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                         <div className="space-y-6">
+                            <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-xl flex items-start gap-3 mb-6">
+                               <Info size={20} className="text-amber-600 shrink-0 mt-0.5" />
+                               <p className="text-sm font-medium text-amber-800 leading-relaxed">
+                                 Presume-se que as adaptações propostas e validadas por este componente sejam as mesmas necessárias para a progressão do estudante e deverão ser formalizadas pela escola. Recomenda-se catalogar aqui para cruzamento no PEI.
+                               </p>
+                            </div>
+                            <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Acessibilidade: Estratégias</h3>
+                            <TopicEditorList
+                              topics={caseStudySynthesis.accessibilityStrategies}
+                              onChange={(newTopics) => handleTopicChange(prev => ({ ...prev, accessibilityStrategies: newTopics }))}
+                              placeholder="Descreva a estratégia ou recurso de apoio..."
+                              categories={ACCESSIBILITY_CATEGORIES}
+                            />
+                         </div>
+                      </div>
+                    )}
 
                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="pt-6">
                       <button 
