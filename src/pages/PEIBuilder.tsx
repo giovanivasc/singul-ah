@@ -1971,7 +1971,7 @@ export default function PEIBuilder() {
              </button>
            )}
         </div>
-      </div>
+       </main>
 
       {/* ESTILOS DE IMPRESSÃO */}
       <style>{`
