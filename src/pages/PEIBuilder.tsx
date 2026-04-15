@@ -4,7 +4,7 @@ import {
   Target, LayoutGrid, Sparkles, 
   Plus, CheckCircle2, Lightbulb, 
   PencilRuler, BookOpen, Trash2, X, User as UserIcon,
-  Search, Clock, AlertTriangle, Check, Brain
+  Search, Clock, AlertTriangle, Check, Brain, Book, Calendar
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TopBar } from '../components/Navigation';
@@ -25,6 +25,7 @@ type DisciplineProfile = {
 type CurriculumPlanRow = {
   id: string;
   objectives: BnccSkill[];
+  customObjectives: string;
   indicators: string;
   timeline: string;
   strategies: string;
@@ -152,6 +153,7 @@ export default function PEIBuilder() {
 
   // Etapa 3 state
   const [activeTabStep3, setActiveTabStep3] = useState<'perfil' | 'construcao'>('perfil');
+  const [activePickerRowId, setActivePickerRowId] = useState<string | null>(null);
   const [curriculumPlans, setCurriculumPlans] = useState<CurriculumPlan[]>([]);
   const [selectedPlanDisciplineId, setSelectedPlanDisciplineId] = useState<string>('');
   const [isAddingDiscipline, setIsAddingDiscipline] = useState(false);
@@ -189,7 +191,9 @@ export default function PEIBuilder() {
   const [planningContent, setPlanningContent] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState<'habilidade' | 'competencia'>('habilidade');
-  const [allowAdvancedYears, setAllowAdvancedYears] = useState(false);
+  const [filterStage, setFilterStage] = useState<string | null>(null);
+  const [filterDiscipline, setFilterDiscipline] = useState<string | null>(null);
+  const [filterGrade, setFilterGrade] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<BnccSkill[]>([]);
   const [selectedSkills, setSelectedSkills] = useState<BnccSkill[]>([]);
   const suplementarDisciplines = disciplines.filter(d => d.status === 'suplementar');
@@ -285,11 +289,12 @@ export default function PEIBuilder() {
   useEffect(() => {
     try {
       if (searchTerm && searchTerm.length >= 3) {
-        const studentGrade = studentInfo?.grade || '';
+        // Se houver um ano filtrado, usa ele, senão usa o do aluno
+        const activeGrade = filterGrade || studentInfo?.grade || '';
         const searchLower = String(searchTerm).toLowerCase();
 
-        // 1. Extrair número do ano do aluno (ex: "5")
-        const gradeMatch = studentGrade?.match(/\d+/);
+        // 1. Extrair número do ano (ex: "5")
+        const gradeMatch = activeGrade?.match(/\d+/);
         const gradeNum = gradeMatch ? gradeMatch[0] : null;
         
         // 2. Obter códigos permitidos para o ciclo
@@ -302,59 +307,50 @@ export default function PEIBuilder() {
             // Filtro por tipo
             if (item.tipo !== searchType) return false;
 
-            // Filtro por termo (código ou descrição) - Defensivo GERAL
+            // Filtro por Etapa de Ensino (SEMPRE APLICADO se selecionado)
+            if (filterStage) {
+               const itemEtapa = item.etapa ? String(item.etapa).toLowerCase() : '';
+               if (!itemEtapa.includes(filterStage.toLowerCase())) return false;
+            }
+
+            // Filtro por termo (código ou descrição)
             const cod = item.codigo ? String(item.codigo).toLowerCase().trim() : '';
             const desc = item.descricao ? String(item.descricao).toLowerCase() : '';
             const matchesTerm = cod.includes(searchLower) || desc.includes(searchLower);
             
             if (!matchesTerm) return false;
 
-            // Se for competência, ignora as travas de código do EF
+            // Filtro por Disciplina (se selecionado)
+            if (filterDiscipline && !cod.includes(filterDiscipline.toLowerCase())) {
+              return false;
+            }
+
+            // Se for competência, ignora as travas de código do EF (a menos que haja filtro de disciplina)
             if (item.tipo === 'competencia') return true;
 
-            // Se aceleração estiver ativa, não filtra por ano/ciclo
-            if (allowAdvancedYears) return true;
+            // Filtro Ano/Ciclo (Sempre ativo agora, baseado no activeGrade ou filterGrade)
+            if (!activeGrade) return true;
 
             // Filtro ESTRITO por Código BNCC (Ensino Fundamental)
-            // Códigos EF: EFxx... onde xx (posições 2 e 3) é o ano
             if (cod.startsWith('ef')) {
               const codeGrade = cod.substring(2, 4);
-              // Só permite se o código da habilidade estiver no ciclo do aluno
               if (allowedCodes.length > 0 && !allowedCodes.includes(codeGrade)) {
                 return false;
               }
             }
 
-            // Fallback para itens sem código padrão EF (Infantil, Médio, etc.)
-            // Competências gerais e itens de "Todas" aparecem sempre
+            // Fallback para itens sem código padrão EF
             const itemAno = item.ano ? String(item.ano).toLowerCase() : '';
-            const itemEtapa = item.etapa ? String(item.etapa).toLowerCase() : '';
             
-            if (itemAno.includes('todas') || itemEtapa.includes('todas')) return true;
-
-            // Se não tiver info do aluno, não bloqueia a busca
-            if (!studentGrade) return true;
-
-            // Filtro de ano residual (para Infantil/Médio onde não usamos o código numérico)
-            const safeStudentGrade = String(studentGrade).toLowerCase();
             const studentYearNum = gradeNum || '';
-            
-            // Regras de correspondência:
-            // 1. Número da série está presente na descrição do ano do item
             const matchesYearNum = studentYearNum && itemAno.includes(studentYearNum);
             
-            // 2. O item é de um ciclo integral (Fundamental ou Médio)
             const isCycleGeneral = itemAno.includes('fundamental') || 
                                    itemAno.includes('ao 9') || 
                                    itemAno.includes('médio') || 
-                                   itemAno.includes('1, 2, 3') ||
-                                   itemEtapa.includes('ensino fundamental') ||
-                                   itemEtapa.includes('ensino médio');
+                                   itemAno.includes('1, 2, 3');
 
-            // 3. Casos especiais para Infantil
-            const isInfantilMatch = itemEtapa.includes('infantil') && safeStudentGrade.includes('infantil');
-
-            return matchesYearNum || isCycleGeneral || isInfantilMatch;
+            return matchesYearNum || isCycleGeneral;
           })
         );
       } else {
@@ -364,7 +360,7 @@ export default function PEIBuilder() {
       console.error("Erro crítico na busca BNCC:", error);
       setSearchResults([]);
     }
-  }, [searchTerm, searchType, allowAdvancedYears, studentInfo]);
+  }, [searchTerm, searchType, studentInfo, filterDiscipline, filterGrade, filterStage]);
 
   const handleUpdateDiscipline = (index: number, updates: Partial<DisciplineProfile>) => {
     setDisciplines(prev => prev.map((d, i) => i === index ? { ...d, ...updates } : d));
@@ -1044,7 +1040,7 @@ export default function PEIBuilder() {
                            setCurriculumPlans([...curriculumPlans, {
                              disciplineId: selectedPlanDisciplineId,
                              annualGoal: '',
-                             rows: [{ id: crypto.randomUUID(), objectives: [], indicators: '', timeline: '', strategies: '', evaluation: '' }]
+                             rows: [{ id: crypto.randomUUID(), objectives: [], customObjectives: '', indicators: '', timeline: '', strategies: '', evaluation: '' }]
                            }]);
                         }
                         
@@ -1055,7 +1051,7 @@ export default function PEIBuilder() {
                         const currentPlan = curriculumPlans.find(p => p.disciplineId === currentDiscId) || {
                              disciplineId: currentDiscId,
                              annualGoal: '',
-                             rows: [{ id: crypto.randomUUID(), objectives: [], indicators: '', timeline: '', strategies: '', evaluation: '' }]
+                             rows: [{ id: crypto.randomUUID(), objectives: [], customObjectives: '', indicators: '', timeline: '', strategies: '', evaluation: '' }]
                         };
                         const handlePlanChange = (updates: Partial<CurriculumPlan>) => {
                            setCurriculumPlans(prev => prev.find(p => p.disciplineId === currentDiscId) 
@@ -1084,14 +1080,10 @@ export default function PEIBuilder() {
                                  value={currentPlan.annualGoal}
                                  onChange={e => handlePlanChange({ annualGoal: e.target.value })}
                                  placeholder="Ex: O aluno será capaz de compreender operações matemáticas básicas aplicadas..."
-                                 className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none overflow-hidden"
+                                 className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none"
                                />
-                             </div>
-
-                             <div className="space-y-4">
-                               <div className="flex justify-between items-center">
-                                  <label className="text-[10px] font-black tracking-widest uppercase text-slate-400">Tabela de Planejamento (Por Unidade/Bimestre)</label>
-                                  <button onClick={() => handlePlanChange({ rows: [...currentPlan.rows, { id: crypto.randomUUID(), objectives: [], indicators: '', timeline: '', strategies: '', evaluation: '' }]})} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors">
+                               <div className="flex justify-end items-center">
+                                  <button onClick={() => handlePlanChange({ rows: [...currentPlan.rows, { id: crypto.randomUUID(), objectives: [], customObjectives: '', indicators: '', timeline: '', strategies: '', evaluation: '' }]})} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors">
                                      <Plus size={14}/> Nova Linha
                                   </button>
                                </div>
@@ -1100,22 +1092,93 @@ export default function PEIBuilder() {
                                   <table className="w-full text-left text-sm min-w-[900px]">
                                      <thead className="bg-slate-50 border-b border-slate-100 uppercase text-[10px] font-black text-slate-500 tracking-widest leading-relaxed">
                                         <tr>
-                                          <th className="p-4 min-w-[250px]">Objetivos de aprendizagem</th>
-                                          <th className="p-4 w-48">Indicadores/Metas</th>
-                                          <th className="p-4 w-48">Cronograma e Monit.</th>
-                                          <th className="p-4 w-48">Estratégias de Ensino</th>
-                                          <th className="p-4 w-48">Métodos de avaliação</th>
+                                          <th className="p-4 min-w-[250px] text-center">Objetivos de aprendizagem</th>
+                                          <th className="p-4 w-48 text-center">Indicadores/Metas</th>
+                                          <th className="p-4 w-48 text-center">Cronograma e Monitoramento</th>
+                                          <th className="p-4 w-48 text-center">Estratégias de Ensino</th>
+                                          <th className="p-4 w-48 text-center">Métodos de avaliação</th>
                                           <th className="p-4 w-10"></th>
                                         </tr>
                                      </thead>
                                      <tbody className="divide-y divide-slate-100">
-                                        {teamMembers.map((member, mIdx) => (
-                                           <tr key={member.id} className="hover:bg-slate-50 transition-colors">
-                                             <td className="px-6 py-4 font-medium text-slate-800">{member.name}</td>
-                                             <td className="px-6 py-4 text-slate-600">{member.role}</td>
-                                             <td className="px-6 py-4 text-slate-600">{member.origin}</td>
-                                             <td className="px-6 py-4 text-right">
-                                               <button onClick={() => setTeamMembers(teamMembers.filter(m => m.id !== member.id))} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors"><Trash2 size={16}/></button>
+                                        {currentPlan.rows.map((row, rIdx) => (
+                                           <tr key={row.id} className="hover:bg-slate-50 transition-colors">
+                                             <td className="p-4 border-r border-slate-100 align-top">
+                                                <div className="space-y-3">
+                                                   <div className="flex flex-wrap gap-2">
+                                                      {row.objectives && row.objectives.length > 0 && row.objectives.map((skill, sIdx) => (
+                                                         <div key={skill.codigo + sIdx} className="bg-primary/5 border border-primary/10 rounded-lg p-2 group relative max-w-[280px]">
+                                                            <div className="flex justify-between items-start gap-2">
+                                                               <span className="text-[10px] font-black text-primary uppercase tracking-tighter">{skill.codigo}</span>
+                                                               <button 
+                                                                  onClick={() => {
+                                                                     const newRows = [...currentPlan.rows];
+                                                                     newRows[rIdx] = {...row, objectives: row.objectives.filter((_, i) => i !== sIdx)};
+                                                                     handlePlanChange({ rows: newRows });
+                                                                  }}
+                                                                  className="text-slate-300 hover:text-red-500 transition-colors"
+                                                               >
+                                                                  <X size={12}/>
+                                                               </button>
+                                                            </div>
+                                                            <p className="text-[10px] text-slate-600 leading-tight mt-1 line-clamp-3 group-hover:line-clamp-none transition-all">{skill.descricao}</p>
+                                                         </div>
+                                                      ))}
+                                                   </div>
+                                                   <button 
+                                                      onClick={() => {
+                                                         setActivePickerRowId(row.id);
+                                                         setSearchTerm('');
+                                                      }}
+                                                      className="w-full py-2 border-2 border-dashed border-slate-200 rounded-xl text-[10px] font-black uppercase text-slate-400 hover:border-primary/30 hover:text-primary transition-all flex items-center justify-center gap-2"
+                                                   >
+                                                      <Plus size={14}/> Vincular BNCC
+                                                   </button>
+                                                   <div className="h-px bg-slate-100 my-2"></div>
+                                                   <AutoResizeTextarea 
+                                                      value={row.customObjectives || ''} 
+                                                      onChange={e => {
+                                                         const newRows = [...currentPlan.rows];
+                                                         newRows[rIdx] = {...row, customObjectives: e.target.value};
+                                                         handlePlanChange({ rows: newRows });
+                                                      }} 
+                                                      className="w-full bg-transparent resize-none text-[11px] font-medium p-2 outline-none focus:bg-white focus:ring-1 focus:ring-primary/20 rounded-lg min-h-[40px]" 
+                                                      placeholder="Objetivos complementares..." 
+                                                   />
+                                                </div>
+                                             </td>
+                                             <td className="p-2 border-r border-slate-100 align-top">
+                                                <AutoResizeTextarea value={row.indicators} onChange={e => {
+                                                   const newRows = [...currentPlan.rows];
+                                                   newRows[rIdx] = {...row, indicators: e.target.value};
+                                                   handlePlanChange({ rows: newRows });
+                                                }} className="w-full bg-transparent resize-none text-xs p-2 outline-none focus:bg-white focus:ring-1 focus:ring-primary/20 rounded-lg min-h-[60px]" placeholder="Indicadores..." />
+                                             </td>
+                                             <td className="p-2 border-r border-slate-100 align-top">
+                                                <AutoResizeTextarea value={row.timeline} onChange={e => {
+                                                   const newRows = [...currentPlan.rows];
+                                                   newRows[rIdx] = {...row, timeline: e.target.value};
+                                                   handlePlanChange({ rows: newRows });
+                                                }} className="w-full bg-transparent resize-none text-xs p-2 outline-none focus:bg-white focus:ring-1 focus:ring-primary/20 rounded-lg min-h-[60px]" placeholder="Cronograma..." />
+                                             </td>
+                                             <td className="p-2 border-r border-slate-100 align-top">
+                                                <AutoResizeTextarea value={row.strategies} onChange={e => {
+                                                   const newRows = [...currentPlan.rows];
+                                                   newRows[rIdx] = {...row, strategies: e.target.value};
+                                                   handlePlanChange({ rows: newRows });
+                                                }} className="w-full bg-transparent resize-none text-xs p-2 outline-none focus:bg-white focus:ring-1 focus:ring-primary/20 rounded-lg min-h-[60px]" placeholder="Estratégias..." />
+                                             </td>
+                                             <td className="p-2 border-r border-slate-100 align-top">
+                                                <AutoResizeTextarea value={row.evaluation} onChange={e => {
+                                                   const newRows = [...currentPlan.rows];
+                                                   newRows[rIdx] = {...row, evaluation: e.target.value};
+                                                   handlePlanChange({ rows: newRows });
+                                                }} className="w-full bg-transparent resize-none text-xs p-2 outline-none focus:bg-white focus:ring-1 focus:ring-primary/20 rounded-lg min-h-[60px]" placeholder="Avaliação..." />
+                                             </td>
+                                             <td className="p-2 text-center align-middle">
+                                               <button onClick={() => {
+                                                  handlePlanChange({ rows: currentPlan.rows.filter(r => r.id !== row.id) })
+                                               }} className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors"><Trash2 size={16}/></button>
                                              </td>
                                            </tr>
                                         ))}
@@ -1130,7 +1193,6 @@ export default function PEIBuilder() {
               </motion.div>
             )}
 
-            {/* ETAPA 4 */}
             {activeStep === 4 && (
               <motion.div key="step-4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                 <div>
@@ -1534,6 +1596,198 @@ export default function PEIBuilder() {
           </AnimatePresence>
         </div>
 
+        {/* BNCC PICKER MODAL */}
+        <AnimatePresence>
+          {activePickerRowId && (
+            <motion.div 
+               initial={{ opacity: 0 }} 
+               animate={{ opacity: 1 }} 
+               exit={{ opacity: 0 }} 
+               className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+            >
+               <motion.div 
+                  initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                  className="bg-white w-full max-w-4xl max-h-[90vh] rounded-[32px] shadow-2xl overflow-hidden flex flex-col"
+               >
+                  <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                     <div>
+                        <h3 className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+                           <Brain className="text-primary" size={24}/> Buscar na BNCC
+                        </h3>
+                        <p className="text-xs font-medium text-slate-500">Selecione habilidades ou competências para o objetivo proposto.</p>
+                     </div>
+                     <button onClick={() => setActivePickerRowId(null)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400">
+                        <X size={24}/>
+                     </button>
+                  </div>
+
+                  <div className="p-6 space-y-4 flex-1 overflow-y-auto min-h-0 bg-slate-50/30">
+                     <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="relative flex-1">
+                           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
+                           <input 
+                              type="text" 
+                              value={searchTerm}
+                              onChange={e => setSearchTerm(e.target.value)}
+                              placeholder="Pesquise por código (ex: EF01MA01) ou termos..."
+                              className="w-full bg-white border border-slate-200 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-medium outline-none focus:ring-4 focus:ring-primary/10 transition-all"
+                           />
+                        </div>
+                        <div className="flex bg-white p-1 rounded-[20px] border border-slate-200 shadow-sm shrink-0">
+                           <button 
+                              onClick={() => setSearchType('habilidade')}
+                              className={cn(
+                                 "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+                                 searchType === 'habilidade' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-slate-400 hover:text-slate-600"
+                              )}
+                           >Habilidades</button>
+                           <button 
+                              onClick={() => setSearchType('competencia')}
+                              className={cn(
+                                 "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+                                 searchType === 'competencia' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-slate-400 hover:text-slate-600"
+                              )}
+                           >Competências</button>
+                        </div>
+                     </div>
+
+                     {/* Novos Filtros: Etapa, Disciplina e Ano (Layout de Lista) */}
+                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+                        <div className="space-y-2">
+                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                              <Layers className="text-primary" size={12}/> Etapa de Ensino
+                           </label>
+                           <select
+                              value={filterStage || ''}
+                              onChange={e => {
+                                 setFilterStage(e.target.value || null);
+                                 setFilterGrade(null); // Resetar ano ao mudar etapa para evitar conflitos
+                              }}
+                              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer appearance-none"
+                           >
+                              <option value="">Todas as Etapas</option>
+                              <option value="Infantil">Educação Infantil</option>
+                              <option value="Fundamental">Ensino Fundamental</option>
+                              <option value="Médio">Ensino Médio</option>
+                           </select>
+                        </div>
+
+                        <div className="space-y-2">
+                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                              <Book className="text-primary" size={12}/> Disciplina
+                           </label>
+                           <select
+                              value={filterDiscipline || ''}
+                              onChange={e => setFilterDiscipline(e.target.value || null)}
+                              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer appearance-none"
+                           >
+                              <option value="">Todas as Disciplinas</option>
+                              <option value="LP">Português</option>
+                              <option value="MA">Matemática</option>
+                              <option value="CI">Ciências</option>
+                              <option value="HI">História</option>
+                              <option value="GE">Geografia</option>
+                              <option value="AR">Artes</option>
+                              <option value="EF">Educação Física</option>
+                              <option value="LI">Inglês</option>
+                              <option value="ER">Ensino Religioso</option>
+                           </select>
+                        </div>
+
+                        <div className="space-y-2 relative">
+                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                              <Calendar className="text-primary" size={12}/> Série / Ano
+                           </label>
+                           <select
+                              value={filterGrade || ''}
+                              onChange={e => setFilterGrade(e.target.value || null)}
+                              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer appearance-none"
+                           >
+                              <option value="">{filterStage === 'Médio' ? 'Todos os Anos (Médio)' : filterStage === 'Infantil' ? 'Todos os Anos (Infantil)' : `Ano do Aluno (${studentInfo?.grade || 'Não definido'})`}</option>
+                              {filterStage === 'Infantil' ? (
+                                 ['3 anos', '4 anos', '5 anos'].map(g => <option key={g} value={g}>{g}</option>)
+                              ) : filterStage === 'Médio' ? (
+                                 ['1º Ano', '2º Ano', '3º Ano'].map(g => <option key={g} value={g}>{g}</option>)
+                              ) : (
+                                 ['1º Ano', '2º Ano', '3º Ano', '4º Ano', '5º Ano', '6º Ano', '7º Ano', '8º Ano', '9º Ano'].map(g => (
+                                    <option key={g} value={g}>{g}</option>
+                                 ))
+                              )}
+                           </select>
+                        </div>
+
+                        {(filterDiscipline || filterGrade || filterStage) && (
+                           <div className="sm:col-span-3 flex justify-end">
+                              <button 
+                                 onClick={() => {
+                                    setFilterDiscipline(null);
+                                    setFilterGrade(null);
+                                    setFilterStage(null);
+                                 }}
+                                 className="text-[10px] font-black uppercase text-red-500 hover:text-red-600 flex items-center gap-1 transition-colors"
+                              >
+                                 Limpar Todos os Filtros
+                              </button>
+                           </div>
+                        )}
+                     </div>
+
+                     <div className="space-y-3">
+                        {searchResults.length === 0 ? (
+                           <div className="text-center py-12 flex flex-col items-center">
+                              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                                 <Search className="text-slate-300" size={24}/>
+                              </div>
+                              <p className="text-sm font-medium text-slate-400 max-w-xs uppercase tracking-widest leading-loose">
+                                 {searchTerm.length < 3 ? "Digite pelo menos 3 caracteres para buscar..." : "Nenhum resultado encontrado para os filtros atuais."}
+                              </p>
+                           </div>
+                        ) : (
+                           searchResults.map((item, idx) => (
+                              <button 
+                                 key={`${item.codigo}-${idx}`}
+                                 onClick={() => {
+                                    const plano = curriculumPlans.map(cp => {
+                                       const rExists = cp.rows.find(r => r.id === activePickerRowId);
+                                       if (rExists) {
+                                          return {
+                                             ...cp,
+                                             rows: cp.rows.map(r => r.id === activePickerRowId ? { ...r, objectives: [...(r.objectives || []), item] } : r)
+                                          };
+                                       }
+                                       return cp;
+                                    });
+                                    setCurriculumPlans(plano);
+                                    setActivePickerRowId(null);
+                                    setSearchTerm('');
+                                 }}
+                                 className="w-full text-left bg-white border border-slate-200 rounded-2xl p-4 hover:border-primary hover:bg-primary/5 transition-all group flex gap-4 items-start"
+                              >
+                                 <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 font-black text-[10px] text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors uppercase tracking-tighter">
+                                    {item.codigo === 'S/C' ? 'BNCC' : item.codigo}
+                                 </div>
+                                 <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                       <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{item.disciplina}</span>
+                                       <span className="text-[10px] font-bold text-slate-300">•</span>
+                                       <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{item.ano}</span>
+                                    </div>
+                                    <p className="text-sm font-medium text-slate-700 leading-relaxed group-hover:text-slate-900">{item.descricao}</p>
+                                 </div>
+                                 <div className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Plus size={20}/>
+                                 </div>
+                              </button>
+                           ))
+                        )}
+                     </div>
+                  </div>
+               </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         {/* Footer / Stepper Navigation */}
         <div className="mt-8 flex items-center justify-between">
            <button 
