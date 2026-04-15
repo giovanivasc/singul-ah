@@ -520,7 +520,7 @@ export default function ConvergenceEditor() {
                   className="space-y-6"
                 >
                     {/* Formulário de Síntese em Formato Checklist Curador */}
-                    <div className="bg-slate-50/50 p-2 rounded-2xl border border-slate-100 flex gap-2 w-fit mb-4">
+                    <div className="bg-slate-50/50 p-2 rounded-2xl border border-slate-100 flex flex-wrap justify-center gap-2 w-fit mx-auto mb-4">
                         <button 
                           onClick={() => setActiveSegmentMapping('contexto')}
                           className={cn(
@@ -559,7 +559,7 @@ export default function ConvergenceEditor() {
                                key={tab.id}
                                onClick={() => setActiveTabMapping(tab.id as typeof activeTabMapping)}
                                className={cn(
-                                 "px-5 py-3 text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap rounded-t-xl border-t border-x",
+                                 "px-3 sm:px-4 py-2.5 text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap rounded-t-xl border-t border-x",
                                  activeTabMapping === tab.id
                                    ? "bg-white border-slate-200 text-primary shadow-[0_4px_0_0_#ffffff] translate-y-[1px] relative z-10"
                                    : "bg-slate-50 border-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-600"

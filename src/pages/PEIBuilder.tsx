@@ -816,7 +816,7 @@ export default function PEIBuilder() {
                    </p>
                 </div>
 
-                <div className="bg-slate-50/50 p-2 rounded-2xl border border-slate-100 flex gap-2 w-fit">
+                <div className="bg-slate-50/50 p-2 rounded-2xl border border-slate-100 flex flex-wrap justify-center gap-2 w-fit mx-auto mb-2">
                     <button 
                       onClick={() => setActiveSegmentStep2('contexto')}
                       className={cn(
@@ -855,7 +855,7 @@ export default function PEIBuilder() {
                            key={tab.id}
                            onClick={() => setActiveTabStep2(tab.id as typeof activeTabStep2)}
                            className={cn(
-                             "px-5 py-3 text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap rounded-t-xl border-t border-x",
+                             "px-3 sm:px-4 py-2.5 text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap rounded-t-xl border-t border-x",
                              activeTabStep2 === tab.id
                                ? "bg-white border-slate-200 text-primary shadow-[0_4px_0_0_#ffffff] translate-y-[1px] relative z-10"
                                : "bg-slate-50 border-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-600"
