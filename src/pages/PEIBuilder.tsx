@@ -120,6 +120,27 @@ export default function PEIBuilder() {
   const [exportFormat, setExportFormat] = useState<'pdf' | 'word'>('pdf');
   const [exportType, setExportType] = useState<'completo' | 'simplificado'>('completo');
   const [isExporting, setIsExporting] = useState(false);
+  const [selectedSimplifiedSections, setSelectedSimplifiedSections] = useState<string[]>([
+    'student_data', 'pei_parameters', 'context', 'accessibility', 
+    'curriculum_construction', 'specialized_services', 'enrichment', 'tech_resources'
+  ]);
+
+  const EXPORT_SECTIONS = [
+    { id: 'student_data', label: 'Dados do estudante' },
+    { id: 'pei_parameters', label: 'Parâmetros do PEI' },
+    { id: 'team', label: 'Equipe de Elaboração' },
+    { id: 'assessments', label: 'Avaliações e Laudos relevantes' },
+    { id: 'context', label: 'Contexto Biopsicossocial e Educacional' },
+    { id: 'accessibility', label: 'Estratégias e Recursos de Acessibilidade' },
+    { id: 'curricular_profile', label: 'Perfil Curricular' },
+    { id: 'curriculum_construction', label: 'Construção do Currículo' },
+    { id: 'specialized_services', label: 'Serviços Especializados' },
+    { id: 'enrichment', label: 'Enriquecimento Extracurricular' },
+    { id: 'tech_resources', label: 'Recursos Tecnológicos e T.A' },
+    { id: 'transition_plan', label: 'Plano de transição e aconselhamento' },
+    { id: 'history', label: 'Histórico de acompanhamento' },
+    { id: 'signatories', label: 'Signatários do PEI' }
+  ];
   
   // Inline forms state
   const [isAddingMember, setIsAddingMember] = useState(false);
@@ -496,14 +517,14 @@ export default function PEIBuilder() {
                       >
                         <div className="space-y-4">
                           <div>
-                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3">Modelo do Documento</p>
+                            <p className="text-[10px] font-black text-slate-400 tracking-widest mb-3">Modelo do documento</p>
                             <div className="grid grid-cols-2 gap-2">
                               {(['completo', 'simplificado'] as const).map(type => (
                                 <button
                                   key={type}
                                   onClick={() => setExportType(type)}
                                   className={cn(
-                                    "px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-tight transition-all border",
+                                    "px-3 py-2 rounded-xl text-[10px] font-bold tracking-tight transition-all border capitalize",
                                     exportType === type ? "bg-primary/10 border-primary text-primary" : "bg-slate-50 border-slate-100 text-slate-500 hover:bg-slate-100"
                                   )}
                                 >{type}</button>
@@ -511,13 +532,47 @@ export default function PEIBuilder() {
                             </div>
                           </div>
 
+                          {exportType === 'simplificado' && (
+                            <motion.div 
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              className="bg-slate-50 rounded-xl p-3 border border-slate-100 overflow-hidden"
+                            >
+                              <p className="text-[9px] font-black text-slate-400 tracking-widest mb-2">Seções a incluir</p>
+                              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                                {EXPORT_SECTIONS.map(section => (
+                                  <label key={section.id} className="flex items-center gap-2 cursor-pointer group">
+                                    <div 
+                                      onClick={() => {
+                                        if (selectedSimplifiedSections.includes(section.id)) {
+                                          setSelectedSimplifiedSections(selectedSimplifiedSections.filter(id => id !== section.id));
+                                        } else {
+                                          setSelectedSimplifiedSections([...selectedSimplifiedSections, section.id]);
+                                        }
+                                      }}
+                                      className={cn(
+                                        "w-4 h-4 rounded border flex items-center justify-center transition-all",
+                                        selectedSimplifiedSections.includes(section.id) 
+                                          ? "bg-primary border-primary text-white" 
+                                          : "bg-white border-slate-200 group-hover:border-primary/50"
+                                      )}
+                                    >
+                                      {selectedSimplifiedSections.includes(section.id) && <Check size={10} strokeWidth={4} />}
+                                    </div>
+                                    <span className="text-[10px] font-bold text-slate-600 tracking-tight leading-none">{section.label}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            </motion.div>
+                          )}
+
                           <div>
-                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3">Formato de Saída</p>
+                            <p className="text-[10px] font-black text-slate-400 tracking-widest mb-3">Formato de saída</p>
                             <div className="grid grid-cols-2 gap-2">
                               <button
                                 onClick={() => setExportFormat('pdf')}
                                 className={cn(
-                                  "px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-tight transition-all border flex items-center justify-center gap-2",
+                                  "px-3 py-2 rounded-xl text-[10px] font-bold tracking-tight transition-all border flex items-center justify-center gap-2",
                                   exportFormat === 'pdf' ? "bg-red-50 border-red-200 text-red-600" : "bg-slate-50 border-slate-100 text-slate-500 hover:bg-slate-100"
                                 )}
                               >
@@ -526,7 +581,7 @@ export default function PEIBuilder() {
                               <button
                                 onClick={() => setExportFormat('word')}
                                 className={cn(
-                                  "px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-tight transition-all border flex items-center justify-center gap-2",
+                                  "px-3 py-2 rounded-xl text-[10px] font-bold tracking-tight transition-all border flex items-center justify-center gap-2",
                                   exportFormat === 'word' ? "bg-blue-50 border-blue-200 text-blue-600" : "bg-slate-50 border-slate-100 text-slate-500 hover:bg-slate-100"
                                 )}
                               >
@@ -540,10 +595,22 @@ export default function PEIBuilder() {
                               onClick={() => {
                                 setIsExporting(true);
                                 setTimeout(() => {
+                                  // Simulação de geração de conteúdo
+                                  const content = `PLANO EDUCACIONAL INDIVIDUALIZADO (PEI)\nModelo: ${exportType.toUpperCase()}\n\nEstudante: ${studentInfo?.full_name || 'N/D'}\nAno Letivo: ${academicYear}\n\nEste é um arquivo gerado para demonstração de fluxo de download.`;
+                                  const blob = new Blob([content], { type: 'text/plain' });
+                                  const url = URL.createObjectURL(blob);
+                                  const a = document.createElement('a');
+                                  a.href = url;
+                                  a.download = `PEI_Estudante_${exportType}_${new Date().toISOString().split('T')[0]}.${exportFormat === 'word' ? 'docx' : 'pdf'}`;
+                                  document.body.appendChild(a);
+                                  a.click();
+                                  document.body.removeChild(a);
+                                  URL.revokeObjectURL(url);
+
                                   setIsExporting(false);
                                   setShowExportMenu(false);
-                                  alert(`Documento em formato ${exportFormat.toUpperCase()} (${exportType}) gerado com sucesso!`);
-                                }, 2000);
+                                  alert(`Documento em formato ${exportFormat.toUpperCase()} (${exportType}) baixado com sucesso!`);
+                                }, 1500);
                               }}
                               disabled={isExporting}
                               className="w-full bg-primary text-white py-3 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
