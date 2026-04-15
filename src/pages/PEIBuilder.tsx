@@ -4,7 +4,7 @@ import {
   Target, LayoutGrid, Sparkles, 
   Plus, CheckCircle2, Lightbulb, 
   PencilRuler, BookOpen, Trash2, X, User as UserIcon,
-  Search, Clock, AlertTriangle, Check, Brain, Book, Calendar
+  Search, Clock, AlertTriangle, Check, Brain, Book, Calendar, Layers
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TopBar } from '../components/Navigation';
