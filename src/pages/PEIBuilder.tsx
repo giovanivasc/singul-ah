@@ -594,14 +594,24 @@ export default function PEIBuilder() {
                             <button 
                               onClick={() => {
                                 setIsExporting(true);
+                                
+                                if (exportFormat === 'pdf') {
+                                  setShowExportMenu(false);
+                                  setTimeout(() => {
+                                    window.print();
+                                    setIsExporting(false);
+                                  }, 500);
+                                  return;
+                                }
+
                                 setTimeout(() => {
-                                  // Simulação de geração de conteúdo
-                                  const content = `PLANO EDUCACIONAL INDIVIDUALIZADO (PEI)\nModelo: ${exportType.toUpperCase()}\n\nEstudante: ${studentInfo?.full_name || 'N/D'}\nAno Letivo: ${academicYear}\n\nEste é um arquivo gerado para demonstração de fluxo de download.`;
+                                  // Fallback para Word (Text format por enquanto)
+                                  const content = `PLANO EDUCACIONAL INDIVIDUALIZADO (PEI)\nModelo: ${exportType.toUpperCase()}\n\nEstudante: ${studentInfo?.full_name || 'N/D'}\nAno Letivo: ${academicYear}\n\nEste formato (.docx) requer uma biblioteca de conversão binária. Para um PDF oficial, use a opção PDF no menu de exportação.`;
                                   const blob = new Blob([content], { type: 'text/plain' });
                                   const url = URL.createObjectURL(blob);
                                   const a = document.createElement('a');
                                   a.href = url;
-                                  a.download = `PEI_Estudante_${exportType}_${new Date().toISOString().split('T')[0]}.${exportFormat === 'word' ? 'docx' : 'pdf'}`;
+                                  a.download = `PEI_Estudante_${exportType}_${new Date().toISOString().split('T')[0]}.doc`;
                                   document.body.appendChild(a);
                                   a.click();
                                   document.body.removeChild(a);
@@ -609,7 +619,7 @@ export default function PEIBuilder() {
 
                                   setIsExporting(false);
                                   setShowExportMenu(false);
-                                  alert(`Documento em formato ${exportFormat.toUpperCase()} (${exportType}) baixado com sucesso!`);
+                                  alert(`Documento em formato WORD baixado com sucesso!`);
                                 }, 1500);
                               }}
                               disabled={isExporting}
@@ -1961,7 +1971,64 @@ export default function PEIBuilder() {
              </button>
            )}
         </div>
-      </main>
+      </div>
+
+      {/* ESTILOS DE IMPRESSÃO */}
+      <style>{`
+        @media print {
+          /* Esconder tudo que não é o formulário */
+          nav, aside, .TopBar, .TopBar *, button, .SaveProgress, header, footer,
+          .Stepper, .save-draft-btn, .export-btn, .no-print {
+            display: none !important;
+          }
+
+          body, html {
+            background: white !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+
+          .min-h-screen {
+            background: white !important;
+          }
+
+          main {
+            max-width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+          }
+
+          .bg-white {
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+          }
+
+          /* Garantir que as tabelas sejam impressas corretamente */
+          table {
+            border-collapse: collapse !important;
+            width: 100% !important;
+          }
+          th, td {
+            border: 1px solid #e2e8f0 !important;
+          }
+          
+          /* Esconder botões de ação nas tabelas */
+          td button {
+            display: none !important;
+          }
+
+          .atmospheric-shadow {
+            box-shadow: none !important;
+          }
+
+          /* Forçar quebra de página se necessário */
+          .step-section {
+            page-break-after: always;
+          }
+        }
+      `}</style>
     </div>
   );
 }
