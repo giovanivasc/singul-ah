@@ -1624,111 +1624,121 @@ export default function PEIBuilder() {
                   </div>
 
                   <div className="p-6 space-y-4 flex-1 overflow-y-auto min-h-0 bg-slate-50/30">
-                     <div className="flex flex-col sm:flex-row gap-4">
-                        <div className="relative flex-1">
+                     {/* Área de Filtros Congelada no Topo */}
+                     <div className="space-y-4 bg-slate-50/50 p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                        {/* Grid de Seletores - Ordem: Etapa, Série, Disciplina, Tipo */}
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                                 <Layers className="text-primary" size={12}/> Etapa
+                              </label>
+                              <select
+                                 value={filterStage || ''}
+                                 onChange={e => {
+                                    setFilterStage(e.target.value || null);
+                                    setFilterGrade(null);
+                                 }}
+                                 className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer appearance-none shadow-sm"
+                              >
+                                 <option value="">Todas as Etapas</option>
+                                 <option value="Infantil">Infantil</option>
+                                 <option value="Fundamental">Fundamental</option>
+                                 <option value="Médio">Médio</option>
+                              </select>
+                           </div>
+
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                                 <Calendar className="text-primary" size={12}/> Série / Ano
+                              </label>
+                              <select
+                                 value={filterGrade || ''}
+                                 onChange={e => setFilterGrade(e.target.value || null)}
+                                 className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer appearance-none shadow-sm"
+                              >
+                                 <option value="">{filterStage === 'Médio' ? 'Todos (Médio)' : filterStage === 'Infantil' ? 'Todos (Infantil)' : `Aluno (${studentInfo?.grade || 'PEI'})`}</option>
+                                 {filterStage === 'Infantil' ? (
+                                    ['3 anos', '4 anos', '5 anos'].map(g => <option key={g} value={g}>{g}</option>)
+                                 ) : filterStage === 'Médio' ? (
+                                    ['1º Ano', '2º Ano', '3º Ano'].map(g => <option key={g} value={g}>{g}</option>)
+                                 ) : (
+                                    ['1º Ano', '2º Ano', '3º Ano', '4º Ano', '5º Ano', '6º Ano', '7º Ano', '8º Ano', '9º Ano'].map(g => (
+                                       <option key={g} value={g}>{g}</option>
+                                    ))
+                                 )}
+                              </select>
+                           </div>
+
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                                 <Book className="text-primary" size={12}/> Disciplina
+                              </label>
+                              <select
+                                 value={filterDiscipline || ''}
+                                 onChange={e => setFilterDiscipline(e.target.value || null)}
+                                 className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer appearance-none shadow-sm"
+                              >
+                                 <option value="">Todas</option>
+                                 <option value="LP">Português</option>
+                                 <option value="MA">Matemática</option>
+                                 <option value="CI">Ciências</option>
+                                 <option value="HI">História</option>
+                                 <option value="GE">Geografia</option>
+                                 <option value="AR">Artes</option>
+                                 <option value="EF">Ed. Física</option>
+                                 <option value="LI">Inglês</option>
+                                 <option value="ER">Ensino Religioso</option>
+                              </select>
+                           </div>
+
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                                 <Target className="text-primary" size={12}/> Tipo
+                              </label>
+                              <div className="flex bg-white p-1 rounded-2xl border border-slate-200 shadow-sm shrink-0">
+                                 <button 
+                                    onClick={() => setSearchType('habilidade')}
+                                    className={cn(
+                                       "flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-tighter transition-all",
+                                       searchType === 'habilidade' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-slate-400 hover:text-slate-600"
+                                    )}
+                                 >Habilidades</button>
+                                 <button 
+                                    onClick={() => setSearchType('competencia')}
+                                    className={cn(
+                                       "flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-tighter transition-all",
+                                       searchType === 'competencia' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-slate-400 hover:text-slate-600"
+                                    )}
+                                 >Competências</button>
+                              </div>
+                           </div>
+                        </div>
+
+                        {/* Barra de Busca (Termo) */}
+                        <div className="relative">
                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
                            <input 
-                              type="text" 
+                              type="text"
+                              placeholder="Pesquisar por código (ex: EF05LP01) ou palavras-chave..."
                               value={searchTerm}
-                              onChange={e => setSearchTerm(e.target.value)}
-                              placeholder="Pesquise por código (ex: EF01MA01) ou termos..."
-                              className="w-full bg-white border border-slate-200 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-medium outline-none focus:ring-4 focus:ring-primary/10 transition-all"
+                              onChange={(e) => setSearchTerm(e.target.value)}
+                              className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-[20px] text-sm font-medium outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all shadow-sm"
                            />
                         </div>
-                        <div className="flex bg-white p-1 rounded-[20px] border border-slate-200 shadow-sm shrink-0">
-                           <button 
-                              onClick={() => setSearchType('habilidade')}
-                              className={cn(
-                                 "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
-                                 searchType === 'habilidade' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-slate-400 hover:text-slate-600"
-                              )}
-                           >Habilidades</button>
-                           <button 
-                              onClick={() => setSearchType('competencia')}
-                              className={cn(
-                                 "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
-                                 searchType === 'competencia' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-slate-400 hover:text-slate-600"
-                              )}
-                           >Competências</button>
-                        </div>
-                     </div>
 
-                     {/* Novos Filtros: Etapa, Disciplina e Ano (Layout de Lista) */}
-                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
-                        <div className="space-y-2">
-                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                              <Layers className="text-primary" size={12}/> Etapa de Ensino
-                           </label>
-                           <select
-                              value={filterStage || ''}
-                              onChange={e => {
-                                 setFilterStage(e.target.value || null);
-                                 setFilterGrade(null); // Resetar ano ao mudar etapa para evitar conflitos
-                              }}
-                              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer appearance-none"
-                           >
-                              <option value="">Todas as Etapas</option>
-                              <option value="Infantil">Educação Infantil</option>
-                              <option value="Fundamental">Ensino Fundamental</option>
-                              <option value="Médio">Ensino Médio</option>
-                           </select>
-                        </div>
-
-                        <div className="space-y-2">
-                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                              <Book className="text-primary" size={12}/> Disciplina
-                           </label>
-                           <select
-                              value={filterDiscipline || ''}
-                              onChange={e => setFilterDiscipline(e.target.value || null)}
-                              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer appearance-none"
-                           >
-                              <option value="">Todas as Disciplinas</option>
-                              <option value="LP">Português</option>
-                              <option value="MA">Matemática</option>
-                              <option value="CI">Ciências</option>
-                              <option value="HI">História</option>
-                              <option value="GE">Geografia</option>
-                              <option value="AR">Artes</option>
-                              <option value="EF">Educação Física</option>
-                              <option value="LI">Inglês</option>
-                              <option value="ER">Ensino Religioso</option>
-                           </select>
-                        </div>
-
-                        <div className="space-y-2 relative">
-                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                              <Calendar className="text-primary" size={12}/> Série / Ano
-                           </label>
-                           <select
-                              value={filterGrade || ''}
-                              onChange={e => setFilterGrade(e.target.value || null)}
-                              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer appearance-none"
-                           >
-                              <option value="">{filterStage === 'Médio' ? 'Todos os Anos (Médio)' : filterStage === 'Infantil' ? 'Todos os Anos (Infantil)' : `Ano do Aluno (${studentInfo?.grade || 'Não definido'})`}</option>
-                              {filterStage === 'Infantil' ? (
-                                 ['3 anos', '4 anos', '5 anos'].map(g => <option key={g} value={g}>{g}</option>)
-                              ) : filterStage === 'Médio' ? (
-                                 ['1º Ano', '2º Ano', '3º Ano'].map(g => <option key={g} value={g}>{g}</option>)
-                              ) : (
-                                 ['1º Ano', '2º Ano', '3º Ano', '4º Ano', '5º Ano', '6º Ano', '7º Ano', '8º Ano', '9º Ano'].map(g => (
-                                    <option key={g} value={g}>{g}</option>
-                                 ))
-                              )}
-                           </select>
-                        </div>
-
-                        {(filterDiscipline || filterGrade || filterStage) && (
-                           <div className="sm:col-span-3 flex justify-end">
+                        {/* Botão Limpar */}
+                        {(filterDiscipline || filterGrade || filterStage || searchTerm) && (
+                           <div className="flex justify-end">
                               <button 
                                  onClick={() => {
                                     setFilterDiscipline(null);
                                     setFilterGrade(null);
                                     setFilterStage(null);
+                                    setSearchTerm('');
                                  }}
-                                 className="text-[10px] font-black uppercase text-red-500 hover:text-red-600 flex items-center gap-1 transition-colors"
+                                 className="text-[10px] font-black uppercase text-red-500 hover:text-red-700 flex items-center gap-1 transition-colors"
                               >
-                                 Limpar Todos os Filtros
+                                 Limpar Todos os Filtros e Busca
                               </button>
                            </div>
                         )}
