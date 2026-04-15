@@ -174,7 +174,7 @@ export default function PEIBuilder() {
   // Etapa 4 state
   const [activeTabStep4, setActiveTabStep4] = useState<'servicos' | 'enriquecimento'>('servicos');
   const [specializedServices, setSpecializedServices] = useState<{id: string, name: string, frequency: string, duration: string, location: string}[]>([]);
-  const [enrichmentServices, setEnrichmentServices] = useState<{id: string, name: string, startDate: string, frequency: string, duration: string}[]>([]);
+  const [enrichmentServices, setEnrichmentServices] = useState<{id: string, name: string, frequency: string, duration: string, location: string}[]>([]);
 
   // Etapa 5 state
   const [techResources, setTechResources] = useState<{id: string, tool: string, objective: string, frequency: string, location: string}[]>([]);
@@ -1239,9 +1239,9 @@ export default function PEIBuilder() {
                       </div>
                       <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
                         <table className="w-full text-left text-sm min-w-[700px]">
-                            <thead className="bg-slate-50 border-b border-slate-100 uppercase text-[10px] font-black text-slate-500 tracking-widest leading-relaxed">
+                            <thead className="bg-slate-50 border-b border-slate-100 uppercase text-[10px] font-black text-slate-500 tracking-widest leading-relaxed text-center">
                               <tr>
-                                <th className="p-4 min-w-[200px]">Serviço especializado</th>
+                                <th className="p-4 min-w-[200px] text-left">Serviço especializado</th>
                                 <th className="p-4 w-40">Frequência</th>
                                 <th className="p-4 w-40">Duração</th>
                                 <th className="p-4 w-48">Local</th>
@@ -1281,18 +1281,18 @@ export default function PEIBuilder() {
                     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
                       <div className="flex justify-between items-center">
                         <label className="text-[10px] font-black tracking-widest uppercase text-slate-400">Tabela de Enriquecimento Extracurricular</label>
-                        <button onClick={() => setEnrichmentServices([...enrichmentServices, { id: crypto.randomUUID(), name: '', startDate: '', frequency: '', duration: '' }])} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors">
+                        <button onClick={() => setEnrichmentServices([...enrichmentServices, { id: crypto.randomUUID(), name: '', frequency: '', duration: '', location: '' }])} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors">
                            <Plus size={14}/> Adicionar Enriquecimento
                         </button>
                       </div>
                       <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
                         <table className="w-full text-left text-sm min-w-[700px]">
-                            <thead className="bg-slate-50 border-b border-slate-100 uppercase text-[10px] font-black text-slate-500 tracking-widest leading-relaxed">
+                            <thead className="bg-slate-50 border-b border-slate-100 uppercase text-[10px] font-black text-slate-500 tracking-widest leading-relaxed text-center">
                               <tr>
-                                <th className="p-4 min-w-[200px]">Enriquecimento extracurricular</th>
-                                <th className="p-4 w-40">Data de início</th>
+                                <th className="p-4 min-w-[200px] text-left">Enriquecimento extracurricular</th>
                                 <th className="p-4 w-40">Frequência</th>
                                 <th className="p-4 w-40">Duração</th>
+                                <th className="p-4 w-48">Local</th>
                                 <th className="p-4 w-10"></th>
                               </tr>
                             </thead>
@@ -1306,15 +1306,15 @@ export default function PEIBuilder() {
                                        <AutoResizeTextarea value={svc.name} onChange={e => { const n = [...enrichmentServices]; n[sIdx].name = e.target.value; setEnrichmentServices(n); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[40px]" placeholder="Ex: Robótica..." />
                                     </td>
                                     <td className="p-2 border-r border-slate-50">
-                                       <AutoResizeTextarea value={svc.startDate} onChange={e => { const n = [...enrichmentServices]; n[sIdx].startDate = e.target.value; setEnrichmentServices(n); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[40px]" placeholder="Ex: Março/2026..." />
-                                    </td>
-                                    <td className="p-2 border-r border-slate-50">
                                        <AutoResizeTextarea value={svc.frequency} onChange={e => { const n = [...enrichmentServices]; n[sIdx].frequency = e.target.value; setEnrichmentServices(n); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[40px]" placeholder="Ex: 1x na semana..." />
                                     </td>
-                                    <td className="p-2">
+                                    <td className="p-2 border-r border-slate-50">
                                        <AutoResizeTextarea value={svc.duration} onChange={e => { const n = [...enrichmentServices]; n[sIdx].duration = e.target.value; setEnrichmentServices(n); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[40px]" placeholder="Ex: 2 horas..." />
                                     </td>
-                                    <td className="p-2 align-middle">
+                                    <td className="p-2">
+                                       <AutoResizeTextarea value={svc.location} onChange={e => { const n = [...enrichmentServices]; n[sIdx].location = e.target.value; setEnrichmentServices(n); }} className="w-full bg-transparent resize-none overflow-hidden outline-none text-xs p-2 min-h-[40px]" placeholder="Ex: Laboratório..." />
+                                    </td>
+                                    <td className="p-2 align-middle text-center">
                                        <button onClick={() => setEnrichmentServices(enrichmentServices.filter(s => s.id !== svc.id))} className="text-slate-300 hover:text-red-500 rounded p-1"><Trash2 size={16}/></button>
                                     </td>
                                   </tr>
