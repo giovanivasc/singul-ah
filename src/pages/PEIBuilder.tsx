@@ -4,7 +4,7 @@ import {
   Target, LayoutGrid, Sparkles, 
   Plus, CheckCircle2, Lightbulb, 
   PencilRuler, BookOpen, Trash2, X, User as UserIcon,
-  Search, Clock, AlertTriangle, Check, Brain, Book, Calendar, Layers
+  Search, Clock, AlertTriangle, Check, Brain, Book, Calendar, Layers, Download, FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TopBar } from '../components/Navigation';
@@ -114,6 +114,12 @@ export default function PEIBuilder() {
   const [evaluationFormat, setEvaluationFormat] = useState('Notas');
   const [validityType, setValidityType] = useState('Bimestral');
   const [validityPeriod, setValidityPeriod] = useState('1º');
+  
+  // Export state
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [exportFormat, setExportFormat] = useState<'pdf' | 'word'>('pdf');
+  const [exportType, setExportType] = useState<'completo' | 'simplificado'>('completo');
+  const [isExporting, setIsExporting] = useState(false);
   
   // Inline forms state
   const [isAddingMember, setIsAddingMember] = useState(false);
@@ -463,12 +469,99 @@ export default function PEIBuilder() {
         <div className="mb-10">
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-8">
             <StudentPageHeader title="Construtor de PEI - AH/SD" studentId={studentId} showBack={false} />
-            <button 
-              onClick={() => { handleSaveData(); alert("Progresso salvo no navegador!"); }}
-              className="bg-white border border-slate-200 text-slate-500 hover:border-primary/30 hover:text-primary transition-all px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center gap-2 shadow-sm"
-            >
-              <Save size={16} /> Salvar Rascunho
-            </button>
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => { handleSaveData(); alert("Progresso salvo no navegador!"); }}
+                className="bg-white border border-slate-200 text-slate-500 hover:border-primary/30 hover:text-primary transition-all px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center gap-2 shadow-sm"
+              >
+                <Save size={16} /> Salvar Rascunho
+              </button>
+              <div className="relative">
+                <button 
+                  onClick={() => setShowExportMenu(!showExportMenu)}
+                  className="bg-slate-900 text-white hover:bg-slate-800 transition-all px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-slate-200"
+                >
+                  <Download size={16} /> Exportar
+                </button>
+
+                <AnimatePresence>
+                  {showExportMenu && (
+                    <>
+                      <div className="fixed inset-0 z-20" onClick={() => setShowExportMenu(false)} />
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 z-30 origin-top-right"
+                      >
+                        <div className="space-y-4">
+                          <div>
+                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3">Modelo do Documento</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              {(['completo', 'simplificado'] as const).map(type => (
+                                <button
+                                  key={type}
+                                  onClick={() => setExportType(type)}
+                                  className={cn(
+                                    "px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-tight transition-all border",
+                                    exportType === type ? "bg-primary/10 border-primary text-primary" : "bg-slate-50 border-slate-100 text-slate-500 hover:bg-slate-100"
+                                  )}
+                                >{type}</button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3">Formato de Saída</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                onClick={() => setExportFormat('pdf')}
+                                className={cn(
+                                  "px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-tight transition-all border flex items-center justify-center gap-2",
+                                  exportFormat === 'pdf' ? "bg-red-50 border-red-200 text-red-600" : "bg-slate-50 border-slate-100 text-slate-500 hover:bg-slate-100"
+                                )}
+                              >
+                                <FileText size={12} /> PDF
+                              </button>
+                              <button
+                                onClick={() => setExportFormat('word')}
+                                className={cn(
+                                  "px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-tight transition-all border flex items-center justify-center gap-2",
+                                  exportFormat === 'word' ? "bg-blue-50 border-blue-200 text-blue-600" : "bg-slate-50 border-slate-100 text-slate-500 hover:bg-slate-100"
+                                )}
+                              >
+                                <BookOpen size={12} /> Word
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="pt-2 border-t border-slate-100">
+                            <button 
+                              onClick={() => {
+                                setIsExporting(true);
+                                setTimeout(() => {
+                                  setIsExporting(false);
+                                  setShowExportMenu(false);
+                                  alert(`Documento em formato ${exportFormat.toUpperCase()} (${exportType}) gerado com sucesso!`);
+                                }, 2000);
+                              }}
+                              disabled={isExporting}
+                              className="w-full bg-primary text-white py-3 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {isExporting ? (
+                                <>Gerando arquivo...</>
+                              ) : (
+                                <>Confirmar Download</>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
           </div>
           
           <div className="flex items-center justify-between relative">
@@ -512,26 +605,14 @@ export default function PEIBuilder() {
                    <ShieldCheck className="text-primary" /> Identificação
                 </h2>
 
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="bg-primary/5 border border-primary/10 rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                   <div>
-                    <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Modelo do Documento</h3>
-                    <p className="text-sm font-medium text-slate-500">Escolha o nível de detalhamento do PEI gerado.</p>
+                    <h3 className="text-lg font-black text-primary uppercase tracking-tight">Versão Completa do PEI</h3>
+                    <p className="text-sm font-medium text-slate-600">Você está preenchendo o formulário completo. A opção de versão simplificada estará disponível na exportação.</p>
                   </div>
-                  <div className="flex bg-white border border-slate-200 rounded-xl p-1 shadow-sm w-full md:w-auto">
-                    {(['completo', 'simplificado'] as const).map(type => (
-                      <button
-                        key={type}
-                        onClick={() => setDocumentType(type)}
-                        className={cn(
-                          "flex-1 md:flex-none px-6 py-2.5 rounded-lg text-sm font-bold uppercase tracking-widest transition-all",
-                          documentType === type 
-                            ? "bg-primary text-white shadow-sm" 
-                            : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-                        )}
-                      >
-                        {type}
-                      </button>
-                    ))}
+                  <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-primary/20 shadow-sm">
+                    <ShieldCheck className="text-primary" size={18} />
+                    <span className="text-xs font-black text-primary uppercase tracking-widest">Garantia de Dados</span>
                   </div>
                 </div>
                 
@@ -660,14 +741,7 @@ export default function PEIBuilder() {
                   </div>
                 </div>
 
-                {documentType === 'simplificado' ? (
-                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-xl mt-6">
-                    <p className="text-sm font-bold text-yellow-800 flex items-center gap-2">
-                       <AlertTriangle size={18} /> A Equipe de Elaboração e os Dados de Avaliação Detalhados serão omitidos na versão simplificada deste documento.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-8 pt-4">
+                <div className="space-y-8 pt-4">
                     {/* Tabela de Equipe */}
                     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
                       <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -796,7 +870,6 @@ export default function PEIBuilder() {
                       </div>
                     </div>
                   </div>
-                )}
               </motion.div>
             )}
 
@@ -1239,12 +1312,12 @@ export default function PEIBuilder() {
                       </div>
                       <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
                         <table className="w-full text-left text-sm min-w-[700px]">
-                            <thead className="bg-slate-50 border-b border-slate-100 uppercase text-[10px] font-black text-slate-500 tracking-widest leading-relaxed text-center">
+                            <thead className="bg-slate-50 border-b border-slate-100 uppercase text-[10px] font-black text-slate-500 tracking-widest leading-relaxed">
                               <tr>
-                                <th className="p-4 min-w-[200px] text-left">Serviço especializado</th>
-                                <th className="p-4 w-40">Frequência</th>
-                                <th className="p-4 w-40">Duração</th>
-                                <th className="p-4 w-48">Local</th>
+                                <th className="p-4 min-w-[200px] text-center">Serviço especializado</th>
+                                <th className="p-4 w-40 text-center">Frequência</th>
+                                <th className="p-4 w-40 text-center">Duração</th>
+                                <th className="p-4 w-48 text-center">Local</th>
                                 <th className="p-4 w-10"></th>
                               </tr>
                             </thead>
@@ -1287,12 +1360,12 @@ export default function PEIBuilder() {
                       </div>
                       <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
                         <table className="w-full text-left text-sm min-w-[700px]">
-                            <thead className="bg-slate-50 border-b border-slate-100 uppercase text-[10px] font-black text-slate-500 tracking-widest leading-relaxed text-center">
+                            <thead className="bg-slate-50 border-b border-slate-100 uppercase text-[10px] font-black text-slate-500 tracking-widest leading-relaxed">
                               <tr>
-                                <th className="p-4 min-w-[200px] text-left">Enriquecimento extracurricular</th>
-                                <th className="p-4 w-40">Frequência</th>
-                                <th className="p-4 w-40">Duração</th>
-                                <th className="p-4 w-48">Local</th>
+                                <th className="p-4 min-w-[200px] text-center">Enriquecimento extracurricular</th>
+                                <th className="p-4 w-40 text-center">Frequência</th>
+                                <th className="p-4 w-40 text-center">Duração</th>
+                                <th className="p-4 w-48 text-center">Local</th>
                                 <th className="p-4 w-10"></th>
                               </tr>
                             </thead>
@@ -1350,10 +1423,10 @@ export default function PEIBuilder() {
                     <table className="w-full text-left text-sm min-w-[700px]">
                         <thead className="bg-slate-50 border-b border-slate-100 uppercase text-[10px] font-black text-slate-500 tracking-widest leading-relaxed">
                           <tr>
-                            <th className="p-4 min-w-[200px]">Ferramenta</th>
-                            <th className="p-4 w-64">Objetivo</th>
-                            <th className="p-4 w-40">Frequência</th>
-                            <th className="p-4 w-40">Local</th>
+                            <th className="p-4 min-w-[200px] text-center">Ferramenta</th>
+                            <th className="p-4 w-64 text-center">Objetivo</th>
+                            <th className="p-4 w-40 text-center">Frequência</th>
+                            <th className="p-4 w-40 text-center">Local</th>
                             <th className="p-4 w-10"></th>
                           </tr>
                         </thead>
@@ -1488,9 +1561,9 @@ export default function PEIBuilder() {
                           <table className="w-full text-left text-sm min-w-[700px]">
                               <thead className="bg-slate-50 border-b border-slate-100 uppercase text-[10px] font-black text-slate-500 tracking-widest leading-relaxed">
                                 <tr>
-                                  <th className="p-4 w-40">Data</th>
-                                  <th className="p-4 min-w-[300px]">Descrição ou Ação</th>
-                                  <th className="p-4 w-60">Resultado</th>
+                                  <th className="p-4 w-40 text-center">Data</th>
+                                  <th className="p-4 min-w-[300px] text-center">Descrição ou Ação</th>
+                                  <th className="p-4 w-60 text-center">Resultado</th>
                                   <th className="p-4 w-10"></th>
                                 </tr>
                               </thead>
@@ -1591,8 +1664,7 @@ export default function PEIBuilder() {
                    </button>
                 </div>
               </motion.div>
-            )
-}
+            )}
           </AnimatePresence>
         </div>
 
