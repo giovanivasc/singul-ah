@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, MoreVertical, X, Loader2, Camera, User } from 'lucide-react';
+import { Plus, Search, MoreVertical, X, Loader2, Camera, User, Pencil } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TopBar } from '../components/Navigation';
 import { supabase } from '../lib/supabase';
@@ -14,6 +14,7 @@ export default function StudentsList() {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,15 +54,7 @@ export default function StudentsList() {
 
       if (error) throw error;
       
-      // Merge com localStorage
-      const enrichedStudents = (data || []).map(stud => {
-         const localData = localStorage.getItem(`student_extras_${stud.id}`);
-         if (localData) {
-            return { ...stud, ...JSON.parse(localData) };
-         }
-         return stud;
-      });
-      setStudents(enrichedStudents);
+      setStudents(data || []);
     } catch (err: any) {
       console.error('Erro ao buscar estudantes:', err.message);
     } finally {
@@ -75,7 +68,7 @@ export default function StudentsList() {
     }
   }, [user]);
 
-  const handleCreateStudent = async (e: React.FormEvent) => {
+  const handleSubmitStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
@@ -86,27 +79,37 @@ export default function StudentsList() {
       const basicData = {
          full_name: formData.full_name,
          date_of_birth: formData.date_of_birth,
+         gender: formData.gender,
+         guardian_name: formData.guardian_name,
+         phone: formData.phone,
          school: formData.school,
          grade: formData.grade,
-         gender: formData.gender,
+         class_name: formData.class_name,
+         shift: formData.shift,
+         regent_teacher: formData.regent_teacher,
+         aee_teacher: formData.aee_teacher,
+         avatar_url: formData.avatar_url,
          exceptionalities: formData.exceptionalities,
-         teacher_id: user.id,
-         status: 'coleta_pendente'
+         teacher_id: user.id
       };
 
-      const { data, error: insertError } = await supabase
-        .from('students')
-        .insert([basicData])
-        .select();
+      if (editingStudentId) {
+        const { error: updateError } = await supabase
+          .from('students')
+          .update(basicData)
+          .eq('id', editingStudentId);
 
-      if (insertError) throw insertError;
-      
-      if (data && data.length > 0) {
-         const newId = data[0].id;
-         localStorage.setItem(`student_extras_${newId}`, JSON.stringify(formData));
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from('students')
+          .insert([{ ...basicData, status: 'coleta_pendente' }]);
+
+        if (insertError) throw insertError;
       }
 
       setIsModalOpen(false);
+      setEditingStudentId(null);
       setFormData({
         full_name: '', date_of_birth: '', gender: '', guardian_name: '', phone: '',
         school: 'SEMED Castanhal', grade: '', class_name: '', shift: '',
@@ -154,7 +157,15 @@ export default function StudentsList() {
             <p className="text-on-surface-variant text-sm font-medium opacity-60">Visualize e gerencie o acompanhamento educacional de seus alunos.</p>
           </div>
           <button 
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              setEditingStudentId(null);
+              setFormData({
+                full_name: '', date_of_birth: '', gender: '', guardian_name: '', phone: '',
+                school: 'SEMED Castanhal', grade: '', class_name: '', shift: '',
+                regent_teacher: '', aee_teacher: '', avatar_url: '', exceptionalities: []
+              });
+              setIsModalOpen(true);
+            }}
             className="flex items-center justify-center gap-2 bg-primary text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-sm atmospheric-shadow hover:brightness-110 active:scale-95 transition-all shadow-xl shadow-primary/20"
           >
             <Plus size={20} strokeWidth={3} />
@@ -170,12 +181,31 @@ export default function StudentsList() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {students.length > 0 ? (
               students.map((student, index) => (
-                <StudentCard 
+                  <StudentCard 
                   key={student.id} 
                   student={student} 
                   index={index} 
                   age={calculateAge(student.date_of_birth)}
                   onClick={() => navigate(`/students/${student.id}`)}
+                  onEdit={() => {
+                    setEditingStudentId(student.id);
+                    setFormData({
+                      full_name: student.full_name || '',
+                      date_of_birth: student.date_of_birth || '',
+                      gender: student.gender || '',
+                      guardian_name: student.guardian_name || '',
+                      phone: student.phone || '',
+                      school: student.school || '',
+                      grade: student.grade || '',
+                      class_name: student.class_name || '',
+                      shift: student.shift || '',
+                      regent_teacher: student.regent_teacher || '',
+                      aee_teacher: student.aee_teacher || '',
+                      avatar_url: student.avatar_url || '',
+                      exceptionalities: student.exceptionalities || []
+                    });
+                    setIsModalOpen(true);
+                  }}
                 />
               ))
             ) : (
@@ -207,15 +237,19 @@ export default function StudentsList() {
               <div className="flex flex-col max-h-[90vh]">
                  <div className="p-6 md:px-8 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                     <div>
-                      <h3 className="text-2xl font-black text-on-surface tracking-tight uppercase">Novo Estudante</h3>
-                      <p className="text-sm font-medium text-slate-500">Cadastre os dados de identificação e escolarização.</p>
+                      <h3 className="text-2xl font-black text-on-surface tracking-tight uppercase">
+                        {editingStudentId ? 'Editar Estudante' : 'Novo Estudante'}
+                      </h3>
+                      <p className="text-sm font-medium text-slate-500">
+                        {editingStudentId ? 'Atualize os dados de identificação e escolarização.' : 'Cadastre os dados de identificação e escolarização.'}
+                      </p>
                     </div>
                     <button onClick={() => setIsModalOpen(false)} className="p-2 bg-white hover:bg-slate-200 rounded-full transition-colors shadow-sm">
                       <X size={24} className="text-slate-500" />
                     </button>
                  </div>
 
-                 <form onSubmit={handleCreateStudent} className="p-6 md:p-8 overflow-y-auto space-y-8 flex-1">
+                 <form onSubmit={handleSubmitStudent} className="p-6 md:p-8 overflow-y-auto space-y-8 flex-1">
                     {error && (
                       <div className="bg-red-50 text-red-600 px-6 py-4 rounded-xl border border-red-100 font-bold text-center">
                         {error}
@@ -406,7 +440,7 @@ export default function StudentsList() {
                         type="submit" 
                         className="w-full bg-[#1DB954] text-white py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-green-500/20 hover:brightness-110 active:scale-95 transition-all flex items-center justify-center disabled:opacity-50"
                       >
-                        {submitting ? <Loader2 className="animate-spin" size={24} /> : 'Concluir Cadastro e Iniciar Acompanhamento'}
+                        {submitting ? <Loader2 className="animate-spin" size={24} /> : (editingStudentId ? 'Salvar Alterações' : 'Concluir Cadastro e Iniciar Acompanhamento')}
                       </button>
                     </div>
                  </form>
@@ -424,9 +458,10 @@ interface StudentCardProps {
   index: number;
   age: number;
   onClick: () => void;
+  onEdit: () => void;
 }
 
-const StudentCard: React.FC<StudentCardProps> = ({ student, index, age, onClick }) => {
+const StudentCard: React.FC<StudentCardProps> = ({ student, index, age, onClick, onEdit }) => {
   const statusLabels: Record<string, string> = {
     coleta_pendente: 'Coleta Pendente',
     coleta_concluida: 'Coleta Concluída',
@@ -458,8 +493,15 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, index, age, onClick 
              </div>
           </div>
         )}
-        <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md p-1.5 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
-          <MoreVertical size={16} className="text-on-surface" />
+        <div 
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit();
+          }}
+          className="absolute top-4 right-4 bg-white/90 backdrop-blur-md p-2 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white active:scale-95"
+          title="Editar Estudante"
+        >
+          <Pencil size={16} className="text-on-surface" />
         </div>
         <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black/60 to-transparent" />
         <div className="absolute bottom-4 left-6">
