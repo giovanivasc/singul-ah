@@ -121,7 +121,8 @@ export default function PEIBuilder() {
   const [newAssessment, setNewAssessment] = useState({ source: '', date: '', summary: '' });
 
   // Etapa 2 state (Estudo de Caso - Refactored to read-only CaseStudySynthesis)
-  const [activeTabStep2, setActiveTabStep2] = useState<'contexto' | 'estilos' | 'potencialidades' | 'demandas' | 'adaptacoes'>('contexto');
+  const [activeSegmentStep2, setActiveSegmentStep2] = useState<'contexto' | 'estrategias'>('contexto');
+  const [activeTabStep2, setActiveTabStep2] = useState<'caracterizacao' | 'estilos' | 'potencialidades' | 'demandas'>('caracterizacao');
   
   type CaseStudySynthesis = {
     currentContext: TopicItem[];
@@ -808,82 +809,113 @@ export default function PEIBuilder() {
               <motion.div key="step-case" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                 <div>
                    <h2 className="text-2xl font-black text-on-surface flex items-center gap-3">
-                     <Brain className="text-primary" /> Seções II e III: Estudo de Caso
+                     <Brain className="text-primary" /> Estudo de Caso
                    </h2>
                    <p className="text-sm font-medium text-slate-500 mt-2">
                      Informações selecionadas a partir do Mapeamento Biopsicossocial.
                    </p>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden atmospheric-shadow">
-                   {/* Tabs Menu - Estilo Fichário */}
-                   <div className="flex border-b border-slate-200 bg-slate-100 overflow-x-auto pt-2 px-2 gap-1">
-                     {[
-                       { id: 'contexto', label: 'Caracterização: Contexto' },
-                       { id: 'estilos', label: 'Estilos e Interesses' },
-                       { id: 'demandas', label: 'Demandas e Barreiras' },
-                       { id: 'adaptacoes', label: 'Acessibilidade: Estratégias' }
-                     ].map(tab => (
-                       <button
-                         key={tab.id}
-                         onClick={() => setActiveTabStep2(tab.id as typeof activeTabStep2)}
-                         className={cn(
-                           "px-5 py-3 text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap rounded-t-xl border-t border-x",
-                           activeTabStep2 === tab.id
-                             ? "bg-white border-slate-200 text-primary shadow-[0_4px_0_0_#ffffff] translate-y-[1px] relative z-10"
-                             : "bg-slate-50 border-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-600"
-                         )}
-                       >
-                         {tab.label}
-                       </button>
-                     ))}
-                   </div>
-                   
-                   {/* Tab Content */}
-                   <div className="p-8 bg-slate-50/50">
-                     {activeTabStep2 === 'contexto' && (
-                        <div className="space-y-6">
-                           <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Contexto Biopsicossocial e Educacional</h3>
-                           {renderReadOnlyList(caseStudySynthesis?.currentContext, CONTEXT_CATEGORIES)}
-                        </div>
-                     )}
+                <div className="bg-slate-50/50 p-2 rounded-2xl border border-slate-100 flex gap-2 w-fit">
+                    <button 
+                      onClick={() => setActiveSegmentStep2('contexto')}
+                      className={cn(
+                        "px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
+                        activeSegmentStep2 === 'contexto' 
+                          ? "bg-white text-primary shadow-sm border border-slate-200/60" 
+                          : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                      )}
+                    >
+                      Contexto Biopsicossocial e Educacional
+                    </button>
+                    <button 
+                      onClick={() => setActiveSegmentStep2('estrategias')}
+                      className={cn(
+                        "px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
+                        activeSegmentStep2 === 'estrategias' 
+                          ? "bg-white text-primary shadow-sm border border-slate-200/60" 
+                          : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                      )}
+                    >
+                      Estratégias e Recursos de Acessibilidade
+                    </button>
+                 </div>
+
+                {activeSegmentStep2 === 'contexto' && (
+                  <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden atmospheric-shadow">
+                     {/* Tabs Menu - Estilo Fichário */}
+                     <div className="flex border-b border-slate-200 bg-slate-100 overflow-x-auto pt-2 px-2 gap-1">
+                       {[
+                         { id: 'caracterizacao', label: 'Caracterização' },
+                         { id: 'estilos', label: 'Estilos de aprendizagem' },
+                         { id: 'potencialidades', label: 'Potencialidades e Interesses' },
+                         { id: 'demandas', label: 'Demandas e barreiras' }
+                       ].map(tab => (
+                         <button
+                           key={tab.id}
+                           onClick={() => setActiveTabStep2(tab.id as typeof activeTabStep2)}
+                           className={cn(
+                             "px-5 py-3 text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap rounded-t-xl border-t border-x",
+                             activeTabStep2 === tab.id
+                               ? "bg-white border-slate-200 text-primary shadow-[0_4px_0_0_#ffffff] translate-y-[1px] relative z-10"
+                               : "bg-slate-50 border-transparent text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+                           )}
+                         >
+                           {tab.label}
+                         </button>
+                       ))}
+                     </div>
                      
-                     {activeTabStep2 === 'estilos' && (
-                        <div className="space-y-8">
-                           <div>
+                     {/* Tab Content */}
+                     <div className="p-8 bg-slate-50/50">
+                       {activeTabStep2 === 'caracterizacao' && (
+                          <div className="space-y-6">
+                             <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Caracterização</h3>
+                             {renderReadOnlyList(caseStudySynthesis?.currentContext, CONTEXT_CATEGORIES)}
+                          </div>
+                       )}
+                       
+                       {activeTabStep2 === 'estilos' && (
+                          <div className="space-y-6">
                              <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Estilos de Aprendizagem Identificados</h3>
                              {renderReadOnlyList(caseStudySynthesis?.learningStyle)}
-                           </div>
-                           <div className="pt-4 border-t border-slate-200">
-                             <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Potencialidades, Interesses e Indicadores AH/SD</h3>
+                          </div>
+                       )}
+
+                       {activeTabStep2 === 'potencialidades' && (
+                          <div className="space-y-6">
+                             <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Potencialidades e Interesses</h3>
                              {renderReadOnlyList(caseStudySynthesis?.potentialsInterests)}
-                           </div>
-                        </div>
-                     )}
+                          </div>
+                       )}
 
-                     {activeTabStep2 === 'demandas' && (
-                        <div>
-                           <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Demandas e Barreiras Mapeadas</h3>
-                           {renderReadOnlyList(caseStudySynthesis?.demandsBarriers)}
-                        </div>
-                     )}
+                       {activeTabStep2 === 'demandas' && (
+                          <div className="space-y-6">
+                             <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Demandas e Barreiras Mapeadas</h3>
+                             {renderReadOnlyList(caseStudySynthesis?.demandsBarriers)}
+                          </div>
+                       )}
+                     </div>
+                  </div>
+                )}
 
-                     {activeTabStep2 === 'adaptacoes' && (
-                        <div className="space-y-8">
-                           <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-xl flex items-start gap-3">
-                              <AlertTriangle size={20} className="text-amber-600 shrink-0 mt-0.5" />
-                              <p className="text-sm font-medium text-amber-800 leading-relaxed">
-                                <strong>Nota Importante:</strong> Presume-se que as adaptações propostas e validadas por este componente sejam as mesmas necessárias para a progressão do estudante e deverão ser formalizadas pela escola. Se não houver indicação metodológica contrária, o estudante seguirá o referencial padrão (BNCC).
-                              </p>
-                           </div>
+                {activeSegmentStep2 === 'estrategias' && (
+                  <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden atmospheric-shadow p-8">
+                      <div className="space-y-8">
+                         <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-xl flex items-start gap-3">
+                            <AlertTriangle size={20} className="text-amber-600 shrink-0 mt-0.5" />
+                            <p className="text-sm font-medium text-amber-800 leading-relaxed">
+                              <strong>Nota Importante:</strong> Presume-se que as adaptações propostas e validadas por este componente sejam as mesmas necessárias para a progressão do estudante e deverão ser formalizadas pela escola. Se não houver indicação metodológica contrária, o estudante seguirá o referencial padrão (BNCC).
+                            </p>
+                         </div>
 
-                           <div className="space-y-4">
-                             {renderReadOnlyList(caseStudySynthesis?.accessibilityStrategies, ACCESSIBILITY_CATEGORIES)}
-                           </div>
-                        </div>
-                     )}
-                   </div>
-                </div>
+                         <div className="space-y-4">
+                           <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Acessibilidade: Estratégias</h3>
+                           {renderReadOnlyList(caseStudySynthesis?.accessibilityStrategies, ACCESSIBILITY_CATEGORIES)}
+                         </div>
+                      </div>
+                  </div>
+                )}
               </motion.div>
             )}
 
