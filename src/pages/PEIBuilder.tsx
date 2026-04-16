@@ -682,16 +682,6 @@ export default function PEIBuilder() {
                    <ShieldCheck className="text-primary" /> Identificação
                 </h2>
 
-                <div className="bg-primary/5 border border-primary/10 rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                  <div>
-                    <h3 className="text-lg font-black text-primary uppercase tracking-tight">Versão Completa do PEI</h3>
-                    <p className="text-sm font-medium text-slate-600">Você está preenchendo o formulário completo. A opção de versão simplificada estará disponível na exportação.</p>
-                  </div>
-                  <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-primary/20 shadow-sm">
-                    <ShieldCheck className="text-primary" size={18} />
-                    <span className="text-xs font-black text-primary uppercase tracking-widest">Garantia de Dados</span>
-                  </div>
-                </div>
                 
                 <div className="grid md:grid-cols-2 gap-6">
                   {/* Card 1: Dados do Estudante */}
