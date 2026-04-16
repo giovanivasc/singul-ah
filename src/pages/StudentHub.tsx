@@ -194,23 +194,56 @@ export default function StudentHub() {
              
              {/* Profile Info */}
              <div className="px-8 flex flex-col md:flex-row items-center md:items-start md:gap-8 relative z-10">
-                <div className="relative -mt-12 md:max-w-none md:ml-4 mb-4 md:mb-0 shrink-0">
-                   <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-lg bg-slate-100 flex items-center justify-center relative">
-                     {student.avatar_url ? (
-                       <img 
-                         src={student.avatar_url} 
-                         alt={student.full_name} 
-                         className="w-full h-full object-cover"
-                         referrerPolicy="no-referrer"
-                       />
-                     ) : (
-                       <User size={40} className="text-primary/20" />
-                     )}
-                   </div>
-                   <button className="absolute bottom-0 right-0 w-7 h-7 bg-white text-slate-500 hover:text-primary hover:bg-slate-50 border border-slate-200 rounded-full flex items-center justify-center shadow-sm transition-colors" title="Editar foto">
-                      <Camera size={12} />
-                   </button>
-                </div>
+                 <div className="relative -mt-12 md:max-w-none md:ml-4 mb-4 md:mb-0 shrink-0">
+                    <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-lg bg-slate-100 flex items-center justify-center relative">
+                      {student.avatar_url ? (
+                        <img 
+                          src={student.avatar_url} 
+                          alt={student.full_name} 
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <User size={40} className="text-primary/20" />
+                      )}
+                    </div>
+                    <input 
+                      type="file" 
+                      id="avatar-upload"
+                      className="hidden" 
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+
+                        const reader = new FileReader();
+                        reader.onloadend = async () => {
+                          const base64 = reader.result as string;
+                          try {
+                            const { error } = await supabase
+                              .from('students')
+                              .update({ avatar_url: base64 })
+                              .eq('id', studentId);
+                            
+                            if (error) throw error;
+                            
+                            setStudent(prev => prev ? { ...prev, avatar_url: base64 } : null);
+                          } catch (err) {
+                            console.error('Erro ao salvar foto:', err);
+                            alert('Erro ao salvar foto de perfil.');
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                    <label 
+                      htmlFor="avatar-upload"
+                      className="absolute bottom-0 right-0 w-7 h-7 bg-white text-slate-500 hover:text-primary hover:bg-slate-50 border border-slate-200 rounded-full flex items-center justify-center shadow-sm transition-all cursor-pointer hover:scale-110 active:scale-95" 
+                      title="Editar foto"
+                    >
+                       <Camera size={12} />
+                    </label>
+                 </div>
                 
                 <div className="flex-1 text-center md:text-left pt-2 md:pt-4">
                    <h2 className="text-3xl font-black text-on-surface tracking-tight mb-3">{student.full_name}</h2>

@@ -269,15 +269,39 @@ export default function StudentsList() {
                       </div>
                     )}
 
-                    {/* FOTO UPLOAD MOCK */}
+                    {/* FOTO UPLOAD REAL */}
                     <div className="flex flex-col items-center justify-center p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
-                       <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center text-slate-300 shadow-sm border border-slate-200 relative mb-4">
-                          <User size={40} />
-                          <button type="button" className="absolute bottom-0 right-0 p-2 bg-primary text-white rounded-full shadow-lg hover:scale-110 active:scale-95 transition-all">
+                       <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center text-slate-300 shadow-sm border border-slate-200 relative mb-4 overflow-hidden">
+                          {formData.avatar_url ? (
+                            <img src={formData.avatar_url} alt="Preview" className="w-full h-full object-cover" />
+                          ) : (
+                            <User size={40} />
+                          )}
+                          <input 
+                            type="file" 
+                            id="modal-avatar-upload"
+                            className="hidden" 
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                setFormData({ ...formData, avatar_url: reader.result as string });
+                              };
+                              reader.readAsDataURL(file);
+                            }}
+                          />
+                          <label 
+                            htmlFor="modal-avatar-upload"
+                            className="absolute bottom-0 right-0 p-2 bg-primary text-white rounded-full shadow-lg hover:scale-110 active:scale-95 transition-all cursor-pointer"
+                          >
                              <Camera size={14} />
-                          </button>
+                          </label>
                        </div>
-                       <p className="text-sm font-bold text-slate-500">Foto de Perfil (Opcional)</p>
+                       <p className="text-sm font-bold text-slate-500">
+                         {formData.avatar_url ? 'Foto selecionada' : 'Foto de Perfil (Opcional)'}
+                       </p>
                     </div>
 
                     {/* IDENTIFICAÇÃO SECTION */}
