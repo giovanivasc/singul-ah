@@ -21,7 +21,7 @@ function normalizeInfantil(): BnccSkill[] {
     const disciplina = campo.nome_campo;
     for (const faixa of (campo.faixas_etarias || [])) {
       const ano = faixa.nome_faixa;
-      for (const obj of (faixa.objetivos || [])) {
+      for (const obj of (faixa.objetivos || []) as any[]) {
         const descricao = obj.descricao || obj.habilidade || obj.texto || obj.name || 'Sem descrição';
         const codigo = obj.codigo || obj.codigo_habilidade || obj.id || '';
         const rawAno = obj.ano || obj.faixa_etaria || obj.etapa || ano || '';

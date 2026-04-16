@@ -1,19 +1,29 @@
 import re
+import shutil
+import os
 
-with open("src/pages/CaseStudy.tsx", "r") as f:
+source_file = "src/pages/CaseStudy.tsx"
+backup_file = source_file + ".bak"
+
+if not os.path.exists(source_file):
+    print(f"Erro: {source_file} não encontrado.")
+    exit(1)
+
+with open(source_file, "r") as f:
     text = f.read()
 
-# Extract 'filling' view
+# Extract segments
 filling_match = re.search(r"(\{view === 'filling' && \(.*?\)\})", text, re.DOTALL)
-filling_code = filling_match.group(1) if filling_match else ""
-
-# Extract 'consolidation' view
 consolidation_match = re.search(r"(\{view === 'consolidation' && \(.*?\)\})", text, re.DOTALL)
-consolidation_code = consolidation_match.group(1) if consolidation_match else ""
-
-# Extract 'versions' view
 versions_match = re.search(r"(\{view === 'versions' && \(.*?\)\})", text, re.DOTALL)
-versions_code = versions_match.group(1) if versions_match else ""
+
+# Validate matches before writing anything
+if not filling_match or not consolidation_match or not versions_match:
+    raise ValueError(f"Padrão não encontrado — abortando. filling={bool(filling_match)}, consolidation={bool(consolidation_match)}, versions={bool(versions_match)}")
+
+filling_code = filling_match.group(1)
+consolidation_code = consolidation_match.group(1)
+versions_code = versions_match.group(1)
 
 new_content = """import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -379,7 +389,10 @@ new_content += """        </AnimatePresence>
 }
 """
 
-with open("src/pages/CaseStudy.tsx", "w") as f:
+# Backup before writing
+shutil.copy(source_file, backup_file)
+
+with open(source_file, "w") as f:
     f.write(new_content)
 
-print("Patch applied successfully.")
+print(f"Patch aplicado com sucesso. Backup gerado em: {backup_file}")

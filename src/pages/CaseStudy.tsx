@@ -16,6 +16,7 @@ import { supabase } from '../lib/supabase';
 import { Student, InstrumentStatus as DBInstrumentStatus } from '../types/database';
 import { MultimodalInput } from '../components/MultimodalInput';
 import { cn } from '../lib/utils';
+import { instruments, InstrumentStatus } from '../data/instruments';
 
 type ViewState = 'hub' | 'details' | 'filling' | 'consolidation' | 'versions';
 
@@ -36,18 +37,7 @@ type IfSahsRecord = {
   updateDraft?: { text: string; audio?: string; transcript?: string; pending: boolean };
 };
 
-interface InstrumentStatus {
-  id: string;
-  name: string;
-  description: string;
-  icon: any;
-  versions: number;
-  lastUpdate?: string;
-  lastPerson?: string;
-  completionPercentage?: number;
-  status: 'pending' | 'completed' | 'ongoing' | 'draft';
-  allowExternalLink?: boolean;
-}
+// Mapeamento local removido para src/data/instruments.ts
 
 const IF_SAHS_QUESTIONS = [
   {
@@ -76,62 +66,7 @@ const IF_SAHS_QUESTIONS = [
   }
 ];
 
-const initialInstruments: InstrumentStatus[] = [
-  { 
-    id: 'IF-SAHS', 
-    name: 'Inventário Familiar para Suplementação (IF-SAHS)', 
-    description: 'Coleta de dados biopsicossociais com a família.', 
-    icon: Users,
-    versions: 1,
-    lastUpdate: '25/03/2024',
-    lastPerson: 'Prof. Maria Silva',
-    completionPercentage: 100,
-    status: 'completed',
-    allowExternalLink: true
-  },
-  { 
-    id: 'IP-SAHS', 
-    name: 'Inventário Pedagógico (IP-SAHS)', 
-    description: 'Observação pedagógica e funcional do professor.', 
-    icon: Activity,
-    versions: 0,
-    completionPercentage: 0,
-    status: 'pending',
-    allowExternalLink: false
-  },
-  { 
-    id: 'ENTREVISTA', 
-    name: 'Entrevista com Estudante', 
-    description: 'Escuta especializada das demandas do estudante.', 
-    icon: MessageSquare,
-    versions: 0,
-    completionPercentage: 0,
-    status: 'pending',
-    allowExternalLink: false
-  },
-  { 
-    id: 'N-ILS', 
-    name: 'N-ILS (Estilos de Aprendizagem)', 
-    description: 'Mapeamento de estilos e habilidades de aprendizagem.', 
-    icon: Brain,
-    versions: 1,
-    lastUpdate: 'Ontem',
-    lastPerson: 'Sistema (IA)',
-    completionPercentage: 100,
-    status: 'completed',
-    allowExternalLink: true
-  },
-  {
-    id: 'DOC-ANALISE',
-    name: 'Análise de Pareceres (IA)',
-    description: 'Envie laudos e relatórios para processamento da inteligência artificial.',
-    icon: FileText,
-    versions: 0,
-    completionPercentage: 0,
-    status: 'pending',
-    allowExternalLink: false
-  }
-];
+// Lista inicial movida para src/data/instruments.ts
 
 export default function CaseStudy() {
   const { studentId } = useParams();
@@ -141,7 +76,7 @@ export default function CaseStudy() {
   const [view, setView] = useState<ViewState>('hub');
   const [activeInstrumentId, setActiveInstrumentId] = useState<string | null>(null);
   
-  const [instrumentsData, setInstrumentsData] = useState<InstrumentStatus[]>(initialInstruments);
+  const [instrumentsData, setInstrumentsData] = useState<InstrumentStatus[]>(instruments);
   const [inputText, setInputText] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [docName, setDocName] = useState('');
@@ -175,22 +110,30 @@ export default function CaseStudy() {
       if (!studentId) return;
       
       // Carregar Estudante
-      const { data: studentData } = await supabase
+      const { data: studentData, error: studentError } = await supabase
         .from('students')
         .select('*')
         .eq('id', studentId)
         .single();
       
+      if (studentError) {
+        console.error('[CaseStudy] Erro ao buscar estudante:', studentError.message);
+        setLoading(false);
+        return;
+      }
+      
       if (studentData) setStudent(studentData);
 
       // Carregar Registros de Instrumentos
-      const { data: recordsData } = await supabase
+      const { data: recordsData, error: recordsError } = await supabase
         .from('instrument_records')
         .select('*')
         .eq('student_id', studentId)
         .order('created_at', { ascending: false });
       
-      if (recordsData) {
+      if (recordsError) {
+        console.error('[CaseStudy] Erro ao buscar registros:', recordsError.message);
+      } else if (recordsData) {
         // Mapear dados do banco para o estado local
         const mappedRecords: IfSahsRecord[] = recordsData
           .filter(r => r.type.startsWith('if_sahs'))
@@ -336,18 +279,61 @@ export default function CaseStudy() {
     setView('details');
   };
 
-  const handleDelete = () => {
-    if (!activeInstrumentId) return;
-    if (!confirm('CUIDADO: Isso excluirá permanentemente os dados. Prosseguir?')) return;
+  const handleArchive = async () => {
+    if (!activeInstrument || !activeInstrumentId) return;
+    if (!confirm('Tem certeza que deseja arquivar? O instrumento sairá da visão principal.')) return;
     
-    setInstrumentsData(prev => 
-      prev.map(inst => inst.id === activeInstrumentId ? { ...inst, versions: 0, completionPercentage: 0, status: 'pending' } : inst)
-    );
-    alert('Dados excluídos com sucesso.');
-    setView('details');
+    try {
+      const { error } = await supabase
+        .from('instruments')
+        .update({ status: 'archived' })
+        .eq('student_id', studentId)
+        .eq('type', activeInstrumentId);
+
+      if (error) throw error;
+
+      alert('Instrumento arquivado com sucesso.');
+      setView('hub');
+    } catch (err: any) {
+      console.error('Erro ao arquivar:', err);
+      alert('Erro ao arquivar instrument: ' + err.message);
+    }
   };
 
-  if (loading) return null;
+  const handleDeleteInstrument = async () => {
+    if (!activeInstrument || !activeInstrumentId) return;
+    if (!confirm('CUIDADO: Isso excluirá permanentemente os registros deste instrumento. Prosseguir?')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('instrument_records')
+        .delete()
+        .eq('student_id', studentId)
+        .eq('type', activeInstrumentId.startsWith('IF') ? 'if_sahs_inicial' : activeInstrumentId); 
+        // Nota: para exclusão total, precisaríamos deletar todos os tipos relacionados.
+        // Simplificando para o caso principal ou deletando ambos.
+      
+      const { error: error2 } = await supabase
+        .from('instruments')
+        .delete()
+        .eq('student_id', studentId)
+        .eq('type', activeInstrumentId);
+
+      if (error || error2) throw (error || error2);
+
+      alert('Dados excluídos com sucesso.');
+      setView('hub');
+    } catch (err: any) {
+      console.error('Erro ao excluir:', err);
+      alert('Erro ao excluir: ' + err.message);
+    }
+  };
+
+  if (loading) return (
+    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+      <div className="w-10 h-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+    </div>
+  );
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F8FAFC]">
@@ -428,13 +414,15 @@ export default function CaseStudy() {
                     {inst.allowExternalLink && (
                       <div className="mt-auto pt-4 border-t border-slate-50">
                         <button 
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.stopPropagation();
+                            const link = `${window.location.origin}/students/${studentId}/instruments/${inst.id}`;
+                            await navigator.clipboard.writeText(link);
                             alert('Link copiado para a área de transferência!');
                           }}
-                          className="w-full py-2.5 bg-slate-50 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary/10 hover:text-primary transition-all flex items-center justify-center gap-2"
+                          className="w-full py-3 bg-slate-50 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary/10 hover:text-primary transition-all flex items-center justify-center gap-2"
                         >
-                          <Send size={14} /> Link Externo
+                          <Send size={14} /> Enviar Link Externo
                         </button>
                       </div>
                     )}
@@ -623,26 +611,22 @@ export default function CaseStudy() {
                   {activeInstrumentId !== 'IF-SAHS' && (
                   <div className="flex gap-4">
                      <button 
-                        disabled={activeInstrument.versions === 0}
-                        onClick={() => {
-                          if(confirm('Tem certeza que deseja arquivar? O instrumento sairá da visão principal.')) { 
-                             alert('Arquivado com sucesso.');
-                          }
-                        }}
+                        disabled={activeInstrument.versions === 0 && activeInstrument.status === 'pending'}
+                        onClick={handleArchive}
                         className={cn(
                           "flex-1 p-6 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all",
-                          activeInstrument.versions > 0 ? "bg-white border border-slate-200 text-slate-500 hover:border-slate-400" : "bg-slate-50 text-slate-300 cursor-not-allowed"
+                          (activeInstrument.versions > 0 || activeInstrument.status !== 'pending') ? "bg-white border border-slate-200 text-slate-500 hover:border-slate-400" : "bg-slate-50 text-slate-300 cursor-not-allowed"
                         )}
                      >
                         <Archive size={24} />
                         <span className="font-black text-[10px] uppercase tracking-widest">Arquivar</span>
                      </button>
                      <button 
-                        disabled={activeInstrument.versions === 0}
-                        onClick={handleDelete}
+                        disabled={activeInstrument.versions === 0 && activeInstrument.status === 'pending'}
+                        onClick={handleDeleteInstrument}
                         className={cn(
                           "flex-1 p-6 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all",
-                          activeInstrument.versions > 0 ? "bg-red-50 border border-red-100 text-red-500 hover:bg-red-500 hover:text-white" : "bg-slate-50 text-slate-300 cursor-not-allowed"
+                          (activeInstrument.versions > 0 || activeInstrument.status !== 'pending') ? "bg-red-50 border border-red-100 text-red-500 hover:bg-red-500 hover:text-white" : "bg-slate-50 text-slate-300 cursor-not-allowed"
                         )}
                      >
                         <Trash2 size={24} />

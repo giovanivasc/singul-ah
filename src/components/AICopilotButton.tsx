@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Sparkles, Loader2, Plus, Bot, X } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { GoogleGenAI } from '@google/genai';
 
 interface AICopilotButtonProps {
   studentId?: string;
@@ -11,10 +10,6 @@ interface AICopilotButtonProps {
     goal?: string;
   };
 }
-
-// Inicializa a IA fora do componente para evitar reinicializações
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
 const INITIAL_SUGGESTIONS = [
   {
@@ -48,8 +43,6 @@ export function AICopilotButton({ studentId, contextData }: AICopilotButtonProps
   const generateSuggestions = async () => {
     setIsLoading(true);
     try {
-      const model = ai.models.get('gemini-1.5-flash');
-      
       const prompt = `
         Você é um consultor pedagógico especializado em Altas Habilidades/Superdotação (AH/SD).
         Com base no perfil deste estudante:
@@ -67,21 +60,26 @@ export function AICopilotButton({ studentId, contextData }: AICopilotButtonProps
         ]
       `;
 
-      const result = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: {
-          responseMimeType: 'application/json'
-        }
+      const response = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
       });
 
-      const text = result.response.text();
+      if (!response.ok) {
+        throw new Error('Falha na resposta do servidor de IA');
+      }
+
+      const data = await response.json();
+      const text = data.result;
+      
       // Remover possíveis blocos de código se a IA os incluir apesar do prompt
       const cleanJson = text.replace(/```json|```/g, '').trim();
       const parsedSuggestions = JSON.parse(cleanJson);
       
       setSuggestions(parsedSuggestions);
     } catch (error) {
-      console.error('Erro ao gerar sugestões com Gemini:', error);
+      console.error('Erro ao gerar sugestões via servidor proxy:', error);
       // Fallback em caso de erro na API
       setSuggestions(INITIAL_SUGGESTIONS);
     } finally {
