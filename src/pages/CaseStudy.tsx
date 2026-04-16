@@ -171,18 +171,50 @@ export default function CaseStudy() {
   };
 
   useEffect(() => {
-    async function fetchStudent() {
+    async function fetchStudentAndRecords() {
       if (!studentId) return;
-      const { data } = await supabase
+      
+      // Carregar Estudante
+      const { data: studentData } = await supabase
         .from('students')
         .select('*')
         .eq('id', studentId)
         .single();
       
-      if (data) setStudent(data);
+      if (studentData) setStudent(studentData);
+
+      // Carregar Registros de Instrumentos
+      const { data: recordsData } = await supabase
+        .from('instrument_records')
+        .select('*')
+        .eq('student_id', studentId)
+        .order('created_at', { ascending: false });
+      
+      if (recordsData) {
+        // Mapear dados do banco para o estado local
+        const mappedRecords: IfSahsRecord[] = recordsData
+          .filter(r => r.type.startsWith('if_sahs'))
+          .map(r => ({
+            id: r.id,
+            type: r.type.includes('inicial') ? 'versao_inicial' : 'atualizacao',
+            status: r.status as DBInstrumentStatus,
+            date: new Date(r.created_at).toLocaleDateString('pt-BR'),
+            person: r.respondent_role || 'Visitante',
+            respondentName: r.respondent_name || '',
+            respondentRole: r.respondent_role || '',
+            respondentRelation: (r.answers as any)?.respondentRelation || '',
+            answers: (r.answers as any)?.responses || {},
+            updates: r.updates as any[] || [],
+            pendingQuestions: (r.answers as any)?.pendingQuestions || [],
+            audioStorage: r.audio_urls as Record<string, string> || {},
+            transcriptStorage: (r.answers as any)?.transcriptStorage || {}
+          }));
+        setIfSahsRecords(mappedRecords);
+      }
+
       setLoading(false);
     }
-    fetchStudent();
+    fetchStudentAndRecords();
   }, [studentId]);
 
   const activeInstrument = instrumentsData.find(i => i.id === activeInstrumentId);
@@ -208,79 +240,99 @@ export default function CaseStudy() {
     if (action === 'view') setView('versions');
   };
 
-  const handleSave = (status: DBInstrumentStatus = 'ativo') => {
-    if (!activeInstrumentId) return;
+  const handleSave = async (status: DBInstrumentStatus = 'ativo') => {
+    if (!activeInstrumentId || !studentId) return;
 
     if (activeInstrumentId === 'IF-SAHS') {
-      if (fillingType === 'edit' && selectedRecord) {
-        setIfSahsRecords(prev => prev.map(r => r.id === selectedRecord.id ? {
-          ...r,
-          status,
-          respondentName,
-          respondentRole,
-          respondentRelation,
-          answers: ifSahsAnswers,
-          pendingQuestions: currentPendingQuestions,
-          audioStorage: currentAudioStorage,
-          transcriptStorage: pendingTranscripts
-        } : r));
-        
-        setSelectedRecord(prev => prev ? {
-          ...prev,
-          status,
-          respondentName,
-          respondentRole,
-          respondentRelation,
-          answers: ifSahsAnswers,
-          pendingQuestions: currentPendingQuestions,
-          audioStorage: currentAudioStorage,
-          transcriptStorage: pendingTranscripts
-        } : null);
-        
-        alert(status === 'rascunho' ? 'Rascunho atualizado!' : 'IF-SAHS editado com sucesso!');
-        setView('versions');
-        return;
-      }
-
-      const newRecord: IfSahsRecord = {
-         id: Date.now().toString(),
-         type: fillingType === 'atualizacao' ? 'atualizacao' : 'versao_inicial',
-         status,
-         date: new Date().toLocaleDateString('pt-BR'),
-         person: 'Prof. Local',
-         respondentName,
-         respondentRole,
-         respondentRelation,
-         answers: ifSahsAnswers,
-         updates: [],
-         pendingQuestions: currentPendingQuestions,
-         audioStorage: currentAudioStorage,
-         transcriptStorage: pendingTranscripts
+      const answersPayload = {
+        responses: ifSahsAnswers,
+        respondentRelation: respondentRelation,
+        pendingQuestions: currentPendingQuestions,
+        transcriptStorage: pendingTranscripts
       };
-      setIfSahsRecords(prev => [newRecord, ...prev]);
-      alert('IF-SAHS salvo com sucesso!');
-      setRespondentName('');
-      setRespondentRole('');
-      setRespondentRelation('');
-      setIfSahsAnswers({});
-      setView('details');
+
+      try {
+        if (fillingType === 'edit' && selectedRecord) {
+          const { error } = await supabase
+            .from('instrument_records')
+            .update({
+              status,
+              respondent_name: respondentName,
+              respondent_role: respondentRole,
+              answers: answersPayload,
+              audio_urls: currentAudioStorage,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', selectedRecord.id);
+
+          if (error) throw error;
+          
+          setIfSahsRecords(prev => prev.map(r => r.id === selectedRecord.id ? {
+            ...r,
+            status,
+            respondentName,
+            respondentRole,
+            respondentRelation,
+            answers: ifSahsAnswers,
+            pendingQuestions: currentPendingQuestions,
+            audioStorage: currentAudioStorage,
+            transcriptStorage: pendingTranscripts
+          } : r));
+          
+          alert(status === 'rascunho' ? 'Rascunho atualizado no banco!' : 'IF-SAHS atualizado com sucesso!');
+          setView('versions');
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('instrument_records')
+          .insert({
+            student_id: studentId,
+            type: fillingType === 'atualizacao' ? 'if_sahs_atualizacao' : 'if_sahs_inicial',
+            status,
+            respondent_name: respondentName,
+            respondent_role: respondentRole,
+            answers: answersPayload,
+            audio_urls: currentAudioStorage,
+            updates: []
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        const newRecord: IfSahsRecord = {
+           id: data.id,
+           type: fillingType === 'atualizacao' ? 'atualizacao' : 'versao_inicial',
+           status,
+           date: new Date().toLocaleDateString('pt-BR'),
+           person: respondentRole || 'Professor',
+           respondentName,
+           respondentRole,
+           respondentRelation,
+           answers: ifSahsAnswers,
+           updates: [],
+           pendingQuestions: currentPendingQuestions,
+           audioStorage: currentAudioStorage,
+           transcriptStorage: pendingTranscripts
+        };
+
+        setIfSahsRecords(prev => [newRecord, ...prev]);
+        alert('IF-SAHS salvo com sucesso no banco de dados!');
+        setRespondentName('');
+        setRespondentRole('');
+        setRespondentRelation('');
+        setIfSahsAnswers({});
+        setView('details');
+      } catch (err: any) {
+        console.error('Erro ao salvar no Supabase:', err);
+        alert(`Erro ao salvar: ${err.message}`);
+      }
       return;
     }
     
-    setInstrumentsData(prev => 
-      prev.map(inst => inst.id === activeInstrumentId ? {
-        ...inst,
-        versions: inst.versions + 1,
-        lastUpdate: new Date().toLocaleDateString('pt-BR'),
-        lastPerson: 'Você',
-        status: 'completed',
-        completionPercentage: 100
-      } : inst)
-    );
-    alert('Dados salvos com sucesso!');
-    setInputText('');
-    setDocName('');
-    setSelectedFile(null);
+    // Fallback para outros instrumentos mockados por enquanto
+    alert('Funcionalidade de salvamento real disponível apenas para IF-SAHS nesta versão.');
     setView('details');
   };
 

@@ -238,62 +238,75 @@ export default function PEIBuilder() {
   const [accessibilityResources, setAccessibilityResources] = useState<string[]>([]);
   const [newResource, setNewResource] = useState('');
 
-  // LocalStorage Sync
+  // Supabase Persistence Sync
   useEffect(() => {
     if (!studentId) return;
 
-    // Load Mapeamento (Axis) / Estudo De Caso
-    const savedMap = localStorage.getItem(`mapeamento_data_${studentId}`);
-    if (savedMap) {
+    async function loadData() {
+      // Load Mapeamento (Axis) / Estudo De Caso from LocalStorage (Fallback logic)
+      const savedMap = localStorage.getItem(`mapeamento_data_${studentId}`);
+      if (savedMap) {
+        try {
+          const parsed = JSON.parse(savedMap);
+          if (parsed.caseStudySynthesis) {
+             setCaseStudySynthesis(parsed.caseStudySynthesis);
+          }
+        } catch(e) { console.error('Erro ao ler mapeamento:', e); }
+      }
+
+      // Load PEI Progress from Supabase
       try {
-        const parsed = JSON.parse(savedMap);
-        if (parsed.caseStudySynthesis) {
-           setCaseStudySynthesis(parsed.caseStudySynthesis);
+        const { data: peiRow, error } = await supabase
+          .from('pei_data')
+          .select('data')
+          .eq('student_id', studentId)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (peiRow && peiRow.data) {
+          const parsed: any = peiRow.data;
+          if (parsed.documentType) setDocumentType(parsed.documentType);
+          if (parsed.teamMembers && parsed.teamMembers.length > 0) setTeamMembers(parsed.teamMembers);
+          if (parsed.assessments && parsed.assessments.length > 0) setAssessments(parsed.assessments);
+          if (parsed.academicYear) setAcademicYear(parsed.academicYear);
+          if (parsed.alignmentMeetingDate) setAlignmentMeetingDate(parsed.alignmentMeetingDate);
+          if (parsed.applicationStartDate) setApplicationStartDate(parsed.applicationStartDate);
+          if (parsed.evaluationFormat) setEvaluationFormat(parsed.evaluationFormat);
+          if (parsed.validityType) setValidityType(parsed.validityType);
+          if (parsed.validityPeriod) setValidityPeriod(parsed.validityPeriod);
+
+          if (parsed.disciplines) setDisciplines(parsed.disciplines);
+          if (parsed.curriculumPlans) setCurriculumPlans(parsed.curriculumPlans);
+          
+          if (parsed.specializedServices) setSpecializedServices(parsed.specializedServices);
+          if (parsed.enrichmentServices) setEnrichmentServices(parsed.enrichmentServices);
+          if (parsed.techResources) setTechResources(parsed.techResources);
+          if (parsed.enableTransitionPlan !== undefined) setEnableTransitionPlan(parsed.enableTransitionPlan);
+          if (parsed.enableHistory !== undefined) setEnableHistory(parsed.enableHistory);
+          if (parsed.historyLog) setHistoryLog(parsed.historyLog);
+          if (parsed.signatories) setSignatories(parsed.signatories);
+
+          if (parsed.planningContent) setPlanningContent(parsed.planningContent);
+          if (parsed.selectedSkills) setSelectedSkills(parsed.selectedSkills);
+          if (parsed.compactationTarget) setCompactationTarget(parsed.compactationTarget);
+          if (parsed.evaluationMethod) setEvaluationMethod(parsed.evaluationMethod);
+          if (parsed.renzulliTypeI !== undefined) setRenzulliTypeI(parsed.renzulliTypeI);
+          if (parsed.renzulliTypeII !== undefined) setRenzulliTypeII(parsed.renzulliTypeII);
+          if (parsed.renzulliTypeIII !== undefined) setRenzulliTypeIII(parsed.renzulliTypeIII);
+          if (parsed.smartGoals) setSmartGoals(parsed.smartGoals);
+          if (parsed.accessibilityResources && parsed.accessibilityResources.length > 0) {
+            setAccessibilityResources(parsed.accessibilityResources);
+          }
+          if (parsed.lastSaved) setLastSaved(parsed.lastSaved);
         }
-      } catch(e) { console.error('Erro ao ler mapeamento:', e); }
+      } catch (err) {
+        console.error('Erro ao carregar PEI do Supabase:', err);
+      }
     }
 
-    // Load PEI Progress
-    const savedPEI = localStorage.getItem(`pei_data_${studentId}`);
-    if (savedPEI) {
-      try {
-         const parsed = JSON.parse(savedPEI);
-         if (parsed.documentType) setDocumentType(parsed.documentType);
-         if (parsed.teamMembers && parsed.teamMembers.length > 0) setTeamMembers(parsed.teamMembers);
-         if (parsed.assessments && parsed.assessments.length > 0) setAssessments(parsed.assessments);
-         if (parsed.academicYear) setAcademicYear(parsed.academicYear);
-         if (parsed.alignmentMeetingDate) setAlignmentMeetingDate(parsed.alignmentMeetingDate);
-         if (parsed.applicationStartDate) setApplicationStartDate(parsed.applicationStartDate);
-         if (parsed.evaluationFormat) setEvaluationFormat(parsed.evaluationFormat);
-         if (parsed.validityType) setValidityType(parsed.validityType);
-         if (parsed.validityPeriod) setValidityPeriod(parsed.validityPeriod);
-         if (parsed.validityPeriod) setValidityPeriod(parsed.validityPeriod);
-
-         if (parsed.disciplines) setDisciplines(parsed.disciplines);
-         if (parsed.curriculumPlans) setCurriculumPlans(parsed.curriculumPlans);
-         
-         if (parsed.specializedServices) setSpecializedServices(parsed.specializedServices);
-         if (parsed.enrichmentServices) setEnrichmentServices(parsed.enrichmentServices);
-         if (parsed.techResources) setTechResources(parsed.techResources);
-         if (parsed.enableTransitionPlan !== undefined) setEnableTransitionPlan(parsed.enableTransitionPlan);
-         if (parsed.enableHistory !== undefined) setEnableHistory(parsed.enableHistory);
-         if (parsed.historyLog) setHistoryLog(parsed.historyLog);
-         if (parsed.signatories) setSignatories(parsed.signatories);
-
-         if (parsed.planningContent) setPlanningContent(parsed.planningContent);
-         if (parsed.selectedSkills) setSelectedSkills(parsed.selectedSkills);
-         if (parsed.compactationTarget) setCompactationTarget(parsed.compactationTarget);
-         if (parsed.evaluationMethod) setEvaluationMethod(parsed.evaluationMethod);
-         if (parsed.renzulliTypeI !== undefined) setRenzulliTypeI(parsed.renzulliTypeI);
-         if (parsed.renzulliTypeII !== undefined) setRenzulliTypeII(parsed.renzulliTypeII);
-         if (parsed.renzulliTypeIII !== undefined) setRenzulliTypeIII(parsed.renzulliTypeIII);
-         if (parsed.smartGoals) setSmartGoals(parsed.smartGoals);
-         if (parsed.accessibilityResources && parsed.accessibilityResources.length > 0) {
-           setAccessibilityResources(parsed.accessibilityResources);
-         }
-         if (parsed.lastSaved) setLastSaved(parsed.lastSaved);
-      } catch(e) {}
-    }
+    loadData();
+  }, [studentId]);
 
     // Load Student Profile
     const loadStudentProfile = async () => {
@@ -393,7 +406,9 @@ export default function PEIBuilder() {
     setDisciplines(prev => prev.map((d, i) => i === index ? { ...d, ...updates } : d));
   };
 
-  const handleSaveData = () => {
+  const handleSaveData = async () => {
+    if (!studentId) return;
+
     const dataToSave = {
       documentType,
       teamMembers,
@@ -424,8 +439,24 @@ export default function PEIBuilder() {
       accessibilityResources,
       lastSaved: new Date().toLocaleString('pt-BR')
     };
-    localStorage.setItem(`pei_data_${studentId}`, JSON.stringify(dataToSave));
-    setLastSaved(dataToSave.lastSaved);
+
+    try {
+      const { error } = await supabase
+        .from('pei_data')
+        .upsert({
+          student_id: studentId,
+          data: dataToSave,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'student_id' });
+
+      if (error) throw error;
+
+      setLastSaved(dataToSave.lastSaved);
+      // alert("PEI salvo com sucesso no banco!");
+    } catch (err: any) {
+      console.error('Erro ao salvar PEI no Supabase:', err);
+      alert(`Erro ao salvar no banco: ${err.message}`);
+    }
   };
 
   const handleCreatePei = () => {
