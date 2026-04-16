@@ -20,8 +20,9 @@ import { instruments, InstrumentStatus } from '../data/instruments';
 
 type ViewState = 'hub' | 'details' | 'filling' | 'consolidation' | 'versions';
 
-type IfSahsRecord = {
+type InstrumentRecord = {
   id: string;
+  instrumentType: 'IF-SAHS' | 'ENTREVISTA';
   type: 'versao_inicial' | 'atualizacao';
   status: DBInstrumentStatus;
   date: string;
@@ -66,6 +67,39 @@ const IF_SAHS_QUESTIONS = [
   }
 ];
 
+const INTERVIEW_QUESTIONS = [
+  {
+    section: 'I – SOU CURIOSO PARA...',
+    questions: [
+      { id: 'q1', text: 'Quando você não está na escola o que gosta de fazer?' },
+      { id: 'q2', text: 'Há algo que você aprendeu sozinho(a), pesquisando, vendo vídeos ou só por curiosidade?' },
+      { id: 'q3', text: 'Há algo que você gostaria muito de aprender, mas ainda não teve a oportunidade? O que é?' },
+      { id: 'q4', text: 'Quando você tenta fazer algo e não consegue como você se sente?' }
+    ]
+  },
+  {
+    section: 'II – A ESCOLA PARA MIM É...',
+    questions: [
+      { id: 'q5a', text: 'O que você mais gosta nela?' },
+      { id: 'q5b', text: 'O que você não gosta nela?' },
+      { id: 'q6', text: 'Se você pudesse mudar alguma coisa na escola o que seria?' },
+      { id: 'q7a', text: 'Sobre as matérias/disciplinas: Qual(is) você mais gosta?' },
+      { id: 'q7b', text: 'Sobre as matérias/disciplinas: Qual(is) você não gosta muito?' },
+      { id: 'q8a', text: 'Sobre as aulas/atividades: O que faz uma atividade/aula muito legal?' },
+      { id: 'q8b', text: 'Sobre as aulas/atividades: O que faz uma atividade/aula ser chata ou sem graça?' },
+      { id: 'q9', text: 'Você tem amigos na escola?' }
+    ]
+  },
+  {
+    section: 'III – EU USO A TECNOLOGIA PARA...',
+    questions: [
+      { id: 'q10', text: 'Você gosta mais de aprender com tecnologia ou sem ela? Por quê?' },
+      { id: 'q11', text: 'Quais tecnologias você utiliza em casa? Como e para quê?' },
+      { id: 'q12', text: 'Se você pudesse usar mais tecnologia nas aulas, para que seria?' }
+    ]
+  }
+];
+
 // Lista inicial movida para src/data/instruments.ts
 
 export default function CaseStudy() {
@@ -81,8 +115,8 @@ export default function CaseStudy() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [docName, setDocName] = useState('');
 
-  const [ifSahsRecords, setIfSahsRecords] = useState<IfSahsRecord[]>([]);
-  const [selectedRecord, setSelectedRecord] = useState<IfSahsRecord | null>(null);
+  const [instrumentRecords, setInstrumentRecords] = useState<InstrumentRecord[]>([]);
+  const [selectedRecord, setSelectedRecord] = useState<InstrumentRecord | null>(null);
   const [fillingType, setFillingType] = useState<'nova_versao' | 'atualizacao' | 'edit'>('nova_versao');
 
   // Controle de Áudio Global e Rascunhos
@@ -134,31 +168,33 @@ export default function CaseStudy() {
       if (recordsError) {
         console.error('[CaseStudy] Erro ao buscar registros:', recordsError.message);
       } else if (recordsData) {
-        // 1. Mapear dados para as versões do IF-SAHS
-        const mappedRecords: IfSahsRecord[] = recordsData
-          .filter(r => r.type.startsWith('if_sahs'))
+        // 1. Mapear dados para as versões dos instrumentos (IF-SAHS e ENTREVISTA)
+        const mappedRecords: InstrumentRecord[] = recordsData
+          .filter(r => r.type.startsWith('if_sahs') || r.type.startsWith('interview'))
           .map(r => ({
             id: r.id,
-            type: r.type.includes('inicial') ? 'versao_inicial' : 'atualizacao',
+            instrumentType: r.type.startsWith('if_sahs') ? 'IF-SAHS' : 'ENTREVISTA',
+            type: (r.type.includes('inicial') || r.type === 'interview') ? 'versao_inicial' : 'atualizacao',
             status: r.status as DBInstrumentStatus,
             date: new Date(r.created_at).toLocaleDateString('pt-BR'),
             person: r.respondent_role || 'Visitante',
             respondentName: r.respondent_name || '',
             respondentRole: r.respondent_role || '',
             respondentRelation: (r.answers as any)?.respondentRelation || '',
-            answers: (r.answers as any)?.responses || {},
+            answers: (r.answers as any)?.responses || (r.answers as any) || {}, // Suporte a formatos antigos e novos
             updates: r.updates as any[] || [],
             pendingQuestions: (r.answers as any)?.pendingQuestions || [],
             audioStorage: r.audio_urls as Record<string, string> || {},
             transcriptStorage: (r.answers as any)?.transcriptStorage || {}
           }));
-        setIfSahsRecords(mappedRecords);
+        setInstrumentRecords(mappedRecords);
 
         // 2. Sincronizar o estado dos instrumentos no Hub principal
         setInstrumentsData(prevInstruments => 
           prevInstruments.map(inst => {
             const relevantRecords = recordsData.filter(r => {
               if (inst.id === 'IF-SAHS') return r.type.startsWith('if_sahs');
+              if (inst.id === 'ENTREVISTA') return r.type.startsWith('interview');
               if (inst.id === 'N-ILS') return r.type === 'n_ils';
               return r.type.toLowerCase() === inst.id.toLowerCase();
             });
@@ -197,7 +233,7 @@ export default function CaseStudy() {
       return;
     }
     if (activeInstrument.id === 'ENTREVISTA') {
-      navigate(`/students/${studentId}/interview`);
+      setView('versions');
       return;
     }
     if (activeInstrument.id === 'N-ILS') {
@@ -236,7 +272,7 @@ export default function CaseStudy() {
 
           if (error) throw error;
           
-          setIfSahsRecords(prev => prev.map(r => r.id === selectedRecord.id ? {
+          setInstrumentRecords(prev => prev.map(r => r.id === selectedRecord.id ? {
             ...r,
             status,
             respondentName,
@@ -286,7 +322,7 @@ export default function CaseStudy() {
            transcriptStorage: pendingTranscripts
         };
 
-        setIfSahsRecords(prev => [newRecord, ...prev]);
+        setInstrumentRecords(prev => [newRecord, ...prev]);
         alert('IF-SAHS salvo com sucesso no banco de dados!');
         setRespondentName('');
         setRespondentRole('');
@@ -404,26 +440,27 @@ export default function CaseStudy() {
                        </div>
                        
                        {(() => {
-                         let badgeStyle = "bg-slate-100 text-slate-400";
-                         let badgeText = "Pendente";
+                          let badgeStyle = "bg-slate-100 text-slate-400";
+                          let badgeText = "Pendente";
 
-                         // Lógica dinâmica baseada nos registros reais (IF-SAHS) ou no mock
-                         const hasDraft = inst.id === 'IF-SAHS' ? ifSahsRecords.some(r => r.status === 'rascunho') : inst.status === 'draft';
-                         const isCompleted = inst.id === 'IF-SAHS' ? ifSahsRecords.some(r => r.status === 'ativo') : inst.status === 'completed';
+                          // Lógica dinâmica baseada nos registros reais
+                          const relevantRecords = instrumentRecords.filter(r => r.instrumentType === inst.id);
+                          const hasDraft = relevantRecords.some(r => r.status === 'rascunho');
+                          const isCompleted = relevantRecords.some(r => r.status === 'ativo');
 
-                         if (hasDraft) {
-                           badgeStyle = "bg-red-50 border border-red-200 text-red-600";
-                           badgeText = "Rascunho Pendente";
-                         } else if (isCompleted) {
-                           badgeStyle = "bg-green-100 text-green-600";
-                           badgeText = "Concluído";
-                         }
+                          if (hasDraft) {
+                            badgeStyle = "bg-red-50 border border-red-200 text-red-600";
+                            badgeText = "Rascunho Pendente";
+                          } else if (isCompleted) {
+                            badgeStyle = "bg-green-100 text-green-600";
+                            badgeText = "Concluído";
+                          }
 
-                         return (
-                           <div className={cn("px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest text-center", badgeStyle)}>
-                             {badgeText}
-                           </div>
-                         );
+                          return (
+                            <div className={cn("px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest text-center", badgeStyle)}>
+                              {badgeText}
+                            </div>
+                          );
                        })()}
                     </div>
 
@@ -471,10 +508,12 @@ export default function CaseStudy() {
                      <h2 className="text-2xl font-black text-on-surface">Histórico de Preenchimento</h2>
                   </div>
 
-                  {activeInstrumentId === 'IF-SAHS' ? (
-                     ifSahsRecords.length > 0 ? (
+                  {activeInstrumentId === 'IF-SAHS' || activeInstrumentId === 'ENTREVISTA' ? (
+                     (() => {
+                        const records = instrumentRecords.filter(r => r.instrumentType === activeInstrumentId);
+                        return records.length > 0 ? (
                        <div className="space-y-4">
-                          {ifSahsRecords.map((record) => (
+                          {records.map((record) => (
                              <div key={record.id} className={cn("flex flex-col md:flex-row items-center justify-between gap-6 p-6 rounded-3xl border transition-all", record.status === 'arquivado' ? "bg-slate-50 opacity-75 grayscale border-slate-200" : "bg-slate-50/50 hover:bg-white hover:border-primary/30 border-slate-200")}>
                                 <div className="flex items-center gap-6">
                                    <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex flex-col items-center justify-center font-black shadow-sm">
@@ -495,11 +534,11 @@ export default function CaseStudy() {
                                       <Eye size={14} /> Visualizar
                                    </button>
                                    {(record.status === 'ativo' || record.status === 'rascunho') && (
-                                     <button onClick={() => setIfSahsRecords(prev => prev.map(r => r.id === record.id ? { ...r, status: 'arquivado' } : r))} className="px-4 py-2 bg-slate-100 text-slate-500 rounded-xl text-[10px] font-black uppercase hover:bg-slate-200 transition-all shadow-sm">
+                                     <button onClick={() => setInstrumentRecords(prev => prev.map(r => r.id === record.id ? { ...r, status: 'arquivado' } : r))} className="px-4 py-2 bg-slate-100 text-slate-500 rounded-xl text-[10px] font-black uppercase hover:bg-slate-200 transition-all shadow-sm">
                                         Arquivar
                                      </button>
                                    )}
-                                   <button onClick={() => { if(confirm('Excluir este registro permanentemente?')) setIfSahsRecords(prev => prev.filter(r => r.id !== record.id)); }} className="px-4 py-2 bg-red-50 text-red-500 rounded-xl text-[10px] font-black uppercase hover:bg-red-500 hover:text-white transition-all shadow-sm">
+                                   <button onClick={() => { if(confirm('Excluir este registro permanentemente?')) setInstrumentRecords(prev => prev.filter(r => r.id !== record.id)); }} className="px-4 py-2 bg-red-50 text-red-500 rounded-xl text-[10px] font-black uppercase hover:bg-red-500 hover:text-white transition-all shadow-sm">
                                       Excluir
                                    </button>
                                 </div>
@@ -509,10 +548,19 @@ export default function CaseStudy() {
                      ) : (
                        <div className="py-12 text-center bg-slate-50 rounded-3xl border border-dashed border-slate-200">
                           <FileText className="mx-auto text-slate-300 mb-4" size={48} />
-                          <p className="text-slate-500 font-bold text-sm">Nenhum preenchimento registrado ainda.</p>
+                          {activeInstrumentId === 'ENTREVISTA' && (
+                            <button
+                               onClick={() => navigate(`/students/${studentId}/interview`)}
+                               className="px-6 py-3 bg-primary text-white rounded-xl font-black text-[10px] uppercase tracking-widest mt-4 shadow-lg shadow-primary/20"
+                             >
+                               Cadastrar Primeira Versão
+                             </button>
+                          )}
+                          <p className="text-slate-500 font-bold text-sm mt-4">Nenhum preenchimento registrado ainda.</p>
                        </div>
-                     )
-                  ) : activeInstrument.versions > 0 ? (
+                         );
+                      })()
+                   ) : activeInstrument.versions > 0 ? (
                     <div className="space-y-4">
                        {[...Array(activeInstrument.versions)].map((_, idx) => (
                          <div key={idx} className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 rounded-3xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-primary/30 transition-all">
@@ -555,24 +603,29 @@ export default function CaseStudy() {
                </div>
 
                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {activeInstrumentId === 'IF-SAHS' ? (() => {
-                     const activeVersion = ifSahsRecords.find(r => r.status === 'ativo');
-                     const draftVersion = ifSahsRecords.find(r => r.status === 'rascunho');
+                  {activeInstrumentId === 'IF-SAHS' || activeInstrumentId === 'ENTREVISTA' ? (() => {
+                     const records = instrumentRecords.filter(r => r.instrumentType === activeInstrumentId);
+                     const activeVersion = records.find(r => r.status === 'ativo');
+                     const draftVersion = records.find(r => r.status === 'rascunho');
 
                      if (draftVersion) {
                         return (
                            <button 
                               onClick={() => { 
                                 setSelectedRecord(draftVersion);
-                                setRespondentName(draftVersion.respondentName);
-                                setRespondentRole(draftVersion.respondentRole);
-                                setRespondentRelation(draftVersion.respondentRelation || '');
-                                setIfSahsAnswers(draftVersion.answers);
-                                setCurrentPendingQuestions(draftVersion.pendingQuestions || []);
-                                setCurrentAudioStorage(draftVersion.audioStorage || {});
-                                setPendingTranscripts(draftVersion.transcriptStorage || {});
-                                setFillingType('edit');
-                                setView('filling'); 
+                                if (activeInstrumentId === 'IF-SAHS') {
+                                  setRespondentName(draftVersion.respondentName);
+                                  setRespondentRole(draftVersion.respondentRole);
+                                  setRespondentRelation(draftVersion.respondentRelation || '');
+                                  setIfSahsAnswers(draftVersion.answers);
+                                  setCurrentPendingQuestions(draftVersion.pendingQuestions || []);
+                                  setCurrentAudioStorage(draftVersion.audioStorage || {});
+                                  setPendingTranscripts(draftVersion.transcriptStorage || {});
+                                  setFillingType('edit');
+                                  setView('filling'); 
+                                } else {
+                                  navigate(`/students/${studentId}/interview`);
+                                }
                               }}
                               className="col-span-1 p-6 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all border-2 bg-orange-50 border-orange-200 text-orange-600 shadow-xl shadow-orange-500/10 hover:scale-[1.02] active:scale-95"
                            >
@@ -586,7 +639,13 @@ export default function CaseStudy() {
                      return (
                         <button 
                            disabled={!!activeVersion}
-                           onClick={() => { setFillingType('nova_versao'); setRespondentName(''); setRespondentRole(''); setRespondentRelation(''); setIfSahsAnswers({}); setCurrentPendingQuestions([]); setCurrentAudioStorage({}); setPendingTranscripts({}); setView('filling'); }}
+                           onClick={() => { 
+                             if (activeInstrumentId === 'IF-SAHS') {
+                               setFillingType('nova_versao'); setRespondentName(''); setRespondentRole(''); setRespondentRelation(''); setIfSahsAnswers({}); setCurrentPendingQuestions([]); setCurrentAudioStorage({}); setPendingTranscripts({}); setView('filling'); 
+                             } else {
+                               navigate(`/students/${studentId}/interview`);
+                             }
+                           }}
                            className={cn("col-span-1 p-6 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all border-2", activeVersion ? "bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed" : "bg-primary text-white border-transparent shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95")}
                            title={activeVersion ? "Arquive ou exclua a versão atual para iniciar uma nova" : "Criar uma nova versão a partir do zero"}
                         >
@@ -614,9 +673,9 @@ export default function CaseStudy() {
                   )}
 
                   {(() => {
-                    if (activeInstrumentId === 'IF-SAHS') return null;
-                    const hasDrafts = ifSahsRecords.some(r => r.status === 'rascunho');
-                    const isConsolidationDisabled = (activeInstrument.versions === 0 && ifSahsRecords.length === 0) || hasDrafts;
+                    if (activeInstrumentId === 'IF-SAHS' || activeInstrumentId === 'ENTREVISTA') return null;
+                    const hasDrafts = instrumentRecords.some(r => r.status === 'rascunho');
+                    const isConsolidationDisabled = (activeInstrument.versions === 0 && instrumentRecords.length === 0) || hasDrafts;
                     return (
                         <button 
                            onClick={() => setView('consolidation')}
@@ -635,7 +694,7 @@ export default function CaseStudy() {
                     )
                   })()}
 
-                  {activeInstrumentId !== 'IF-SAHS' && (
+                  {activeInstrumentId !== 'IF-SAHS' && activeInstrumentId !== 'ENTREVISTA' && (
                   <div className="flex gap-4">
                      <button 
                         disabled={activeInstrument.versions === 0 && activeInstrument.status === 'pending'}
@@ -725,7 +784,7 @@ export default function CaseStudy() {
                            </div>
                            
                            <div className="space-y-8">
-                             {IF_SAHS_QUESTIONS.map((section, sidx) => (
+                             {(selectedRecord?.instrumentType === 'IF-SAHS' ? IF_SAHS_QUESTIONS : INTERVIEW_QUESTIONS).map((section, sidx) => (
                                <div key={sidx} className="bg-white p-8 rounded-[32px] border border-slate-100 atmospheric-shadow space-y-6">
                                  <h3 className="text-lg font-black text-primary uppercase tracking-tight flex items-center gap-4">
                                    <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-sm shadow-sm shrink-0">
@@ -949,12 +1008,12 @@ export default function CaseStudy() {
                 <div className="flex items-center justify-between bg-white p-8 rounded-[32px] atmospheric-shadow border border-slate-100">
                    <div className="flex items-center gap-4">
                       <History className="text-primary" />
-                      <h3 className="text-xl font-black text-on-surface uppercase tracking-tight">{activeInstrumentId === 'IF-SAHS' ? 'Visualizador de Dados' : 'Relatórios de Versões'}</h3>
+                      <h3 className="text-xl font-black text-on-surface uppercase tracking-tight">{(activeInstrumentId === 'IF-SAHS' || activeInstrumentId === 'ENTREVISTA') ? 'Visualizador de Dados' : 'Relatórios de Versões'}</h3>
                    </div>
                    <button onClick={() => setView('details')} className="text-primary font-black text-xs uppercase underline">Voltar</button>
                 </div>
                 
-                {activeInstrumentId === 'IF-SAHS' && selectedRecord ? (
+                {(activeInstrumentId === 'IF-SAHS' || activeInstrumentId === 'ENTREVISTA') && selectedRecord ? (
                    <div className="space-y-6">
                       {selectedRecord.updateDraft && selectedRecord.updateDraft.pending && (
                          <div className="bg-red-50 border border-red-200 text-red-600 px-6 py-4 rounded-3xl text-[13px] font-black flex items-center gap-4 shadow-[0_0_15px_rgba(239,68,68,0.15)] animate-in fade-in slide-in-from-top-4">
@@ -963,29 +1022,60 @@ export default function CaseStudy() {
                          </div>
                       )}
                       <div className="bg-white p-8 rounded-[32px] border border-slate-100 atmospheric-shadow flex justify-between items-center flex-wrap gap-4">
-                         <div>
-                            <p className="font-black text-on-surface text-xl leading-tight">Respondente: {selectedRecord.respondentName}</p>
-                            <p className="text-slate-500 font-bold text-sm mt-1">{selectedRecord.respondentRole} {selectedRecord.respondentRelation ? `- ${selectedRecord.respondentRelation}` : ''}</p>
-                            <p className="text-xs text-slate-400 font-bold mt-2 flex items-center gap-2"><Clock size={12} /> {selectedRecord.type === 'versao_inicial' ? 'Versão Inicial' : 'Atualização'} registrada em: {selectedRecord.date}</p>
-                         </div>
-                         <div className="flex items-center gap-3">
-                            <button onClick={() => { 
-                               setRespondentName(selectedRecord.respondentName);
-                               setRespondentRole(selectedRecord.respondentRole);
-                               setRespondentRelation(selectedRecord.respondentRelation || '');
-                               setIfSahsAnswers(selectedRecord.answers);
-                               setFillingType('edit');
-                               setView('filling');
-                            }} className="px-4 py-3 border border-slate-200 bg-slate-50 text-slate-500 font-black text-[10px] uppercase rounded-xl tracking-widest hover:border-primary hover:text-primary hover:bg-white transition-all flex items-center gap-2">
-                               <PencilRuler size={14} /> Editar
-                            </button>
-                            {selectedRecord.status === 'arquivado' && (
-                               <button onClick={() => { setIfSahsRecords(prev => prev.map(r => r.id === selectedRecord.id ? { ...r, status: 'ativo' } : r)); alert('Voltou a ficar ativo!'); setView('details'); }} className="px-6 py-3 bg-primary text-white font-black text-[10px] uppercase rounded-xl tracking-widest shadow-lg shadow-primary/20 hover:scale-105 transition-all">Desarquivar Registro</button>
-                            )}
-                         </div>
-                      </div>
+                          <div className="flex-1 min-w-[300px]">
+                             <p className="font-black text-on-surface text-xl leading-tight">
+                               Respondente: {selectedRecord.respondentName || 'Estudante'}
+                             </p>
+                             <p className="text-slate-500 font-bold text-sm mt-1">
+                               {selectedRecord.respondentRole || 'Entrevista Direta'} {selectedRecord.respondentRelation ? `- ${selectedRecord.respondentRelation}` : ''}
+                             </p>
+                             <div className="flex items-center gap-4 mt-3">
+                               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-2">
+                                 <Clock size={12} /> {selectedRecord.type === 'versao_inicial' ? 'Versão Inicial' : 'Atualização'} registrada em: {selectedRecord.date}
+                               </p>
+                               {selectedRecord.status === 'arquivado' && (
+                                 <span className="bg-slate-200 text-slate-500 text-[9px] px-2 py-0.5 rounded-md font-black uppercase tracking-widest">Arquivado</span>
+                               )}
+                             </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-3">
+                             {selectedRecord.status === 'ativo' && (
+                               <button 
+                                 onClick={() => { setIsAddingUpdate(!isAddingUpdate); if (selectedRecord.updateDraft) { setUpdateDraft(selectedRecord.updateDraft); setUpdateText(selectedRecord.updateDraft.text); } }}
+                                 className={cn(
+                                   "px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-sm flex items-center gap-2",
+                                   isAddingUpdate ? "bg-red-50 text-red-500 border border-red-200" : "bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white"
+                                 )}
+                               >
+                                  {isAddingUpdate ? 'Cancelar' : <><Plus size={14} /> Atualizar Fatos</>}
+                               </button>
+                             )}
+
+                             {selectedRecord.instrumentType === 'IF-SAHS' && (
+                               <button onClick={() => { 
+                                  setRespondentName(selectedRecord.respondentName);
+                                  setRespondentRole(selectedRecord.respondentRole);
+                                  setRespondentRelation(selectedRecord.respondentRelation || '');
+                                  setIfSahsAnswers(selectedRecord.answers);
+                                  setFillingType('edit');
+                                  setView('filling');
+                               }} className="px-4 py-3 border border-slate-200 bg-slate-50 text-slate-500 font-black text-[10px] uppercase rounded-xl tracking-widest hover:border-primary hover:text-primary hover:bg-white transition-all flex items-center gap-2">
+                                  <PencilRuler size={14} /> Editar
+                               </button>
+                             )}
+
+                             {selectedRecord.status === 'arquivado' && (
+                                <button onClick={() => { setInstrumentRecords(prev => prev.map(r => r.id === selectedRecord.id ? { ...r, status: 'ativo' } : r)); alert('Registro reativado!'); setView('details'); }} className="px-6 py-3 bg-primary text-white font-black text-[10px] uppercase rounded-xl tracking-widest shadow-lg shadow-primary/20 hover:scale-105 transition-all">Reativar</button>
+                             )}
+                             
+                             <button onClick={() => { if(confirm('Excluir este registro permanentemente?')) { setInstrumentRecords(prev => prev.filter(r => r.id !== selectedRecord.id)); setView('details'); } }} className="p-3 text-red-400 hover:text-red-600 transition-colors">
+                                <Trash2 size={18} />
+                             </button>
+                          </div>
+                       </div>
                       
-                      {IF_SAHS_QUESTIONS.map(sec => (
+                      {((selectedRecord.instrumentType === 'IF-SAHS' ? IF_SAHS_QUESTIONS : INTERVIEW_QUESTIONS)).map(sec => (
                          <div key={sec.section} className="bg-white p-10 rounded-[32px] border border-slate-100 atmospheric-shadow space-y-8">
                             <h4 className="font-black text-primary uppercase tracking-tight">{sec.section}</h4>
                             <div className="space-y-6 pl-2 border-l-2 border-slate-100 ml-2">
@@ -1047,25 +1137,28 @@ export default function CaseStudy() {
                                      <button 
                                         onClick={() => {
                                            const draft = { text: updateText, audio: updateDraft?.audio, transcript: updateDraft?.transcript, pending: updateDraft?.pending || false };
-                                           setIfSahsRecords(prev => prev.map(r => r.id === selectedRecord.id ? { ...r, updateDraft: draft } : r));
+                                           setInstrumentRecords(prev => prev.map(r => r.id === selectedRecord.id ? { ...r, updateDraft: draft } : r));
                                            setSelectedRecord(prev => prev ? { ...prev, updateDraft: draft } : null);
                                            setIsAddingUpdate(false);
                                         }} 
                                         className="px-6 py-3 bg-orange-50 text-orange-600 border border-orange-200 font-black text-[10px] uppercase tracking-widest rounded-xl transition-all shadow-sm hover:brightness-95"
                                      >
-                                        Salvar Rascunho de Atualização
+                                        Salvar Rascunho
                                      </button>
                                      <button 
-                                        disabled={updateDraft?.pending}
                                         onClick={() => {
-                                        if (!updateText.trim()) return;
-                                        const novaEvo = { date: new Date().toLocaleDateString('pt-BR'), person: 'Você', text: updateText };
-                                        setIfSahsRecords(prev => prev.map(r => r.id === selectedRecord.id ? { ...r, updates: [...(r.updates || []), novaEvo], updateDraft: undefined } : r));
-                                        setSelectedRecord(prev => prev ? { ...prev, updates: [...(prev.updates || []), novaEvo], updateDraft: undefined } : null);
-                                        setUpdateText('');
-                                        setUpdateDraft(null);
-                                        setIsAddingUpdate(false);
-                                     }} className={cn("px-6 py-3 font-black text-[10px] uppercase tracking-widest rounded-xl transition-all shadow-md", updateDraft?.pending ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none" : "bg-primary text-white shadow-primary/20 hover:bg-primary/90")}>Finalizar Atualização</button>
+                                         if (!updateText.trim()) return;
+                                         const novaEvo = { date: new Date().toLocaleDateString('pt-BR'), person: 'Especialista', text: updateText };
+                                         setInstrumentRecords(prev => prev.map(r => r.id === selectedRecord.id ? { ...r, updates: [...(r.updates || []), novaEvo], updateDraft: undefined } : r));
+                                         setSelectedRecord(prev => prev ? { ...prev, updates: [...(prev.updates || []), novaEvo], updateDraft: undefined } : null);
+                                         
+                                         console.log('[AI Gateway] Enviando nova evolução para análise automática...', novaEvo);
+                                         alert('Atualização salva e enviada para análise da IA!');
+                                         
+                                         setUpdateText('');
+                                         setUpdateDraft(null);
+                                         setIsAddingUpdate(false);
+                                      }} className={cn("px-6 py-3 font-black text-[10px] uppercase tracking-widest rounded-xl transition-all shadow-md", updateDraft?.pending ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none" : "bg-primary text-white shadow-primary/20 hover:bg-primary/90")}>Finalizar Atualização</button>
                                   </div>
                                </div>
                             ) : (

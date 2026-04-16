@@ -2,17 +2,50 @@ import React, { useState } from 'react';
 import { 
   MessageSquare, User, School, Laptop, 
   Send, ChevronLeft, Sparkles, Heart,
-  Brain, Rocket, Smile, Gamepad2
+  Brain, Rocket, Smile, Gamepad2,
+  Loader2
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TopBar } from '../components/Navigation';
 import { MultimodalInput } from '../components/MultimodalInput';
+import { supabase } from '../lib/supabase';
 
 export default function StudentInterview() {
   const { studentId } = useParams();
   const navigate = useNavigate();
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!studentId) return;
+    
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('instrument_records')
+        .insert({
+          student_id: studentId,
+          type: 'interview',
+          status: 'ativo',
+          respondent_name: 'Estudante',
+          respondent_role: 'Estudante',
+          answers: answers,
+          updates: []
+        });
+
+      if (error) throw error;
+      
+      alert('Entrevista finalizada com sucesso!');
+      navigate(`/students/${studentId}/case-study`);
+    } catch (err: any) {
+      console.error('Erro ao salvar entrevista:', err.message);
+      alert('Erro ao salvar entrevista. Tente novamente.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-20">
       <TopBar />
@@ -197,9 +230,13 @@ export default function StudentInterview() {
 
            {/* Ação Final */}
            <div className="pt-12">
-              <button className="w-full bg-primary text-white py-8 rounded-[32px] font-black text-lg uppercase tracking-[0.2em] shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-4">
-                 <Send size={24} />
-                 Finalizar e Enviar Entrevista
+              <button 
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="w-full bg-primary text-white py-8 rounded-[32px] font-black text-lg uppercase tracking-[0.2em] shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                 {isSubmitting ? <Loader2 className="animate-spin" size={24} /> : <Send size={24} />}
+                 {isSubmitting ? 'Salvando...' : 'Finalizar e Enviar Entrevista'}
               </button>
            </div>
         </div>
