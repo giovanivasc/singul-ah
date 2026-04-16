@@ -256,9 +256,9 @@ export default function TeacherCollection() {
                  <div className="hidden md:grid grid-cols-[30px_1fr_auto] gap-4 px-6 py-4 bg-slate-50 rounded-2xl mb-2 border border-slate-100">
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Nº</span>
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Descrição do Comportamento</span>
-                    <div className="w-[240px] flex flex-col items-center">
+                    <div className="w-[180px] flex flex-col items-center">
                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Frequência</span>
-                       <span className="text-[10px] font-black text-slate-400 tracking-widest mt-1 opacity-60">← Pouco – Muito →</span>
+                       <span className="text-[10px] font-black text-slate-400 tracking-widest mt-1 opacity-60">← P – M →</span>
                     </div>
                  </div>
 
@@ -268,15 +268,15 @@ export default function TeacherCollection() {
                           {idx + 1}
                        </div>
 
-                       <p className="font-bold text-on-surface text-sm whitespace-nowrap overflow-hidden text-ellipsis pr-4">{text}</p>
+                       <p className="font-bold text-on-surface text-xs leading-tight pr-4">{text}</p>
 
-                       <div className="flex gap-1 bg-white p-1 rounded-lg border border-slate-100 shadow-sm w-fit md:w-[240px] justify-between">
+                       <div className="flex gap-1 bg-white p-1 rounded-lg border border-slate-100 shadow-sm w-fit md:w-[180px] justify-between">
                           {[1, 2, 3, 4, 5].map((num) => (
                             <button
                                key={num}
                                onClick={() => setScaleValues({ ...scaleValues, [idx]: num })}
                                className={cn(
-                                 "w-7 h-7 rounded-md font-black text-[10px] transition-all active:scale-90",
+                                 "w-6 h-6 rounded-md font-black text-[9px] transition-all active:scale-90",
                                  scaleValues[idx] === num 
                                    ? "bg-primary text-white shadow-md shadow-primary/20 scale-105" 
                                    : "text-slate-300 hover:bg-slate-50 hover:text-primary"
