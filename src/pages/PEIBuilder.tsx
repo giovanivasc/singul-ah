@@ -1041,7 +1041,7 @@ export default function PEIBuilder() {
                          <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-xl flex items-start gap-3">
                             <AlertTriangle size={20} className="text-amber-600 shrink-0 mt-0.5" />
                             <p className="text-sm font-medium text-amber-800 leading-relaxed">
-                              <strong>Nota Importante:</strong> Presume-se que as adaptações propostas e validadas por este componente sejam as mesmas necessárias para a progressão do estudante e deverão ser formalizadas pela escola. Se não houver indicação metodológica contrária, o estudante seguirá o referencial padrão (BNCC).
+                              Presume-se que as estratégias e recursos de acessibilidade sejam as mesmas para todas as áreas do programa, a menos que seja indicado o contrário na construção do currículo.
                             </p>
                          </div>
 
