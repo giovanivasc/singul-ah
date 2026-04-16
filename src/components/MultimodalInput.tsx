@@ -223,7 +223,7 @@ export const MultimodalInput: React.FC<MultimodalInputProps> = ({ value, onChang
           onChange={(e) => onChange(e.target.value)}
           placeholder={isRecording ? "Gravando áudio... (Fale agora)" : (placeholder || "Digite sua resposta ou use o gravador de voz abaixo...")}
           className={cn(
-            "w-full bg-transparent px-6 py-4 outline-none resize-none font-medium text-on-surface-variant min-h-[120px] transition-colors",
+            "w-full bg-transparent px-6 py-4 outline-none resize-none font-medium text-on-surface-variant min-h-[120px] max-h-52 overflow-y-auto transition-colors",
             isRecording && "text-red-500/90",
             reviewPending && "bg-orange-50/50"
           )}

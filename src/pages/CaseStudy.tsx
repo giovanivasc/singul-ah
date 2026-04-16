@@ -614,6 +614,7 @@ export default function CaseStudy() {
                   )}
 
                   {(() => {
+                    if (activeInstrumentId === 'IF-SAHS') return null;
                     const hasDrafts = ifSahsRecords.some(r => r.status === 'rascunho');
                     const isConsolidationDisabled = (activeInstrument.versions === 0 && ifSahsRecords.length === 0) || hasDrafts;
                     return (
