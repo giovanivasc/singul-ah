@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, MoreVertical, X, Loader2, Camera, User, Pencil } from 'lucide-react';
+import { Plus, Search, MoreVertical, X, Loader2, Camera, User, Pencil, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TopBar } from '../components/Navigation';
 import { supabase } from '../lib/supabase';
@@ -123,6 +123,18 @@ export default function StudentsList() {
     }
   };
 
+  const handleDeleteStudent = async (id: string, name: string) => {
+    if (window.confirm(`Tem certeza que deseja excluir o estudante ${name}? Todos os registros, instrumentos e o PEI deste aluno serão removidos permanentemente.`)) {
+      try {
+        const { error } = await supabase.from('students').delete().eq('id', id);
+        if (error) throw error;
+        fetchStudents();
+      } catch (err: any) {
+        alert('Erro ao excluir estudante: ' + err.message);
+      }
+    }
+  };
+
   const calculateAge = (dob: string) => {
     if (!dob) return 0;
     const birthDate = new Date(dob);
@@ -206,6 +218,7 @@ export default function StudentsList() {
                     });
                     setIsModalOpen(true);
                   }}
+                  onDelete={() => handleDeleteStudent(student.id, student.full_name)}
                 />
               ))
             ) : (
@@ -459,9 +472,10 @@ interface StudentCardProps {
   age: number;
   onClick: () => void;
   onEdit: () => void;
+  onDelete: () => void;
 }
 
-const StudentCard: React.FC<StudentCardProps> = ({ student, index, age, onClick, onEdit }) => {
+const StudentCard: React.FC<StudentCardProps> = ({ student, index, age, onClick, onEdit, onDelete }) => {
   const statusLabels: Record<string, string> = {
     coleta_pendente: 'Coleta Pendente',
     coleta_concluida: 'Coleta Concluída',
@@ -493,15 +507,27 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, index, age, onClick,
              </div>
           </div>
         )}
-        <div 
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit();
-          }}
-          className="absolute top-4 right-4 bg-white/90 backdrop-blur-md p-2 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white active:scale-95"
-          title="Editar Estudante"
-        >
-          <Pencil size={16} className="text-on-surface" />
+        <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div 
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+            className="bg-white/90 backdrop-blur-md p-2 rounded-lg shadow-sm hover:bg-white active:scale-95"
+            title="Editar Estudante"
+          >
+            <Pencil size={16} className="text-on-surface" />
+          </div>
+          <div 
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="bg-white/90 backdrop-blur-md p-2 rounded-lg shadow-sm hover:bg-red-50 hover:text-red-500 active:scale-95 transition-colors"
+            title="Excluir Estudante"
+          >
+            <Trash2 size={16} />
+          </div>
         </div>
         <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black/60 to-transparent" />
         <div className="absolute bottom-4 left-6">
