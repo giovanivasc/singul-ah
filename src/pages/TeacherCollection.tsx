@@ -256,9 +256,9 @@ export default function TeacherCollection() {
                  <div className="hidden md:grid grid-cols-[30px_1fr_auto] gap-4 px-6 py-4 bg-slate-50 rounded-2xl mb-2 border border-slate-100">
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Nº</span>
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Descrição do Comportamento</span>
-                    <div className="w-[180px] flex flex-col items-center">
+                    <div className="w-[200px] flex flex-col items-center">
                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Frequência</span>
-                       <span className="text-[10px] font-black text-slate-400 tracking-widest mt-1 opacity-60">← P – M →</span>
+                       <span className="text-[10px] font-black text-slate-400 tracking-widest mt-1 opacity-60">← Pouco – Muito →</span>
                     </div>
                  </div>
 
@@ -270,7 +270,7 @@ export default function TeacherCollection() {
 
                        <p className="font-bold text-on-surface text-xs leading-tight pr-4">{text}</p>
 
-                       <div className="flex gap-1 bg-white p-1 rounded-lg border border-slate-100 shadow-sm w-fit md:w-[180px] justify-between">
+                       <div className="flex gap-1 bg-white p-1 rounded-lg border border-slate-100 shadow-sm w-fit md:w-[200px] justify-between">
                           {[1, 2, 3, 4, 5].map((num) => (
                             <button
                                key={num}
