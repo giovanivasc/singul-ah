@@ -308,7 +308,9 @@ export default function PEIBuilder() {
     loadData();
   }, [studentId]);
 
-    // Load Student Profile
+  // Load Student Profile
+  useEffect(() => {
+    if (!studentId) return;
     const loadStudentProfile = async () => {
       try {
         const { data, error } = await supabase.from('students').select('*').eq('id', studentId).single();
