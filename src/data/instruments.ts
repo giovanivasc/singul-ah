@@ -21,11 +21,9 @@ export const instruments: InstrumentStatus[] = [
     name: 'Inventário Familiar para Suplementação (IF-SAHS)', 
     description: 'Coleta de dados biopsicossociais com a família.', 
     icon: Users,
-    versions: 1,
-    lastUpdate: '25/03/2024',
-    lastPerson: 'Prof. Maria Silva',
-    completionPercentage: 100,
-    status: 'completed',
+    versions: 0,
+    completionPercentage: 0,
+    status: 'pending',
     allowExternalLink: true
   },
   { 
@@ -53,11 +51,9 @@ export const instruments: InstrumentStatus[] = [
     name: 'N-ILS (Estilos de Aprendizagem)', 
     description: 'Mapeamento de estilos e habilidades de aprendizagem.', 
     icon: Brain,
-    versions: 2,
-    lastUpdate: 'Ontem',
-    lastPerson: 'Sistema (IA)',
-    completionPercentage: 100,
-    status: 'completed',
+    versions: 0,
+    completionPercentage: 0,
+    status: 'pending',
     allowExternalLink: true
   },
   {

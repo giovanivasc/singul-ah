@@ -99,14 +99,8 @@ export default function PEIBuilder() {
 
   // Etapa 1 state
   const [documentType, setDocumentType] = useState<'completo' | 'simplificado'>('completo');
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([
-    { id: 'm1', name: 'Maria Silva (Família)', role: 'Responsável', origin: 'auto-importado' },
-    { id: 'm2', name: 'Estudante', role: 'Estudante', origin: 'auto-importado' }
-  ]);
-  const [assessments, setAssessments] = useState<AssessmentData[]>([
-    { id: 'a1', source: 'IF-SAHS (Família)', date: '2026-03-25', summary: 'Inventário familiar apontou forte interesse por artes visuais e necessidades de mediação social.', origin: 'auto-importado' },
-    { id: 'a2', source: 'N-ILS (Estudante)', date: '2026-03-28', summary: 'Perfil predominante Visual/Sensitivo, prefere informações concretas e gráficos.', origin: 'auto-importado' }
-  ]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [assessments, setAssessments] = useState<AssessmentData[]>([]);
   
   const [academicYear, setAcademicYear] = useState('');
   const [alignmentMeetingDate, setAlignmentMeetingDate] = useState('');
@@ -243,15 +237,22 @@ export default function PEIBuilder() {
     if (!studentId) return;
 
     async function loadData() {
-      // Load Mapeamento (Axis) / Estudo De Caso from LocalStorage (Fallback logic)
-      const savedMap = localStorage.getItem(`mapeamento_data_${studentId}`);
-      if (savedMap) {
-        try {
-          const parsed = JSON.parse(savedMap);
+      // Load Case Study Synthesis (Convergências) from Supabase
+      try {
+        const { data: convData } = await supabase
+          .from('convergences')
+          .select('data')
+          .eq('student_id', studentId)
+          .maybeSingle();
+
+        if (convData && convData.data) {
+          const parsed: any = convData.data;
           if (parsed.caseStudySynthesis) {
-             setCaseStudySynthesis(parsed.caseStudySynthesis);
+            setCaseStudySynthesis(parsed.caseStudySynthesis);
           }
-        } catch(e) { console.error('Erro ao ler mapeamento:', e); }
+        }
+      } catch (err) {
+        console.error('Erro ao carregar convergência do Supabase:', err);
       }
 
       // Load PEI Progress from Supabase

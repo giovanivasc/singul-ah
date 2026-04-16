@@ -10,36 +10,7 @@ interface Task {
   tags: { label: string; color: string }[];
 }
 
-const mockTasks: Task[] = [
-  {
-    id: '1',
-    title: 'Assistir documentário sobre Buracos Negros',
-    type: 'exploratorio',
-    status: 'done',
-    tags: [{ label: 'Astronomia', color: 'bg-indigo-100 text-indigo-700' }]
-  },
-  {
-    id: '2',
-    title: 'Ler artigo sobre Lógica de Programação',
-    type: 'exploratorio',
-    status: 'in-progress',
-    tags: [{ label: 'Tecnologia', color: 'bg-blue-100 text-blue-700' }]
-  },
-  {
-    id: '3',
-    title: 'Fazer tutorial de Unity (C#) Básico',
-    type: 'treinamento',
-    status: 'todo',
-    tags: [{ label: 'Game Dev', color: 'bg-emerald-100 text-emerald-700' }]
-  },
-  {
-    id: '4',
-    title: 'Criar wireframe e concept art do jogo',
-    type: 'mao-na-massa',
-    status: 'todo',
-    tags: [{ label: 'Design', color: 'bg-pink-100 text-pink-700' }, { label: 'Projeto Final', color: 'bg-purple-100 text-purple-700' }]
-  }
-];
+const mockTasks: Task[] = [];
 
 export function ProjectKanban() {
   const columns = [

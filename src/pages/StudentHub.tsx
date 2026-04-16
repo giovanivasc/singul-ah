@@ -59,13 +59,13 @@ export default function StudentHub() {
     return age;
   };
 
-  const blocks = [
+  const [blocks, setBlocks] = useState([
     {
       title: 'Estudo de Caso',
       subtitle: 'Diagnóstico e Coleta',
       icon: ClipboardList,
       description: 'Preenchimento dos instrumentos: IF-SAHS, IP-SAHS, Entrevista, N-ILS.',
-      progress: 65,
+      progress: 0,
       color: 'bg-primary',
       path: 'case-study'
     },
@@ -84,7 +84,7 @@ export default function StudentHub() {
       icon: Brain,
       secondIcon: PencilRuler,
       description: 'Planejamento de objetivos, metas e suportes baseados no mapeamento.',
-      progress: 30,
+      progress: 0,
       color: 'bg-secondary-container',
       path: 'builder'
     },
@@ -93,11 +93,56 @@ export default function StudentHub() {
       subtitle: 'Acompanhamento',
       icon: TrendingUp,
       description: 'Monitoramento do progresso das metas para o próximo ciclo.',
-      progress: 10,
+      progress: 0,
       color: 'bg-tertiary-container',
       path: 'evaluation'
     }
-  ];
+  ]);
+
+  useEffect(() => {
+    if (!studentId) return;
+
+    const fetchProgress = async () => {
+      try {
+        // 1. Progress: Estudo de Caso (Instrumentos)
+        const { count: recordsCount } = await supabase
+          .from('instrument_records')
+          .select('*', { count: 'exact', head: true })
+          .eq('student_id', studentId)
+          .eq('status', 'ativo');
+
+        // 2. Progress: Mapeamento (Convergências)
+        const { count: convergenceCount } = await supabase
+          .from('convergences')
+          .select('*', { count: 'exact', head: true })
+          .eq('student_id', studentId);
+
+        // 3. Progress: Construtor PEI
+        const { count: peiCount } = await supabase
+          .from('pei_data')
+          .select('*', { count: 'exact', head: true })
+          .eq('student_id', studentId);
+
+        setBlocks(prev => prev.map(block => {
+          if (block.path === 'case-study') {
+            const progress = Math.min(Math.round(((recordsCount || 0) / 4) * 100), 100);
+            return { ...block, progress };
+          }
+          if (block.path === 'convergence') {
+            return { ...block, progress: (convergenceCount || 0) > 0 ? 100 : 0 };
+          }
+          if (block.path === 'builder') {
+            return { ...block, progress: (peiCount || 0) > 0 ? 100 : 0 };
+          }
+          return block;
+        }));
+      } catch (err) {
+        console.error('Erro ao calcular progresso:', err);
+      }
+    };
+
+    fetchProgress();
+  }, [studentId]);
 
   if (loading) {
     return (

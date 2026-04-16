@@ -134,7 +134,7 @@ export default function CaseStudy() {
       if (recordsError) {
         console.error('[CaseStudy] Erro ao buscar registros:', recordsError.message);
       } else if (recordsData) {
-        // Mapear dados do banco para o estado local
+        // 1. Mapear dados para as versões do IF-SAHS
         const mappedRecords: IfSahsRecord[] = recordsData
           .filter(r => r.type.startsWith('if_sahs'))
           .map(r => ({
@@ -153,6 +153,32 @@ export default function CaseStudy() {
             transcriptStorage: (r.answers as any)?.transcriptStorage || {}
           }));
         setIfSahsRecords(mappedRecords);
+
+        // 2. Sincronizar o estado dos instrumentos no Hub principal
+        setInstrumentsData(prevInstruments => 
+          prevInstruments.map(inst => {
+            const relevantRecords = recordsData.filter(r => {
+              if (inst.id === 'IF-SAHS') return r.type.startsWith('if_sahs');
+              if (inst.id === 'N-ILS') return r.type === 'n_ils';
+              return r.type.toLowerCase() === inst.id.toLowerCase();
+            });
+
+            if (relevantRecords.length === 0) return inst;
+
+            // Pega o registro mais recente para determinar o status global do instrumento
+            const latest = relevantRecords[0];
+            const isCompleted = latest.status === 'ativo';
+            
+            return {
+               ...inst,
+               versions: relevantRecords.length,
+               status: isCompleted ? 'completed' : 'ongoing',
+               completionPercentage: isCompleted ? 100 : 50,
+               lastUpdate: new Date(latest.updated_at || latest.created_at).toLocaleDateString('pt-BR'),
+               lastPerson: latest.respondent_name || 'Sistema'
+            };
+          })
+        );
       }
 
       setLoading(false);
