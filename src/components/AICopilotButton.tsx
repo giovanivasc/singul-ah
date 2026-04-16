@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, Loader2, Plus, Bot, X } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { GoogleGenAI } from '@google/genai';
 
 interface AICopilotButtonProps {
   studentId?: string;
@@ -11,7 +12,11 @@ interface AICopilotButtonProps {
   };
 }
 
-const mockSuggestions = [
+// Inicializa a IA fora do componente para evitar reinicializações
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+
+const INITIAL_SUGGESTIONS = [
   {
     id: '1',
     title: 'Criar um fluxograma interativo',
@@ -32,7 +37,7 @@ const mockSuggestions = [
 export function AICopilotButton({ studentId, contextData }: AICopilotButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [suggestions, setSuggestions] = useState<typeof mockSuggestions | null>(null);
+  const [suggestions, setSuggestions] = useState<typeof INITIAL_SUGGESTIONS | null>(null);
 
   const defaultContext = {
     learningStyle: contextData?.learningStyle || 'Visual/Cinestésico',
@@ -40,13 +45,48 @@ export function AICopilotButton({ studentId, contextData }: AICopilotButtonProps
     goal: contextData?.goal || 'Lógica Matemática'
   };
 
-  const generateSuggestions = () => {
+  const generateSuggestions = async () => {
     setIsLoading(true);
-    // Simulate generation time
-    setTimeout(() => {
-      setSuggestions(mockSuggestions);
+    try {
+      const model = ai.models.get('gemini-1.5-flash');
+      
+      const prompt = `
+        Você é um consultor pedagógico especializado em Altas Habilidades/Superdotação (AH/SD).
+        Com base no perfil deste estudante:
+        - Estilo de Aprendizagem: ${defaultContext.learningStyle}
+        - Interesses: ${defaultContext.interests}
+        - Objetivo Pedagógico: ${defaultContext.goal}
+
+        Gere 3 sugestões de atividades de enriquecimento curricular que sejam desafiadoras, criativas e alinhadas ao perfil.
+        
+        IMPORTANTE: Retorne APENAS o JSON puro, sem markdown, sem explicações extras, no seguinte formato:
+        [
+          { "id": "1", "title": "Título Curto", "description": "Descrição de 2-3 frases" },
+          { "id": "2", "title": "...", "description": "..." },
+          { "id": "3", "title": "...", "description": "..." }
+        ]
+      `;
+
+      const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: {
+          responseMimeType: 'application/json'
+        }
+      });
+
+      const text = result.response.text();
+      // Remover possíveis blocos de código se a IA os incluir apesar do prompt
+      const cleanJson = text.replace(/```json|```/g, '').trim();
+      const parsedSuggestions = JSON.parse(cleanJson);
+      
+      setSuggestions(parsedSuggestions);
+    } catch (error) {
+      console.error('Erro ao gerar sugestões com Gemini:', error);
+      // Fallback em caso de erro na API
+      setSuggestions(INITIAL_SUGGESTIONS);
+    } finally {
       setIsLoading(false);
-    }, 2000);
+    }
   };
 
   const handleAddSuggestion = (suggestionItem: any) => {
