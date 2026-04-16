@@ -533,6 +533,20 @@ export default function CaseStudy() {
                                    <button onClick={() => { setSelectedRecord(record); setView('versions'); }} className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase text-primary hover:border-primary hover:bg-primary/5 transition-all flex items-center gap-2 shadow-sm">
                                       <Eye size={14} /> Visualizar
                                    </button>
+                                   {record.status === 'ativo' && (
+                                     <button 
+                                       onClick={() => { 
+                                         setSelectedRecord(record); 
+                                         setUpdateText(record.updateDraft?.text || '');
+                                         setUpdateDraft(record.updateDraft || null);
+                                         setIsAddingUpdate(true); 
+                                         setView('versions'); 
+                                       }} 
+                                       className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase text-blue-600 hover:border-blue-600 hover:bg-blue-50 transition-all flex items-center gap-2 shadow-sm"
+                                     >
+                                        <Plus size={14} /> Atualizar
+                                     </button>
+                                   )}
                                    {(record.status === 'ativo' || record.status === 'rascunho') && (
                                      <button onClick={() => setInstrumentRecords(prev => prev.map(r => r.id === record.id ? { ...r, status: 'arquivado' } : r))} className="px-4 py-2 bg-slate-100 text-slate-500 rounded-xl text-[10px] font-black uppercase hover:bg-slate-200 transition-all shadow-sm">
                                         Arquivar
