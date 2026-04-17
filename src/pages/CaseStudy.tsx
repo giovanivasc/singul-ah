@@ -106,14 +106,17 @@ const IP_SAHS_QUESTIONS = [
     questions: [
       { id: 'behavioral_profile', text: 'Perfil Comportamental (Frequência 1-5)' },
       { id: 'other_behaviors', text: 'Outros comportamentos observados' },
-      { id: 'social_interaction_option', text: 'Interação com colegas e professores' },
-      { id: 'desafios_reacao_option', text: 'Reação a desafios e novas aprendizagens' }
+      { id: 'social_interaction_option', text: 'Interação Social (Opção Selecionada)' },
+      { id: 'social_interaction_example', text: 'Exemplos de Interação Social' },
+      { id: 'desafios_reacao_option', text: 'Reação a Desafios (Opção Selecionada)' },
+      { id: 'desafios_reacao_example', text: 'Exemplos de Reação a Desafios' }
     ]
   },
   {
     section: 'Bloco II - Interesses e Habilidades',
     questions: [
        { id: 'areas_of_interest', text: 'Áreas de Interesse' },
+       { id: 'other_interests', text: 'Outros Interesses' },
        { id: 'potentialities_response', text: 'Potencialidades e facilidades' }
     ]
   },
@@ -122,7 +125,16 @@ const IP_SAHS_QUESTIONS = [
     questions: [
        { id: 'pedagogical_difficulties_response', text: 'Maiores dificuldades pedagógicas' },
        { id: 'demotivation_signs_response', text: 'Sinais de desmotivação' },
-       { id: 'needs_pedagogical', text: 'Necessidades de Suplementação (Pedagógica, Comportamental, Emocional)' }
+       { id: 'needs_pedagogical', text: 'Necessidades Pedagógicas' },
+       { id: 'needs_behavioral', text: 'Necessidades Comportamentais' },
+       { id: 'needs_emotional', text: 'Necessidades Emocionais' }
+    ]
+  },
+  {
+    section: 'Bloco IV - Suplementação e Estratégias',
+    questions: [
+       { id: 'strategy_experience_response', text: 'Estratégias já adotadas e eficácia' },
+       { id: 'suggestions', text: 'Sugestões Geradas' }
     ]
   }
 ];
@@ -217,7 +229,10 @@ export default function CaseStudy() {
               respondentName: r.respondent_name || '',
               respondentRole: r.respondent_role || '',
               respondentRelation: (r.answers as any)?.respondentRelation || '',
-              answers: (r.answers as any)?.responses || (r.answers as any) || {},
+               answers: (() => {
+                 const raw = (r.answers as any)?.responses || (r.answers as any) || {};
+                 return typeof raw === 'string' ? JSON.parse(raw) : raw;
+               })(),
               updates: r.updates as any[] || [],
               pendingQuestions: (r.answers as any)?.pendingQuestions || [],
               audioStorage: r.audio_urls as Record<string, string> || {},
@@ -595,7 +610,9 @@ export default function CaseStudy() {
                                         {record.status === 'rascunho' && <span className="bg-orange-100 text-orange-600 text-[9px] px-2 py-0.5 rounded-md font-black uppercase tracking-widest">Rascunho Pendente</span>}
                                         {record.type === 'atualizacao' && <span className="bg-blue-100 text-blue-600 text-[9px] px-2 py-0.5 rounded-md font-black uppercase tracking-widest">Atualização</span>}
                                       </div>
-                                      <p className="text-slate-500 font-bold text-[10px] uppercase tracking-widest">Respondente: {record.respondentName} ({record.respondentRole})</p>
+                                      <p className="text-slate-500 font-bold text-[10px] uppercase tracking-widest">
+                                         Respondente: {record.respondentName} ({record.respondentRole}{record.answers.discipline ? ` - ${record.answers.discipline}` : ''})
+                                      </p>
                                    </div>
                                 </div>
                                 <div className="flex items-center gap-3">
@@ -1166,7 +1183,13 @@ export default function CaseStudy() {
                                   <div key={q.id} className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
                                      <p className="font-bold text-slate-700 text-sm mb-4 leading-relaxed">{q.text}</p>
                                      <div className="bg-white p-4 rounded-xl border border-slate-100">
-
+                                         <p className="text-slate-600 font-medium whitespace-pre-wrap">
+                                            {typeof (selectedRecord.answers as any)[q.id] === 'object' 
+                                              ? (Array.isArray((selectedRecord.answers as any)[q.id]) 
+                                                  ? (selectedRecord.answers as any)[q.id].join(', ') 
+                                                  : JSON.stringify((selectedRecord.answers as any)[q.id], null, 2)) 
+                                              : ((selectedRecord.answers as any)[q.id] || <span className="text-slate-400 italic">Preenchimento vazio neste campo.</span>)}
+                                         </p>
                                      </div>
                                   </div>
                                ))}
