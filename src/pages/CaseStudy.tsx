@@ -280,8 +280,11 @@ export default function CaseStudy() {
               respondentRole: r.respondent_role || '',
               respondentRelation: (r.answers as any)?.respondentRelation || '',
                answers: (() => {
-                 const raw = (r.answers as any)?.responses || (r.answers as any) || {};
-                 return typeof raw === 'string' ? JSON.parse(raw) : raw;
+                 const raw = r.answers as any;
+                 // Para IF-SAHS as respostas ficam em raw.responses; para IP-SAHS ficam direto em raw
+                 if (r.type === 'ip_sahs') return raw || {};
+                 const inner = raw?.responses || raw || {};
+                 return typeof inner === 'string' ? JSON.parse(inner) : inner;
                })(),
               updates: r.updates as any[] || [],
               pendingQuestions: (r.answers as any)?.pendingQuestions || [],
@@ -688,7 +691,21 @@ export default function CaseStudy() {
                                         Arquivar
                                      </button>
                                    )}
-                                   <button onClick={() => { if(confirm('Excluir este registro permanentemente?')) setInstrumentRecords(prev => prev.filter(r => r.id !== record.id)); }} className="px-4 py-2 bg-red-50 text-red-500 rounded-xl text-[10px] font-black uppercase hover:bg-red-500 hover:text-white transition-all shadow-sm">
+                                   <button onClick={async () => {
+                                     if (!confirm('Excluir este registro permanentemente? Esta ação não pode ser desfeita.')) return;
+                                     try {
+                                       // Tenta excluir na tabela unificada primeiro
+                                       const { error: e1 } = await supabase.from('instrument_records').delete().eq('id', record.id);
+                                       if (e1) {
+                                         // Se falhar, tenta a tabela legada do IP-SAHS
+                                         const { error: e2 } = await supabase.from('ip_sahs_responses').delete().eq('id', record.id);
+                                         if (e2) throw e2;
+                                       }
+                                       setInstrumentRecords(prev => prev.filter(r => r.id !== record.id));
+                                     } catch (err: any) {
+                                       alert('Erro ao excluir: ' + err.message);
+                                     }
+                                   }} className="px-4 py-2 bg-red-50 text-red-500 rounded-xl text-[10px] font-black uppercase hover:bg-red-500 hover:text-white transition-all shadow-sm">
                                       Excluir
                                    </button>
                                 </div>
@@ -1245,7 +1262,20 @@ export default function CaseStudy() {
                                 <button onClick={() => { setInstrumentRecords(prev => prev.map(r => r.id === selectedRecord.id ? { ...r, status: 'ativo' } : r)); alert('Registro reativado!'); setView('details'); }} className="px-6 py-3 bg-primary text-white font-black text-[10px] uppercase rounded-xl tracking-widest shadow-lg shadow-primary/20 hover:scale-105 transition-all">Reativar</button>
                              )}
                              
-                             <button onClick={() => { if(confirm('Excluir este registro permanentemente?')) { setInstrumentRecords(prev => prev.filter(r => r.id !== selectedRecord.id)); setView('details'); } }} className="p-3 text-red-400 hover:text-red-600 transition-colors">
+                             <button onClick={async () => {
+                                 if (!confirm('Excluir este registro permanentemente? Esta ação não pode ser desfeita.')) return;
+                                 try {
+                                   const { error: e1 } = await supabase.from('instrument_records').delete().eq('id', selectedRecord.id);
+                                   if (e1) {
+                                     const { error: e2 } = await supabase.from('ip_sahs_responses').delete().eq('id', selectedRecord.id);
+                                     if (e2) throw e2;
+                                   }
+                                   setInstrumentRecords(prev => prev.filter(r => r.id !== selectedRecord.id));
+                                   setView('details');
+                                 } catch (err: any) {
+                                   alert('Erro ao excluir: ' + err.message);
+                                 }
+                              }} className="p-3 text-red-400 hover:text-red-600 transition-colors">
                                 <Trash2 size={18} />
                              </button>
                           </div>
