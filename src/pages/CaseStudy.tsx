@@ -294,12 +294,14 @@ export default function CaseStudy() {
     if (!activeInstrument) return;
     
     // Rotas externas
-    if (activeInstrument.id === 'IP-SAHS') {
+    if (activeInstrument.id === 'IP-SAHS' && action === 'fill') {
       navigate(`/students/${studentId}/ip-sahs`);
       return;
     }
-    if (activeInstrument.id === 'ENTREVISTA') {
-      setView('versions');
+    
+    // IP-SAHS também será gerenciado pela visualização interna no Hub
+    if (activeInstrument.id === 'IP-SAHS' || activeInstrument.id === 'ENTREVISTA' || activeInstrument.id === 'IF-SAHS') {
+      setView('details');
       return;
     }
     if (activeInstrument.id === 'N-ILS') {
@@ -575,7 +577,7 @@ export default function CaseStudy() {
                      <h2 className="text-2xl font-black text-on-surface">Histórico de Preenchimento</h2>
                   </div>
 
-                  {activeInstrumentId === 'IF-SAHS' || activeInstrumentId === 'ENTREVISTA' ? (
+                  {activeInstrumentId === 'IF-SAHS' || activeInstrumentId === 'ENTREVISTA' || activeInstrumentId === 'IP-SAHS' ? (
                      (() => {
                         const records = instrumentRecords.filter(r => r.instrumentType === activeInstrumentId);
                         return records.length > 0 ? (
@@ -1089,12 +1091,12 @@ export default function CaseStudy() {
                 <div className="flex items-center justify-between bg-white p-8 rounded-[32px] atmospheric-shadow border border-slate-100">
                    <div className="flex items-center gap-4">
                       <History className="text-primary" />
-                      <h3 className="text-xl font-black text-on-surface uppercase tracking-tight">{(activeInstrumentId === 'IF-SAHS' || activeInstrumentId === 'ENTREVISTA') ? 'Visualizador de Dados' : 'Relatórios de Versões'}</h3>
+
                    </div>
                    <button onClick={() => setView('details')} className="text-primary font-black text-xs uppercase underline">Voltar</button>
                 </div>
                 
-                {(activeInstrumentId === 'IF-SAHS' || activeInstrumentId === 'ENTREVISTA') && selectedRecord ? (
+                {(activeInstrumentId === 'IF-SAHS' || activeInstrumentId === 'ENTREVISTA' || activeInstrumentId === 'IP-SAHS') && selectedRecord ? (
                    <div className="space-y-6">
                       {selectedRecord.updateDraft && selectedRecord.updateDraft.pending && (
                          <div className="bg-red-50 border border-red-200 text-red-600 px-6 py-4 rounded-3xl text-[13px] font-black flex items-center gap-4 shadow-[0_0_15px_rgba(239,68,68,0.15)] animate-in fade-in slide-in-from-top-4">
