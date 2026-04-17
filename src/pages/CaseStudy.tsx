@@ -153,41 +153,82 @@ function AnswerRenderer({ value }: { value: any }) {
   if (value === null || value === undefined || value === '') {
     return <span className="text-slate-400 italic text-sm">Preenchimento vazio neste campo.</span>;
   }
-  // Array → Tags/Badges
+
+  // Booleano → Sim / Não
+  if (typeof value === 'boolean') {
+    return (
+      <span className={cn('px-3 py-1 rounded-full text-xs font-bold', value ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500')}>
+        {value ? 'Sim' : 'Não'}
+      </span>
+    );
+  }
+
+  // Array → verificar se é de strings ou de objetos
   if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return <span className="text-slate-400 italic text-sm">Nenhum item selecionado.</span>;
+    }
+    // Array de objetos (ex: suggestions) → tabela compacta
+    if (typeof value[0] === 'object' && value[0] !== null) {
+      return (
+        <div className="space-y-3">
+          {value.map((item: any, i: number) => (
+            <div key={i} className="bg-slate-50 rounded-xl p-4 border border-slate-100 text-xs font-medium text-slate-600 space-y-1">
+              {Object.entries(item)
+                .filter(([k]) => k !== 'id')
+                .map(([k, v]) =>
+                  v ? (
+                    <div key={k}>
+                      <span className="font-black text-slate-400 uppercase tracking-wider">{k}: </span>
+                      <span>{String(v)}</span>
+                    </div>
+                  ) : null
+                )}
+            </div>
+          ))}
+        </div>
+      );
+    }
+    // Array de primitivos → Badges coloridos
     return (
       <div className="flex flex-wrap gap-2">
-        {value.map((item: string, i: number) => (
+        {value.map((item: any, i: number) => (
           <span key={i} className={cn('px-3 py-1 rounded-full text-xs font-bold', BADGE_COLORS[i % BADGE_COLORS.length])}>
-            {item}
+            {String(item)}
           </span>
         ))}
       </div>
     );
   }
-  // Objeto de Frequência (behavioral_profile {0:5,1:3,...})
-  if (typeof value === 'object' && !Array.isArray(value)) {
-    const entries = Object.entries(value as Record<string, number>);
-    return (
-      <div className="space-y-1">
-        {entries.map(([k, v]) => (
-          <div key={k} className="flex items-center gap-3">
-            <span className="text-xs font-bold text-slate-400 w-6 text-right">{+k + 1}</span>
-            <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
-              <div
-                className="h-full bg-primary rounded-full"
-                style={{ width: `${(Number(v) / 5) * 100}%` }}
-              />
+
+  // Objeto → verificar se é behavioral_profile (chaves numéricas com valores numéricos)
+  if (typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, any>);
+    if (entries.length === 0) {
+      return <span className="text-slate-400 italic text-sm">Sem dados.</span>;
+    }
+    const isNumericProfile = entries.every(([, v]) => typeof v === 'number');
+    if (isNumericProfile) {
+      return (
+        <div className="space-y-1">
+          {entries.map(([k, v]) => (
+            <div key={k} className="flex items-center gap-3">
+              <span className="text-xs font-bold text-slate-400 w-6 text-right">{+k + 1}</span>
+              <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                <div className="h-full bg-primary rounded-full" style={{ width: `${(Number(v) / 5) * 100}%` }} />
+              </div>
+              <span className="text-xs font-black text-primary w-6">{v}/5</span>
             </div>
-            <span className="text-xs font-black text-primary w-6">{v}/5</span>
-          </div>
-        ))}
-      </div>
-    );
+          ))}
+        </div>
+      );
+    }
+    // Objeto genérico → JSON formatado
+    return <pre className="text-slate-600 text-xs whitespace-pre-wrap font-mono bg-slate-50 p-3 rounded-lg">{JSON.stringify(value, null, 2)}</pre>;
   }
-  // Texto (com suporte a JSON serializado)
-  const text = String(value);
-  return <p className="text-slate-600 font-medium whitespace-pre-wrap text-sm leading-relaxed">{text}</p>;
+
+  // Texto simples
+  return <p className="text-slate-600 font-medium whitespace-pre-wrap text-sm leading-relaxed">{String(value)}</p>;
 }
 
 
