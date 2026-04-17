@@ -15,7 +15,7 @@ import { StudentPageHeader } from '../components/StudentPageHeader';
 import { supabase } from '../lib/supabase';
 import { Student, InstrumentStatus as DBInstrumentStatus } from '../types/database';
 import { MultimodalInput } from '../components/MultimodalInput';
-import { cn } from '../lib/utils';
+import { cn, aggregateIPSahsData, buildIPSahsAIPrompt } from '../lib/utils';
 import { instruments, InstrumentStatus } from '../data/instruments';
 
 type ViewState = 'hub' | 'details' | 'filling' | 'consolidation' | 'versions';
@@ -139,7 +139,57 @@ const IP_SAHS_QUESTIONS = [
   }
 ];
 
-// Lista inicial movida para src/data/instruments.ts
+// ─── Renderizador de Resposta Dinâmico ─────────────────────────────────────
+const BADGE_COLORS = [
+  'bg-blue-100 text-blue-700',
+  'bg-violet-100 text-violet-700',
+  'bg-green-100 text-green-700',
+  'bg-amber-100 text-amber-700',
+  'bg-rose-100 text-rose-700',
+  'bg-cyan-100 text-cyan-700',
+];
+
+function AnswerRenderer({ value }: { value: any }) {
+  if (value === null || value === undefined || value === '') {
+    return <span className="text-slate-400 italic text-sm">Preenchimento vazio neste campo.</span>;
+  }
+  // Array → Tags/Badges
+  if (Array.isArray(value)) {
+    return (
+      <div className="flex flex-wrap gap-2">
+        {value.map((item: string, i: number) => (
+          <span key={i} className={cn('px-3 py-1 rounded-full text-xs font-bold', BADGE_COLORS[i % BADGE_COLORS.length])}>
+            {item}
+          </span>
+        ))}
+      </div>
+    );
+  }
+  // Objeto de Frequência (behavioral_profile {0:5,1:3,...})
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    const entries = Object.entries(value as Record<string, number>);
+    return (
+      <div className="space-y-1">
+        {entries.map(([k, v]) => (
+          <div key={k} className="flex items-center gap-3">
+            <span className="text-xs font-bold text-slate-400 w-6 text-right">{+k + 1}</span>
+            <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+              <div
+                className="h-full bg-primary rounded-full"
+                style={{ width: `${(Number(v) / 5) * 100}%` }}
+              />
+            </div>
+            <span className="text-xs font-black text-primary w-6">{v}/5</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  // Texto (com suporte a JSON serializado)
+  const text = String(value);
+  return <p className="text-slate-600 font-medium whitespace-pre-wrap text-sm leading-relaxed">{text}</p>;
+}
+
 
 export default function CaseStudy() {
   const { studentId } = useParams();
@@ -774,6 +824,32 @@ export default function CaseStudy() {
 
                   {(() => {
                     if (activeInstrumentId === 'IF-SAHS' || activeInstrumentId === 'ENTREVISTA') return null;
+                     if (activeInstrumentId === 'IP-SAHS') {
+                       const ipCount = instrumentRecords.filter(r => r.instrumentType === 'IP-SAHS').length;
+                       return (
+                         <button
+                           onClick={async () => {
+                             const ipSahsRecs = instrumentRecords.filter(r => r.instrumentType === 'IP-SAHS');
+                             if (ipSahsRecs.length === 0) { alert('Nenhum preenchimento encontrado.'); return; }
+                             const aggregated = aggregateIPSahsData(ipSahsRecs.map(r => ({
+                               respondentName: r.respondentName,
+                               respondentRole: r.respondentRole,
+                               answers: r.answers,
+                             })));
+                             const prompt = buildIPSahsAIPrompt(student?.full_name || 'Aluno', aggregated);
+                             console.log('[AI Gateway] Prompt IP-SAHS:\n', prompt);
+                             alert(`✅ Dados de ${ipCount} professor(es) agregados! Veja o console para o prompt estruturado.`);
+                           }}
+                           className="p-6 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all border-2 bg-white border-primary/20 text-primary hover:bg-primary/5 cursor-pointer"
+                         >
+                           <Sparkles size={28} />
+                           <span className="font-black text-xs uppercase tracking-widest">Consolidar Dados (IA)</span>
+                           <span className="text-[9px] font-bold text-slate-400 text-center px-2">
+                             Agrega visões de {ipCount} professor(es)
+                           </span>
+                         </button>
+                       );
+                     }
                     const hasDrafts = instrumentRecords.some(r => r.status === 'rascunho');
                     const isConsolidationDisabled = (activeInstrument.versions === 0 && instrumentRecords.length === 0) || hasDrafts;
                     return (
@@ -1183,14 +1259,8 @@ export default function CaseStudy() {
                                   <div key={q.id} className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
                                      <p className="font-bold text-slate-700 text-sm mb-4 leading-relaxed">{q.text}</p>
                                      <div className="bg-white p-4 rounded-xl border border-slate-100">
-                                         <p className="text-slate-600 font-medium whitespace-pre-wrap">
-                                            {typeof (selectedRecord.answers as any)[q.id] === 'object' 
-                                              ? (Array.isArray((selectedRecord.answers as any)[q.id]) 
-                                                  ? (selectedRecord.answers as any)[q.id].join(', ') 
-                                                  : JSON.stringify((selectedRecord.answers as any)[q.id], null, 2)) 
-                                              : ((selectedRecord.answers as any)[q.id] || <span className="text-slate-400 italic">Preenchimento vazio neste campo.</span>)}
-                                         </p>
-                                     </div>
+                                         <AnswerRenderer value={(selectedRecord.answers as any)[q.id]} />
+                                      </div>
                                   </div>
                                ))}
                             </div>
