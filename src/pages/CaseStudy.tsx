@@ -22,7 +22,7 @@ type ViewState = 'hub' | 'details' | 'filling' | 'consolidation' | 'versions';
 
 type InstrumentRecord = {
   id: string;
-  instrumentType: 'IF-SAHS' | 'ENTREVISTA';
+  instrumentType: 'IF-SAHS' | 'ENTREVISTA' | 'IP-SAHS';
   type: 'versao_inicial' | 'atualizacao';
   status: DBInstrumentStatus;
   date: string;
@@ -30,7 +30,7 @@ type InstrumentRecord = {
   respondentName: string;
   respondentRole: string;
   respondentRelation?: string;
-  answers: Record<string, string>;
+  answers: Record<string, any>; // Mudado para any para suportar objetos complexos do IP-SAHS
   updates?: { date: string; person: string; text: string; }[];
   pendingQuestions?: string[];
   audioStorage?: Record<string, string>;
@@ -100,6 +100,33 @@ const INTERVIEW_QUESTIONS = [
   }
 ];
 
+const IP_SAHS_QUESTIONS = [
+  {
+    section: 'Bloco I - Perfil do Aluno',
+    questions: [
+      { id: 'behavioral_profile', text: 'Perfil Comportamental (Frequência 1-5)' },
+      { id: 'other_behaviors', text: 'Outros comportamentos observados' },
+      { id: 'social_interaction_option', text: 'Interação com colegas e professores' },
+      { id: 'desafios_reacao_option', text: 'Reação a desafios e novas aprendizagens' }
+    ]
+  },
+  {
+    section: 'Bloco II - Interesses e Habilidades',
+    questions: [
+       { id: 'areas_of_interest', text: 'Áreas de Interesse' },
+       { id: 'potentialities_response', text: 'Potencialidades e facilidades' }
+    ]
+  },
+  {
+    section: 'Bloco III - Desafios e Necessidades',
+    questions: [
+       { id: 'pedagogical_difficulties_response', text: 'Maiores dificuldades pedagógicas' },
+       { id: 'demotivation_signs_response', text: 'Sinais de desmotivação' },
+       { id: 'needs_pedagogical', text: 'Necessidades de Suplementação (Pedagógica, Comportamental, Emocional)' }
+    ]
+  }
+];
+
 // Lista inicial movida para src/data/instruments.ts
 
 export default function CaseStudy() {
@@ -158,60 +185,99 @@ export default function CaseStudy() {
       
       if (studentData) setStudent(studentData);
 
-      // Carregar Registros de Instrumentos
+      // Carregar Registros de Instrumentos (Múltiplas Tabelas para Legado e Novo Padrão)
       const { data: recordsData, error: recordsError } = await supabase
         .from('instrument_records')
         .select('*')
         .eq('student_id', studentId)
         .order('created_at', { ascending: false });
       
+      const { data: ipSahsLegacyData } = await supabase
+        .from('ip_sahs_responses')
+        .select('*')
+        .eq('student_id', studentId)
+        .order('completed_at', { ascending: false });
+      
       if (recordsError) {
         console.error('[CaseStudy] Erro ao buscar registros:', recordsError.message);
-      } else if (recordsData) {
-        // 1. Mapear dados para as versões dos instrumentos (IF-SAHS e ENTREVISTA)
-        const mappedRecords: InstrumentRecord[] = recordsData
-          .filter(r => r.type.startsWith('if_sahs') || r.type.startsWith('interview'))
-          .map(r => ({
+      } else {
+        const combinedRaw = (recordsData || []);
+        
+        // 1. Mapear dados para as versões dos instrumentos (IF-SAHS, ENTREVISTA e LEGACY IP-SAHS)
+        const mappedRecords: InstrumentRecord[] = [
+          ...combinedRaw
+            .filter(r => r.type.startsWith('if_sahs') || r.type.startsWith('interview') || r.type === 'ip_sahs')
+            .map(r => ({
+              id: r.id,
+              instrumentType: (r.type.startsWith('if_sahs') ? 'IF-SAHS' : (r.type === 'ip_sahs' ? 'IP-SAHS' : 'ENTREVISTA')) as any,
+              type: ((r.type.includes('inicial') || r.type === 'interview' || r.type === 'ip_sahs') ? 'versao_inicial' : 'atualizacao') as any,
+              status: r.status as DBInstrumentStatus,
+              date: new Date(r.created_at).toLocaleDateString('pt-BR'),
+              person: r.respondent_role || 'Visitante',
+              respondentName: r.respondent_name || '',
+              respondentRole: r.respondent_role || '',
+              respondentRelation: (r.answers as any)?.respondentRelation || '',
+              answers: (r.answers as any)?.responses || (r.answers as any) || {},
+              updates: r.updates as any[] || [],
+              pendingQuestions: (r.answers as any)?.pendingQuestions || [],
+              audioStorage: r.audio_urls as Record<string, string> || {},
+              transcriptStorage: (r.answers as any)?.transcriptStorage || {}
+            })),
+          ...(ipSahsLegacyData || []).map(r => ({
             id: r.id,
-            instrumentType: r.type.startsWith('if_sahs') ? 'IF-SAHS' : 'ENTREVISTA',
-            type: (r.type.includes('inicial') || r.type === 'interview') ? 'versao_inicial' : 'atualizacao',
-            status: r.status as DBInstrumentStatus,
-            date: new Date(r.created_at).toLocaleDateString('pt-BR'),
-            person: r.respondent_role || 'Visitante',
+            instrumentType: 'IP-SAHS' as const,
+            type: 'versao_inicial' as const,
+            status: 'ativo' as const,
+            date: new Date(r.completed_at || r.created_at).toLocaleDateString('pt-BR'),
+            person: r.role || 'Professor',
             respondentName: r.respondent_name || '',
-            respondentRole: r.respondent_role || '',
-            respondentRelation: (r.answers as any)?.respondentRelation || '',
-            answers: (r.answers as any)?.responses || (r.answers as any) || {}, // Suporte a formatos antigos e novos
-            updates: r.updates as any[] || [],
-            pendingQuestions: (r.answers as any)?.pendingQuestions || [],
-            audioStorage: r.audio_urls as Record<string, string> || {},
-            transcriptStorage: (r.answers as any)?.transcriptStorage || {}
-          }));
+            respondentRole: r.role || '',
+            respondentRelation: '',
+            answers: r,
+            updates: [],
+            pendingQuestions: [],
+            audioStorage: {},
+            transcriptStorage: {}
+          }))
+        ];
+
         setInstrumentRecords(mappedRecords);
 
         // 2. Sincronizar o estado dos instrumentos no Hub principal
         setInstrumentsData(prevInstruments => 
           prevInstruments.map(inst => {
-            const relevantRecords = recordsData.filter(r => {
+            const relevantFromUnified = combinedRaw.filter(r => {
               if (inst.id === 'IF-SAHS') return r.type.startsWith('if_sahs');
               if (inst.id === 'ENTREVISTA') return r.type.startsWith('interview');
+              if (inst.id === 'IP-SAHS') return r.type === 'ip_sahs';
               if (inst.id === 'N-ILS') return r.type === 'n_ils';
               return r.type.toLowerCase() === inst.id.toLowerCase();
             });
 
-            if (relevantRecords.length === 0) return inst;
+            const relevantFromLegacy = inst.id === 'IP-SAHS' ? (ipSahsLegacyData || []) : [];
+            const allRelevantCount = relevantFromUnified.length + relevantFromLegacy.length;
 
-            // Pega o registro mais recente para determinar o status global do instrumento
-            const latest = relevantRecords[0];
-            const isCompleted = latest.status === 'ativo';
+            if (allRelevantCount === 0) return inst;
+
+            // Determinar o mais recente e o status
+            const latestUnified = relevantFromUnified[0];
+            const latestLegacy = relevantFromLegacy[0];
             
+            const dateUnified = latestUnified ? new Date(latestUnified.created_at).getTime() : 0;
+            const dateLegacy = latestLegacy ? new Date(latestLegacy.completed_at || latestLegacy.created_at).getTime() : 0;
+            
+            const latestPerson = dateUnified > dateLegacy ? (latestUnified?.respondent_name || 'Sistema') : (latestLegacy?.respondent_name || 'Professor');
+            const latestDateStr = dateUnified > dateLegacy 
+               ? new Date(latestUnified?.updated_at || latestUnified?.created_at).toLocaleDateString('pt-BR')
+               : new Date(latestLegacy?.completed_at || latestLegacy?.created_at).toLocaleDateString('pt-BR');
+
             return {
                ...inst,
-               versions: relevantRecords.length,
-               status: isCompleted ? 'completed' : 'ongoing',
-               completionPercentage: isCompleted ? 100 : 50,
-               lastUpdate: new Date(latest.updated_at || latest.created_at).toLocaleDateString('pt-BR'),
-               lastPerson: latest.respondent_name || 'Sistema'
+               versions: allRelevantCount,
+               status: 'completed',
+               completionPercentage: 100,
+               lastUpdate: latestDateStr,
+               lastPerson: latestPerson
             };
           })
         );
@@ -306,8 +372,9 @@ export default function CaseStudy() {
 
         if (error) throw error;
 
-        const newRecord: IfSahsRecord = {
+        const newRecord: InstrumentRecord = {
            id: data.id,
+           instrumentType: 'IF-SAHS',
            type: fillingType === 'atualizacao' ? 'atualizacao' : 'versao_inicial',
            status,
            date: new Date().toLocaleDateString('pt-BR'),
@@ -798,7 +865,7 @@ export default function CaseStudy() {
                            </div>
                            
                            <div className="space-y-8">
-                             {(selectedRecord?.instrumentType === 'IF-SAHS' ? IF_SAHS_QUESTIONS : INTERVIEW_QUESTIONS).map((section, sidx) => (
+                             {(selectedRecord?.instrumentType === 'IF-SAHS' ? IF_SAHS_QUESTIONS : (selectedRecord?.instrumentType === 'IP-SAHS' ? IP_SAHS_QUESTIONS : INTERVIEW_QUESTIONS)).map((section, sidx) => (
                                <div key={sidx} className="bg-white p-8 rounded-[32px] border border-slate-100 atmospheric-shadow space-y-6">
                                  <h3 className="text-lg font-black text-primary uppercase tracking-tight flex items-center gap-4">
                                    <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-sm shadow-sm shrink-0">
@@ -1089,7 +1156,7 @@ export default function CaseStudy() {
                           </div>
                        </div>
                       
-                      {((selectedRecord.instrumentType === 'IF-SAHS' ? IF_SAHS_QUESTIONS : INTERVIEW_QUESTIONS)).map(sec => (
+                      {((selectedRecord.instrumentType === 'IF-SAHS' ? IF_SAHS_QUESTIONS : (selectedRecord.instrumentType === 'IP-SAHS' ? IP_SAHS_QUESTIONS : INTERVIEW_QUESTIONS))).map(sec => (
                          <div key={sec.section} className="bg-white p-10 rounded-[32px] border border-slate-100 atmospheric-shadow space-y-8">
                             <h4 className="font-black text-primary uppercase tracking-tight">{sec.section}</h4>
                             <div className="space-y-6 pl-2 border-l-2 border-slate-100 ml-2">
@@ -1097,7 +1164,7 @@ export default function CaseStudy() {
                                   <div key={q.id} className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
                                      <p className="font-bold text-slate-700 text-sm mb-4 leading-relaxed">{q.text}</p>
                                      <div className="bg-white p-4 rounded-xl border border-slate-100">
-                                        <p className="text-slate-600 font-medium whitespace-pre-wrap">{selectedRecord.answers[q.id] || <span className="text-slate-400 italic">Preenchimento vazio neste campo.</span>}</p>
+
                                      </div>
                                   </div>
                                ))}

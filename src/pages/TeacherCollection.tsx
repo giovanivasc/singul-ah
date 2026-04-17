@@ -87,31 +87,34 @@ export default function TeacherCollection() {
 
     try {
       const { error: dbError } = await supabase
-        .from('ip_sahs_responses')
+        .from('instrument_records')
         .insert([{
           student_id: studentId,
+          type: 'ip_sahs',
+          status: 'ativo',
           respondent_name: respondentName,
-          role: role,
-          discipline: discipline,
-          behavioral_profile: scaleValues,
-          other_behaviors: answers['other_behaviors'] || '',
-          social_interaction_option: answers['social_interaction_option'] || '',
-          social_interaction_example: answers['social_interaction_example'] || '',
-          desafios_reacao_option: answers['desafios_reacao_option'] || '',
-          desafios_reacao_example: answers['desafios_reacao_example'] || '',
-          areas_of_interest: selectedInterests,
-          other_interests: otherInterests,
-          potentialities_response: answers['comp2'] || '',
-          pedagogical_difficulties_response: answers['diff1'] || '',
-          demotivation_signs_response: answers['diff2'] || '',
-          needs_pedagogical: answers['ped'] || '',
-          needs_behavioral: answers['comp'] || '',
-          needs_emotional: answers['emo'] || '',
-          adopted_strategy: hasStrategy === 'sim',
-          strategy_experience_response: answers['strategy'] || '',
-          suggestions: suggestions,
-          is_completed: true,
-          completed_at: new Date().toISOString()
+          respondent_role: role,
+          answers: {
+             discipline,
+             behavioral_profile: scaleValues,
+             other_behaviors: answers['other_behaviors'] || '',
+             social_interaction_option: answers['social_interaction_option'] || '',
+             social_interaction_example: answers['social_interaction_example'] || '',
+             desafios_reacao_option: answers['desafios_reacao_option'] || '',
+             desafios_reacao_example: answers['desafios_reacao_example'] || '',
+             areas_of_interest: selectedInterests,
+             other_interests: otherInterests,
+             potentialities_response: answers['comp2'] || '',
+             pedagogical_difficulties_response: answers['diff1'] || '',
+             demotivation_signs_response: answers['diff2'] || '',
+             needs_pedagogical: answers['ped'] || '',
+             needs_behavioral: answers['comp'] || '',
+             needs_emotional: answers['emo'] || '',
+             adopted_strategy: hasStrategy === 'sim',
+             strategy_experience_response: answers['strategy'] || '',
+             suggestions
+          },
+          updates: []
         }]);
 
       if (dbError) throw dbError;
