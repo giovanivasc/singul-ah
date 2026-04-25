@@ -1,19 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  User, Compass, CheckCircle2, 
-  Users, MessageSquare, Heart, 
-  Star, GraduationCap, Info
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import {
+  User, Compass, CheckCircle2,
+  Users, MessageSquare, Heart,
+  Star, GraduationCap, Info, ShieldCheck, ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MultimodalInput } from '../components/MultimodalInput';
 import { cn } from '../lib/utils';
+import SingulAhLogo, { SingulAhMark } from '../components/SingulAhLogo';
+import OTPVerify from '../components/OTPVerify';
+import { supabase } from '../lib/supabase';
 
 export default function FamilyCollection() {
   const { token } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState(false);
+  const [consentAccepted, setConsentAccepted] = useState(false);
+  const [consentChecked, setConsentChecked] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [maskedRecipient, setMaskedRecipient] = useState<string>('seu e-mail cadastrado');
+  const [sessionJwt, setSessionJwt] = useState<string | null>(null);
   
   // Mock data for student
   const studentName = "Lucas Oliveira";
@@ -53,6 +61,139 @@ export default function FamilyCollection() {
     );
   }
 
+  if (!consentAccepted) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center">
+        <header className="w-full bg-white flex flex-col items-center pt-8 pb-6 border-b border-slate-100">
+          <SingulAhMark size={40} className="mb-2" />
+          <h1 className="text-sm font-black text-on-surface-variant uppercase tracking-[0.2em]">
+            Consentimento · IF-SAHS
+          </h1>
+        </header>
+
+        <main className="w-full max-w-2xl px-6 py-10">
+          <div className="bg-white rounded-[32px] p-8 atmospheric-shadow border border-outline-variant/10">
+            <div className="flex items-start gap-4 mb-6">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <ShieldCheck size={24} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">
+                  Antes de começar
+                </p>
+                <h2 className="text-2xl font-black text-on-surface mt-1 tracking-tight">
+                  Termo de Consentimento Livre e Esclarecido
+                </h2>
+              </div>
+            </div>
+
+            <div className="space-y-4 text-sm text-on-surface-variant font-medium leading-relaxed">
+              <p>
+                Este questionário (Inventário Familiar — IF-SAHS) será respondido por você como{' '}
+                <strong>responsável legal</strong> do(a) estudante <strong>{studentName}</strong> e
+                integra a construção do Plano Educacional Individualizado (PEI) de Altas
+                Habilidades/Superdotação.
+              </p>
+              <p>
+                Seus dados e as informações do(a) estudante são tratados com base na{' '}
+                <strong>LGPD (Lei 13.709/2018)</strong> e no <strong>ECA Digital (Lei 15.211/2025)</strong>.
+                Um modelo de IA pode apoiar a análise dos relatos, mas <strong>
+                toda decisão pedagógica é humana</strong>.
+              </p>
+              <ul className="list-disc pl-6 space-y-1">
+                <li>Finalidade: elaborar o PEI do estudante.</li>
+                <li>Base legal: consentimento (Art. 7º I e Art. 14 §1º LGPD).</li>
+                <li>Direitos: acesso, correção, eliminação e revogação a qualquer momento.</li>
+                <li>Controlador/DPO: Giovani Vasconcelos (PPGEAA-UFPA).</li>
+              </ul>
+              <p className="text-xs">
+                Leia o conteúdo completo em:{' '}
+                <Link
+                  to="/termo-consentimento"
+                  target="_blank"
+                  className="text-primary font-bold hover:underline inline-flex items-center gap-1"
+                >
+                  Termo de Consentimento <ExternalLink size={12} />
+                </Link>
+                {' · '}
+                <Link
+                  to="/privacidade"
+                  target="_blank"
+                  className="text-primary font-bold hover:underline inline-flex items-center gap-1"
+                >
+                  Política de Privacidade <ExternalLink size={12} />
+                </Link>
+              </p>
+            </div>
+
+            <label className="mt-6 flex items-start gap-3 bg-primary/5 rounded-2xl p-4 border border-primary/10 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={consentChecked}
+                onChange={(e) => setConsentChecked(e.target.checked)}
+                className="mt-0.5 w-5 h-5 accent-primary shrink-0"
+              />
+              <span className="text-sm text-on-surface font-semibold leading-relaxed">
+                Li, entendi e concordo com o tratamento dos dados descritos acima. Declaro ser
+                responsável legal pelo(a) estudante e autorizo o preenchimento deste inventário.
+              </span>
+            </label>
+
+            <button
+              onClick={() => consentChecked && setConsentAccepted(true)}
+              disabled={!consentChecked}
+              className="mt-6 w-full bg-primary text-white font-black py-4 rounded-full atmospheric-shadow hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Registrar consentimento e continuar
+            </button>
+
+            <p className="mt-3 text-[11px] text-on-surface-variant/70 text-center">
+              O aceite fica registrado com data/hora e hash do texto. LGPD Art. 8º §6º.
+            </p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (!otpVerified) {
+    const handleSendOtp = async () => {
+      const { data, error } = await supabase.functions.invoke('otp-send', { body: { token } });
+      if (error) throw new Error(error.message);
+      if (!data?.ok) throw new Error(data?.error ?? 'Falha ao enviar código');
+      if (data.maskedRecipient) setMaskedRecipient(data.maskedRecipient);
+    };
+    const handleVerifyOtp = async (code: string): Promise<boolean> => {
+      const { data, error } = await supabase.functions.invoke('otp-verify', {
+        body: { token, code },
+      });
+      if (error) return false;
+      if (data?.ok && data.sessionJwt) {
+        setSessionJwt(data.sessionJwt);
+        return true;
+      }
+      return false;
+    };
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center">
+        <header className="w-full bg-white flex flex-col items-center pt-8 pb-6 border-b border-slate-100">
+          <SingulAhMark size={40} className="mb-2" />
+          <h1 className="text-sm font-black text-on-surface-variant uppercase tracking-[0.2em]">
+            Verificação de Identidade · IF-SAHS
+          </h1>
+        </header>
+        <main className="w-full flex items-center justify-center px-6 py-12">
+          <OTPVerify
+            maskedRecipient={maskedRecipient}
+            onSendCode={handleSendOtp}
+            onVerify={handleVerifyOtp}
+            onSuccess={() => setOtpVerified(true)}
+          />
+        </main>
+      </div>
+    );
+  }
+
   if (success) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
@@ -65,9 +206,8 @@ export default function FamilyCollection() {
         </motion.div>
         <h2 className="text-4xl font-black text-on-surface mb-4 tracking-tight">Enviado com Sucesso!</h2>
         <p className="text-on-surface-variant max-w-md opacity-70 mb-10 leading-relaxed font-medium">As respostas de <strong>{formData.parent_name}</strong> para o estudante <strong>{studentName}</strong> foram registradas.</p>
-        <div className="p-8 bg-white rounded-[32px] atmospheric-shadow max-w-sm w-full border border-outline-variant/5">
-           <Compass className="text-primary w-12 h-12 mb-4 mx-auto" />
-           <p className="text-xs font-black uppercase tracking-[0.3em] text-on-surface-variant">Singul-AH</p>
+        <div className="p-8 bg-white rounded-[32px] atmospheric-shadow max-w-sm w-full border border-outline-variant/5 flex flex-col items-center">
+           <SingulAhLogo variant="stacked" markSize={56} tagline />
         </div>
       </div>
     );
@@ -107,9 +247,7 @@ export default function FamilyCollection() {
     <div className="min-h-screen bg-slate-50 flex flex-col items-center">
       {/* External Header */}
       <header className="w-full bg-white flex flex-col items-center pt-8 pb-6 border-b border-slate-100 sticky top-0 z-50">
-         <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white mb-2 shadow-lg shadow-primary/20">
-            <Compass size={24} strokeWidth={2.5} />
-         </div>
+         <SingulAhMark size={40} className="mb-2" />
          <h1 className="text-sm font-black text-on-surface-variant uppercase tracking-[0.2em]">Inventário Familiar (IF-SAHS)</h1>
       </header>
       
@@ -237,8 +375,8 @@ export default function FamilyCollection() {
                  <span>Finalizar e Enviar Respostas</span>
                  <CheckCircle2 size={24} strokeWidth={3} />
               </button>
-              <div className="flex flex-col items-center mt-10 space-y-2 opacity-30">
-                 <Compass size={24} className="text-slate-400" />
+              <div className="flex flex-col items-center mt-10 gap-2 opacity-40">
+                 <SingulAhMark size={26} />
                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">
                     Singul-AH • Bússola Educacional
                  </p>

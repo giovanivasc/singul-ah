@@ -13,16 +13,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { TopBar } from '../components/Navigation';
 import { StudentPageHeader } from '../components/StudentPageHeader';
 import { supabase } from '../lib/supabase';
+import type { InstrumentAudioFile } from '../types/database';
 import { Student, InstrumentStatus as DBInstrumentStatus } from '../types/database';
 import { MultimodalInput } from '../components/MultimodalInput';
-import { cn, aggregateIPSahsData, buildIPSahsAIPrompt } from '../lib/utils';
+import { cn } from '../lib/utils';
 import { instruments, InstrumentStatus } from '../data/instruments';
 
 type ViewState = 'hub' | 'details' | 'filling' | 'consolidation' | 'versions';
 
 type InstrumentRecord = {
   id: string;
-  instrumentType: 'IF-SAHS' | 'ENTREVISTA' | 'IP-SAHS';
+  instrumentType: 'IF-SAHS' | 'ENTREVISTA' | 'IP-SAHS' | 'N-ILS';
   type: 'versao_inicial' | 'atualizacao';
   status: DBInstrumentStatus;
   date: string;
@@ -136,6 +137,12 @@ const IP_SAHS_QUESTIONS = [
        { id: 'strategy_experience_response', text: 'Estratégias já adotadas e eficácia' },
        { id: 'suggestions', text: 'Sugestões Geradas' }
     ]
+  },
+  {
+    section: 'Observações / Informações Adicionais',
+    questions: [
+       { id: 'additional_notes', text: 'Observações e informações adicionais' }
+    ]
   }
 ];
 
@@ -203,6 +210,7 @@ function AnswerRenderer({ value }: { value: any }) {
 
   // Objeto → verificar se é behavioral_profile (chaves numéricas com valores numéricos)
   if (typeof value === 'object') {
+    if (value === null) return <span className="text-slate-400 italic text-sm">Sem dados.</span>;
     const entries = Object.entries(value as Record<string, any>);
     if (entries.length === 0) {
       return <span className="text-slate-400 italic text-sm">Sem dados.</span>;
@@ -294,13 +302,34 @@ export default function CaseStudy() {
         .select('*')
         .eq('student_id', studentId)
         .order('created_at', { ascending: false });
-      
+
+      // Buscar áudios pendentes (não excluídos/mesclados) de todos os registros
+      const recordIds = (recordsData || []).map(r => r.id);
+      let audioFilesMap: Record<string, Record<string, InstrumentAudioFile>> = {};
+      if (recordIds.length > 0) {
+        const { data: audioData } = await supabase
+          .from('instrument_audio_files')
+          .select('*')
+          .in('record_id', recordIds)
+          .not('status', 'in', '("merged","deleted")');
+        (audioData || []).forEach((af: InstrumentAudioFile) => {
+          if (!audioFilesMap[af.record_id]) audioFilesMap[af.record_id] = {};
+          audioFilesMap[af.record_id][af.field_key] = af;
+        });
+      }
+
       const { data: ipSahsLegacyData } = await supabase
         .from('ip_sahs_responses')
         .select('*')
         .eq('student_id', studentId)
         .order('completed_at', { ascending: false });
-      
+
+      const { data: nilsData } = await supabase
+        .from('n_ils_responses')
+        .select('*')
+        .eq('student_id', studentId)
+        .order('updated_at', { ascending: false });
+
       if (recordsError) {
         console.error('[CaseStudy] Erro ao buscar registros:', recordsError.message);
       } else {
@@ -329,8 +358,16 @@ export default function CaseStudy() {
                })(),
               updates: r.updates as any[] || [],
               pendingQuestions: (r.answers as any)?.pendingQuestions || [],
-              audioStorage: r.audio_urls as Record<string, string> || {},
-              transcriptStorage: (r.answers as any)?.transcriptStorage || {}
+              audioStorage: Object.fromEntries(
+                Object.entries(audioFilesMap[r.id] || {})
+                  .filter(([, af]) => af.audio_data)
+                  .map(([key, af]) => [key, af.audio_data as string])
+              ),
+              transcriptStorage: Object.fromEntries(
+                Object.entries(audioFilesMap[r.id] || {})
+                  .filter(([, af]) => af.transcription)
+                  .map(([key, af]) => [key, af.transcription as string])
+              )
             })),
           ...(ipSahsLegacyData || []).map(r => ({
             id: r.id,
@@ -341,6 +378,22 @@ export default function CaseStudy() {
             person: r.role || 'Professor',
             respondentName: r.respondent_name || '',
             respondentRole: r.role || '',
+            respondentRelation: '',
+            answers: r,
+            updates: [],
+            pendingQuestions: [],
+            audioStorage: {},
+            transcriptStorage: {}
+          })),
+          ...(nilsData || []).map(r => ({
+            id: r.id,
+            instrumentType: 'N-ILS' as const,
+            type: 'versao_inicial' as const,
+            status: (r.status === 'archived' ? 'arquivado' : 'ativo') as DBInstrumentStatus,
+            date: new Date(r.updated_at || r.created_at).toLocaleDateString('pt-BR'),
+            person: 'Estudante',
+            respondentName: '',
+            respondentRole: 'Estudante',
             respondentRelation: '',
             answers: r,
             updates: [],
@@ -359,26 +412,36 @@ export default function CaseStudy() {
               if (inst.id === 'IF-SAHS') return r.type.startsWith('if_sahs');
               if (inst.id === 'ENTREVISTA') return r.type.startsWith('interview');
               if (inst.id === 'IP-SAHS') return r.type === 'ip_sahs';
-              if (inst.id === 'N-ILS') return r.type === 'n_ils';
               return r.type.toLowerCase() === inst.id.toLowerCase();
             });
 
             const relevantFromLegacy = inst.id === 'IP-SAHS' ? (ipSahsLegacyData || []) : [];
-            const allRelevantCount = relevantFromUnified.length + relevantFromLegacy.length;
+            const relevantFromNils = inst.id === 'N-ILS' ? (nilsData || []) : [];
+            const allRelevantCount = relevantFromUnified.length + relevantFromLegacy.length + relevantFromNils.length;
 
             if (allRelevantCount === 0) return inst;
 
             // Determinar o mais recente e o status
             const latestUnified = relevantFromUnified[0];
             const latestLegacy = relevantFromLegacy[0];
-            
+            const latestNils = relevantFromNils[0];
+
             const dateUnified = latestUnified ? new Date(latestUnified.created_at).getTime() : 0;
             const dateLegacy = latestLegacy ? new Date(latestLegacy.completed_at || latestLegacy.created_at).getTime() : 0;
-            
-            const latestPerson = dateUnified > dateLegacy ? (latestUnified?.respondent_name || 'Sistema') : (latestLegacy?.respondent_name || 'Professor');
-            const latestDateStr = dateUnified > dateLegacy 
-               ? new Date(latestUnified?.updated_at || latestUnified?.created_at).toLocaleDateString('pt-BR')
-               : new Date(latestLegacy?.completed_at || latestLegacy?.created_at).toLocaleDateString('pt-BR');
+            const dateNils = latestNils ? new Date(latestNils.updated_at || latestNils.created_at).getTime() : 0;
+
+            let latestPerson: string;
+            let latestDateStr: string;
+            if (dateNils >= dateUnified && dateNils >= dateLegacy) {
+              latestPerson = 'Estudante';
+              latestDateStr = new Date(latestNils.updated_at || latestNils.created_at).toLocaleDateString('pt-BR');
+            } else if (dateUnified >= dateLegacy) {
+              latestPerson = latestUnified?.respondent_name || 'Sistema';
+              latestDateStr = new Date(latestUnified?.updated_at || latestUnified?.created_at).toLocaleDateString('pt-BR');
+            } else {
+              latestPerson = latestLegacy?.respondent_name || 'Professor';
+              latestDateStr = new Date(latestLegacy?.completed_at || latestLegacy?.created_at).toLocaleDateString('pt-BR');
+            }
 
             return {
                ...inst,
@@ -422,6 +485,34 @@ export default function CaseStudy() {
     if (action === 'view') setView('versions');
   };
 
+  // Persiste áudios pendentes na tabela dedicada (upsert por record_id + field_key)
+  const upsertAudioFiles = async (recordId: string, audioStorage: Record<string, string>, transcripts: Record<string, string>) => {
+    const allKeys = new Set([...Object.keys(audioStorage), ...Object.keys(transcripts)]);
+    if (allKeys.size === 0) return;
+
+    const rows = Array.from(allKeys).map(fieldKey => ({
+      record_id: recordId,
+      field_key: fieldKey,
+      audio_data: audioStorage[fieldKey] || null,
+      transcription: transcripts[fieldKey] || null,
+      status: audioStorage[fieldKey] ? 'pending' : 'transcribed',
+    }));
+
+    await supabase
+      .from('instrument_audio_files')
+      .upsert(rows, { onConflict: 'record_id,field_key' });
+
+    // Marcar como 'deleted' os áudios que foram aprovados (sem audio_data e sem transcrição pendente)
+    const removedKeys = Object.keys(currentAudioStorage).filter(k => !audioStorage[k]);
+    if (removedKeys.length > 0) {
+      await supabase
+        .from('instrument_audio_files')
+        .update({ status: 'merged', audio_data: null, reviewed_at: new Date().toISOString() })
+        .eq('record_id', recordId)
+        .in('field_key', removedKeys);
+    }
+  };
+
   const handleSave = async (status: DBInstrumentStatus = 'ativo') => {
     if (!activeInstrumentId || !studentId) return;
 
@@ -430,7 +521,6 @@ export default function CaseStudy() {
         responses: ifSahsAnswers,
         respondentRelation: respondentRelation,
         pendingQuestions: currentPendingQuestions,
-        transcriptStorage: pendingTranscripts
       };
 
       try {
@@ -442,13 +532,14 @@ export default function CaseStudy() {
               respondent_name: respondentName,
               respondent_role: respondentRole,
               answers: answersPayload,
-              audio_urls: currentAudioStorage,
               updated_at: new Date().toISOString()
             })
             .eq('id', selectedRecord.id);
 
           if (error) throw error;
-          
+
+          await upsertAudioFiles(selectedRecord.id, currentAudioStorage, pendingTranscripts);
+
           setInstrumentRecords(prev => prev.map(r => r.id === selectedRecord.id ? {
             ...r,
             status,
@@ -460,7 +551,7 @@ export default function CaseStudy() {
             audioStorage: currentAudioStorage,
             transcriptStorage: pendingTranscripts
           } : r));
-          
+
           alert(status === 'rascunho' ? 'Rascunho atualizado no banco!' : 'IF-SAHS atualizado com sucesso!');
           setView('versions');
           return;
@@ -475,13 +566,14 @@ export default function CaseStudy() {
             respondent_name: respondentName,
             respondent_role: respondentRole,
             answers: answersPayload,
-            audio_urls: currentAudioStorage,
             updates: []
           })
           .select()
           .single();
 
         if (error) throw error;
+
+        await upsertAudioFiles(data.id, currentAudioStorage, pendingTranscripts);
 
         const newRecord: InstrumentRecord = {
            id: data.id,
@@ -881,33 +973,8 @@ export default function CaseStudy() {
                   )}
 
                   {(() => {
-                    if (activeInstrumentId === 'IF-SAHS' || activeInstrumentId === 'ENTREVISTA') return null;
-                     if (activeInstrumentId === 'IP-SAHS') {
-                       const ipCount = instrumentRecords.filter(r => r.instrumentType === 'IP-SAHS').length;
-                       return (
-                         <button
-                           onClick={async () => {
-                             const ipSahsRecs = instrumentRecords.filter(r => r.instrumentType === 'IP-SAHS');
-                             if (ipSahsRecs.length === 0) { alert('Nenhum preenchimento encontrado.'); return; }
-                             const aggregated = aggregateIPSahsData(ipSahsRecs.map(r => ({
-                               respondentName: r.respondentName,
-                               respondentRole: r.respondentRole,
-                               answers: r.answers,
-                             })));
-                             const prompt = buildIPSahsAIPrompt(student?.full_name || 'Aluno', aggregated);
-                             console.log('[AI Gateway] Prompt IP-SAHS:\n', prompt);
-                             alert(`✅ Dados de ${ipCount} professor(es) agregados! Veja o console para o prompt estruturado.`);
-                           }}
-                           className="p-6 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all border-2 bg-white border-primary/20 text-primary hover:bg-primary/5 cursor-pointer"
-                         >
-                           <Sparkles size={28} />
-                           <span className="font-black text-xs uppercase tracking-widest">Consolidar Dados (IA)</span>
-                           <span className="text-[9px] font-bold text-slate-400 text-center px-2">
-                             Agrega visões de {ipCount} professor(es)
-                           </span>
-                         </button>
-                       );
-                     }
+                    // IP-SAHS: consolidação foi movida para a Análise de Convergência.
+                    if (activeInstrumentId === 'IF-SAHS' || activeInstrumentId === 'ENTREVISTA' || activeInstrumentId === 'IP-SAHS') return null;
                     const hasDrafts = instrumentRecords.some(r => r.status === 'rascunho');
                     const isConsolidationDisabled = (activeInstrument.versions === 0 && instrumentRecords.length === 0) || hasDrafts;
                     return (
@@ -928,9 +995,9 @@ export default function CaseStudy() {
                     )
                   })()}
 
-                  {activeInstrumentId !== 'IF-SAHS' && activeInstrumentId !== 'ENTREVISTA' && (
+                  {activeInstrumentId !== 'IF-SAHS' && activeInstrumentId !== 'ENTREVISTA' && activeInstrumentId !== 'IP-SAHS' && (
                   <div className="flex gap-4">
-                     <button 
+                     <button
                         disabled={activeInstrument.versions === 0 && activeInstrument.status === 'pending'}
                         onClick={handleArchive}
                         className={cn(

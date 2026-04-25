@@ -38,6 +38,7 @@ export default function TeacherCollection() {
     { id: '1', component: '', content: '', methodology: '' }
   ]);
   const [hasStrategy, setHasStrategy] = useState<'sim' | 'nao' | ''>('');
+  const [additionalNotes, setAdditionalNotes] = useState('');
 
   const scaleItems = [
     "Tem facilidade para aprender",
@@ -112,7 +113,8 @@ export default function TeacherCollection() {
              needs_emotional: answers['emo'] || '',
              adopted_strategy: hasStrategy === 'sim',
              strategy_experience_response: answers['strategy'] || '',
-             suggestions
+             suggestions,
+             additional_notes: additionalNotes || ''
           },
           updates: []
         }]);
@@ -522,11 +524,10 @@ export default function TeacherCollection() {
                                </div>
                                <div className="col-span-full space-y-2">
                                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Metodologia</label>
-                                  <input 
-                                    type="text" 
+                                  <MultimodalInput
                                     value={s.methodology}
-                                    onChange={(e) => updateSuggestion(s.id, 'methodology', e.target.value)}
-                                    className="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 font-bold text-sm outline-none focus:border-primary" 
+                                    onChange={(val) => updateSuggestion(s.id, 'methodology', val)}
+                                    placeholder="Descreva a metodologia sugerida..."
                                   />
                                </div>
                             </div>
@@ -534,6 +535,24 @@ export default function TeacherCollection() {
                        ))}
                     </div>
                  </div>
+              </div>
+           </section>
+
+           {/* Observações Adicionais */}
+           <section className="bg-white rounded-[40px] p-10 atmospheric-shadow border border-slate-100">
+              <div className="flex items-center gap-4 mb-10">
+                 <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center">
+                    <Sparkles size={24} />
+                 </div>
+                 <h2 className="text-2xl font-black text-on-surface">Observações / Informações Adicionais</h2>
+              </div>
+              <div className="space-y-4">
+                 <p className="text-sm font-medium text-on-surface-variant opacity-70">Há algo relevante sobre este aluno que não foi abordado nas perguntas anteriores? Utilize este espaço para registrar qualquer informação que considere importante.</p>
+                 <MultimodalInput
+                   value={additionalNotes}
+                   onChange={setAdditionalNotes}
+                   placeholder="Grave ou digite suas observações adicionais..."
+                 />
               </div>
            </section>
 

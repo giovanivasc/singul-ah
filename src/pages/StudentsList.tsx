@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, MoreVertical, X, Loader2, Camera, User, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, MoreVertical, X, Loader2, Camera, User, Pencil, Trash2, ShieldCheck, AlertTriangle, Mail, CheckCircle2, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TopBar } from '../components/Navigation';
 import { supabase } from '../lib/supabase';
@@ -8,15 +8,28 @@ import { useAuth } from '../contexts/AuthContext';
 import { Student } from '../types/database';
 import { cn } from '../lib/utils';
 
+type ParentalLinkSummary = {
+  id: string;
+  responsavel_email: string | null;
+  verificado: boolean;
+  verification_sent_at: string | null;
+};
+
 export default function StudentsList() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
+  const [parentalLinks, setParentalLinks] = useState<Record<string, ParentalLinkSummary>>({});
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resendingLinkId, setResendingLinkId] = useState<string | null>(null);
+  const [resendFeedback, setResendFeedback] = useState<{
+    kind: 'success' | 'error';
+    message: string;
+  } | null>(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -24,6 +37,10 @@ export default function StudentsList() {
     date_of_birth: '',
     gender: '',
     guardian_name: '',
+    guardian_email: '',
+    guardian_doc: '',
+    guardian_vinculo: '' as '' | 'mae' | 'pai' | 'responsavel_legal' | 'tutor' | 'outro',
+    guardian_vinculo_outro: '',
     phone: '',
     school: 'SEMED Castanhal',
     grade: '',
@@ -53,12 +70,64 @@ export default function StudentsList() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      
-      setStudents(data || []);
+
+      const list = data || [];
+      setStudents(list);
+
+      // Carrega vínculos parentais principais e ativos para mostrar badge/edição.
+      const ids = list.map((s) => s.id);
+      if (ids.length > 0) {
+        const { data: links } = await supabase
+          .from('parental_links')
+          .select('id, student_id, responsavel_email, verificado, verification_sent_at')
+          .in('student_id', ids)
+          .eq('principal', true)
+          .is('revoked_at', null);
+        const map: Record<string, ParentalLinkSummary> = {};
+        (links || []).forEach((l: any) => {
+          map[l.student_id] = {
+            id: l.id,
+            responsavel_email: l.responsavel_email,
+            verificado: l.verificado,
+            verification_sent_at: l.verification_sent_at,
+          };
+        });
+        setParentalLinks(map);
+      } else {
+        setParentalLinks({});
+      }
     } catch (err: any) {
       console.error('Erro ao buscar estudantes:', err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async (parentalLinkId: string) => {
+    setResendingLinkId(parentalLinkId);
+    setResendFeedback(null);
+    try {
+      const { data, error: invokeErr } = await supabase.functions.invoke(
+        'parental-verify-send',
+        { body: { parentalLinkId } },
+      );
+      if (invokeErr) throw new Error(invokeErr.message);
+      if (!data?.ok) {
+        throw new Error(data?.error ?? 'Falha ao reenviar verificação');
+      }
+      setResendFeedback({
+        kind: 'success',
+        message: `Verificação reenviada para ${data.maskedRecipient ?? 'o e-mail cadastrado'}.`,
+      });
+      // Recarrega para refletir o novo `verification_sent_at`.
+      void fetchStudents();
+    } catch (err: any) {
+      setResendFeedback({
+        kind: 'error',
+        message: err?.message ?? 'Erro ao reenviar verificação.',
+      });
+    } finally {
+      setResendingLinkId(null);
     }
   };
 
@@ -75,6 +144,21 @@ export default function StudentsList() {
 
     try {
       if (!user) throw new Error('Usuário não autenticado');
+
+      const age = calculateAge(formData.date_of_birth);
+      const requiresParental = age > 0 && age <= 16;
+
+      // Validação LGPD Art. 14 §1º / ECA Digital Arts. 17 e 24
+      if (requiresParental && !editingStudentId) {
+        if (!formData.guardian_name.trim())
+          throw new Error('Nome do responsável é obrigatório para estudantes com idade ≤ 16 anos (ECA Digital Art. 24).');
+        if (!formData.guardian_email.trim())
+          throw new Error('E-mail do responsável é obrigatório para vínculo parental.');
+        if (!formData.guardian_vinculo)
+          throw new Error('Selecione o tipo de vínculo do responsável.');
+        if (formData.guardian_vinculo === 'outro' && !formData.guardian_vinculo_outro.trim())
+          throw new Error('Especifique o vínculo quando selecionar "Outro".');
+      }
 
       const basicData = {
          full_name: formData.full_name,
@@ -101,17 +185,66 @@ export default function StudentsList() {
 
         if (updateError) throw updateError;
       } else {
-        const { error: insertError } = await supabase
+        const { data: inserted, error: insertError } = await supabase
           .from('students')
-          .insert([{ ...basicData, status: 'coleta_pendente' }]);
+          .insert([{ ...basicData, status: 'coleta_pendente' }])
+          .select('id')
+          .single();
 
         if (insertError) throw insertError;
+
+        // Cria vínculo parental obrigatoriamente para ≤16 anos
+        // (LGPD Art. 14 §1º; ECA Digital Arts. 17, 18 e 24)
+        if (requiresParental && inserted?.id) {
+          const { data: linkInserted, error: linkError } = await supabase
+            .from('parental_links')
+            .insert({
+              student_id: inserted.id,
+              responsavel_nome: formData.guardian_name,
+              responsavel_email: formData.guardian_email || null,
+              responsavel_doc: formData.guardian_doc || null,
+              vinculo: formData.guardian_vinculo,
+              vinculo_outro: formData.guardian_vinculo === 'outro' ? formData.guardian_vinculo_outro : null,
+              principal: true,
+              verificado: false,
+              // controles default já aplicados pelo jsonb_build_object da migração 005
+            })
+            .select('id')
+            .single();
+          if (linkError) {
+            // Rollback: remove o aluno recém-criado para evitar estudante ≤16 sem vínculo
+            await supabase.from('students').delete().eq('id', inserted.id);
+            throw new Error(
+              'Falha ao registrar vínculo parental: ' + linkError.message +
+              ' — cadastro do aluno revertido.'
+            );
+          }
+
+          // Dispara e-mail de verificação ativa do responsável (LGPD Art. 14 §5º;
+          // ECA Digital Art. 14). Falha aqui não reverte o cadastro — o vínculo
+          // pode ter o e-mail reenviado posteriormente pelo docente.
+          if (linkInserted?.id && formData.guardian_email) {
+            const { error: sendErr } = await supabase.functions.invoke(
+              'parental-verify-send',
+              { body: { parentalLinkId: linkInserted.id } },
+            );
+            if (sendErr) {
+              console.warn(
+                '[StudentsList] Falha ao enviar e-mail de verificação parental:',
+                sendErr.message,
+              );
+            }
+          }
+        }
       }
 
       setIsModalOpen(false);
       setEditingStudentId(null);
       setFormData({
-        full_name: '', date_of_birth: '', gender: '', guardian_name: '', phone: '',
+        full_name: '', date_of_birth: '', gender: '',
+        guardian_name: '', guardian_email: '', guardian_doc: '',
+        guardian_vinculo: '', guardian_vinculo_outro: '',
+        phone: '',
         school: 'SEMED Castanhal', grade: '', class_name: '', shift: '',
         regent_teacher: '', aee_teacher: '', avatar_url: '', exceptionalities: []
       });
@@ -168,11 +301,15 @@ export default function StudentsList() {
             <h2 className="text-3xl font-black text-on-surface tracking-tight">Gerenciamento de Alunos</h2>
             <p className="text-on-surface-variant text-sm font-medium opacity-60">Visualize e gerencie o acompanhamento educacional de seus alunos.</p>
           </div>
-          <button 
+          <button
             onClick={() => {
               setEditingStudentId(null);
+              setResendFeedback(null);
               setFormData({
-                full_name: '', date_of_birth: '', gender: '', guardian_name: '', phone: '',
+                full_name: '', date_of_birth: '', gender: '',
+                guardian_name: '', guardian_email: '', guardian_doc: '',
+                guardian_vinculo: '', guardian_vinculo_outro: '',
+                phone: '',
                 school: 'SEMED Castanhal', grade: '', class_name: '', shift: '',
                 regent_teacher: '', aee_teacher: '', avatar_url: '', exceptionalities: []
               });
@@ -193,19 +330,31 @@ export default function StudentsList() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {students.length > 0 ? (
               students.map((student, index) => (
-                  <StudentCard 
-                  key={student.id} 
-                  student={student} 
-                  index={index} 
+                  <StudentCard
+                  key={student.id}
+                  student={student}
+                  index={index}
                   age={calculateAge(student.date_of_birth)}
+                  parentalStatus={(() => {
+                    const age = calculateAge(student.date_of_birth);
+                    if (age <= 0 || age > 16) return 'na' as const;
+                    const link = parentalLinks[student.id];
+                    if (!link) return 'missing' as const;
+                    return link.verificado ? ('verified' as const) : ('pending' as const);
+                  })()}
                   onClick={() => navigate(`/students/${student.id}`)}
                   onEdit={() => {
                     setEditingStudentId(student.id);
+                    setResendFeedback(null);
                     setFormData({
                       full_name: student.full_name || '',
                       date_of_birth: student.date_of_birth || '',
                       gender: student.gender || '',
                       guardian_name: student.guardian_name || '',
+                      guardian_email: '',
+                      guardian_doc: '',
+                      guardian_vinculo: '',
+                      guardian_vinculo_outro: '',
                       phone: student.phone || '',
                       school: student.school || '',
                       grade: student.grade || '',
@@ -349,7 +498,7 @@ export default function StudentsList() {
                           </div>
                           <div className="space-y-1">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Telefone de Contato</label>
-                            <input 
+                            <input
                               type="text" placeholder="(DD) 90000-0000"
                               className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 font-medium"
                               value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})}
@@ -357,6 +506,195 @@ export default function StudentsList() {
                           </div>
                        </div>
                     </div>
+
+                    {/* VÍNCULO PARENTAL — obrigatório ≤ 16 (LGPD Art. 14 §1º; ECA Digital Arts. 17, 18 e 24) */}
+                    {(() => {
+                      const age = calculateAge(formData.date_of_birth);
+                      const requiresParental = age > 0 && age <= 16;
+                      if (!requiresParental || editingStudentId) return null;
+                      return (
+                        <div className="space-y-4 bg-primary/5 border border-primary/15 rounded-2xl p-5">
+                          <div className="flex items-start gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                              <ShieldCheck size={18} />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-black uppercase text-primary tracking-widest">
+                                Vínculo Parental
+                              </h4>
+                              <p className="text-xs text-on-surface-variant font-semibold mt-1">
+                                Estudante com {age} anos — ECA Digital Art. 24 exige vinculação do responsável
+                                legal. Estes dados ficam somente acessíveis ao docente e ao próprio responsável.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid md:grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">
+                                E-mail do Responsável *
+                              </label>
+                              <input
+                                required type="email" placeholder="responsavel@email.com"
+                                className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 font-medium"
+                                value={formData.guardian_email}
+                                onChange={e => setFormData({ ...formData, guardian_email: e.target.value })}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">
+                                CPF do Responsável (opcional)
+                              </label>
+                              <input
+                                type="text" placeholder="000.000.000-00"
+                                className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 font-medium"
+                                value={formData.guardian_doc}
+                                onChange={e => setFormData({ ...formData, guardian_doc: e.target.value })}
+                              />
+                            </div>
+                            <div className="space-y-1 md:col-span-2">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">
+                                Tipo de Vínculo *
+                              </label>
+                              <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                                {(['mae','pai','responsavel_legal','tutor','outro'] as const).map(v => (
+                                  <button
+                                    key={v}
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, guardian_vinculo: v })}
+                                    className={cn(
+                                      'py-2 px-3 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all border',
+                                      formData.guardian_vinculo === v
+                                        ? 'bg-primary text-white border-primary'
+                                        : 'bg-white text-slate-500 border-slate-200 hover:border-primary/30'
+                                    )}
+                                  >
+                                    {v === 'mae' ? 'Mãe' : v === 'pai' ? 'Pai' : v === 'responsavel_legal' ? 'Resp. legal' : v === 'tutor' ? 'Tutor' : 'Outro'}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            {formData.guardian_vinculo === 'outro' && (
+                              <div className="space-y-1 md:col-span-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">
+                                  Especifique o vínculo
+                                </label>
+                                <input
+                                  type="text" placeholder="Ex.: Avó, Tia, Padrinho..."
+                                  className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 font-medium"
+                                  value={formData.guardian_vinculo_outro}
+                                  onChange={e => setFormData({ ...formData, guardian_vinculo_outro: e.target.value })}
+                                />
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex items-start gap-2 text-[11px] text-on-surface-variant/80 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                            <AlertTriangle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+                            <span>
+                              Após salvar, o sistema enviará um e-mail ao responsável com link de
+                              confirmação (LGPD Art. 14 §5º). O vínculo permanece com status
+                              <strong> não verificado</strong> até que ele clique no link. Controles
+                              de supervisão ficam disponíveis apenas após a confirmação.
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* VERIFICAÇÃO PARENTAL — modo edição */}
+                    {(() => {
+                      if (!editingStudentId) return null;
+                      const link = parentalLinks[editingStudentId];
+                      if (!link) return null;
+                      const verified = link.verificado;
+                      const lastSent = link.verification_sent_at
+                        ? new Date(link.verification_sent_at)
+                        : null;
+                      return (
+                        <div
+                          className={cn(
+                            'space-y-3 rounded-2xl p-5 border',
+                            verified
+                              ? 'bg-green-50 border-green-200'
+                              : 'bg-amber-50 border-amber-200',
+                          )}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div
+                              className={cn(
+                                'w-9 h-9 rounded-xl flex items-center justify-center shrink-0',
+                                verified
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-amber-100 text-amber-700',
+                              )}
+                            >
+                              {verified ? <CheckCircle2 size={18} /> : <Clock size={18} />}
+                            </div>
+                            <div className="flex-1">
+                              <h4
+                                className={cn(
+                                  'text-sm font-black uppercase tracking-widest',
+                                  verified ? 'text-green-700' : 'text-amber-700',
+                                )}
+                              >
+                                Verificação Parental
+                              </h4>
+                              <p className="text-xs text-on-surface-variant font-semibold mt-1 leading-relaxed">
+                                {verified ? (
+                                  <>
+                                    Vínculo <strong>confirmado</strong> pelo responsável. Os
+                                    controles de supervisão parental estão habilitados.
+                                  </>
+                                ) : link.responsavel_email ? (
+                                  <>
+                                    Aguardando confirmação do responsável em{' '}
+                                    <strong>{link.responsavel_email}</strong>.
+                                    {lastSent ? (
+                                      <>
+                                        {' '}Último envio:{' '}
+                                        {lastSent.toLocaleString('pt-BR')}.
+                                      </>
+                                    ) : null}
+                                  </>
+                                ) : (
+                                  <>Nenhum e-mail de responsável cadastrado para este vínculo.</>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+
+                          {!verified && link.responsavel_email && (
+                            <button
+                              type="button"
+                              disabled={resendingLinkId === link.id}
+                              onClick={() => handleResendVerification(link.id)}
+                              className="w-full md:w-auto inline-flex items-center justify-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-black uppercase tracking-wider text-xs hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {resendingLinkId === link.id ? (
+                                <Loader2 size={14} className="animate-spin" />
+                              ) : (
+                                <Mail size={14} />
+                              )}
+                              Reenviar e-mail de verificação
+                            </button>
+                          )}
+
+                          {resendFeedback && (
+                            <div
+                              className={cn(
+                                'text-xs font-bold px-3 py-2 rounded-lg',
+                                resendFeedback.kind === 'success'
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-red-100 text-red-700',
+                              )}
+                            >
+                              {resendFeedback.message}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* ESCOLARIZAÇÃO SECTION */}
                     <div className="space-y-4">
@@ -494,12 +832,13 @@ interface StudentCardProps {
   student: Student;
   index: number;
   age: number;
+  parentalStatus: 'verified' | 'pending' | 'missing' | 'na';
   onClick: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }
 
-const StudentCard: React.FC<StudentCardProps> = ({ student, index, age, onClick, onEdit, onDelete }) => {
+const StudentCard: React.FC<StudentCardProps> = ({ student, index, age, parentalStatus, onClick, onEdit, onDelete }) => {
   const statusLabels: Record<string, string> = {
     coleta_pendente: 'Coleta Pendente',
     coleta_concluida: 'Coleta Concluída',
@@ -554,10 +893,40 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, index, age, onClick,
           </div>
         </div>
         <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black/60 to-transparent" />
-        <div className="absolute bottom-4 left-6">
+        <div className="absolute bottom-4 left-6 flex flex-wrap items-center gap-1.5">
           <span className="text-[10px] font-black text-white/90 uppercase tracking-widest bg-primary px-2 py-0.5 rounded-md shadow-lg">
             {statusLabels[student.status] || student.status}
           </span>
+          {parentalStatus !== 'na' && (
+            <span
+              title={
+                parentalStatus === 'verified'
+                  ? 'Vínculo parental confirmado pelo responsável'
+                  : parentalStatus === 'pending'
+                  ? 'Aguardando confirmação do responsável por e-mail'
+                  : 'Vínculo parental ausente — cadastre um responsável'
+              }
+              className={cn(
+                'text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md shadow-lg flex items-center gap-1',
+                parentalStatus === 'verified' && 'bg-green-500 text-white',
+                parentalStatus === 'pending' && 'bg-amber-500 text-white',
+                parentalStatus === 'missing' && 'bg-red-500 text-white',
+              )}
+            >
+              {parentalStatus === 'verified' ? (
+                <CheckCircle2 size={10} strokeWidth={3} />
+              ) : parentalStatus === 'pending' ? (
+                <Clock size={10} strokeWidth={3} />
+              ) : (
+                <AlertTriangle size={10} strokeWidth={3} />
+              )}
+              {parentalStatus === 'verified'
+                ? 'Resp. Verif.'
+                : parentalStatus === 'pending'
+                ? 'Aguarda Resp.'
+                : 'Sem Resp.'}
+            </span>
+          )}
         </div>
       </div>
       <div className="p-6">

@@ -1,59 +1,297 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
+import DOMPurify from 'dompurify';
+import {
   Brain, Sparkles, Database, Loader2, ArrowRight, Activity,
   Users, ShieldCheck, Plus, Highlighter, X, CheckCircle2, Info,
-  Maximize2, Trash2, Archive, RefreshCcw, ChevronLeft, Check
+  Maximize2, Trash2, Archive, RefreshCcw, ChevronLeft, Check,
+  ClipboardList, MessageSquare
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TopBar } from '../components/Navigation';
 import { StudentPageHeader } from '../components/StudentPageHeader';
 import { useNavigate, useParams } from 'react-router-dom';
 import { cn } from '../lib/utils';
+import { supabase } from '../lib/supabase';
+import IPSahsReader from '../components/IPSahsReader';
+import IPSahsAggregatedView from '../components/IPSahsAggregatedView';
+import { aggregateIPSahs } from '../lib/ipsahs/aggregator';
+import IABanner from '../components/IABanner';
 
-export const SYSTEM_PROMPT_ESTUDO_CASO = `Você é um especialista em Educação Especial, Altas Habilidades/Superdotação (AH/SD) e Legislação Brasileira de Inclusão. Sua tarefa é analisar relatos brutos de diferentes fontes (Família, Prof. Regente, Prof. AEE, Estudante) e gerar a síntese do Estudo de Caso. 
+export const SYSTEM_PROMPT_ESTUDO_CASO = `Você é um especialista em Educação Especial, Altas Habilidades/Superdotação (AH/SD) e Legislação Brasileira de Inclusão (LBI – Lei 13.146/2015) e Decreto 12.686/2025. Sua tarefa é analisar TODOS os relatos brutos disponíveis (IF-SAHS, IP-SAHS individuais e consolidação, Entrevista e análise automática N-ILS) juntamente com os fichamentos prévios feitos pelo professor e gerar uma síntese rigorosa do Estudo de Caso do estudante.
+
 REGRAS VITAIS:
-1. Não force convergência se os relatos divergirem por causa do ambiente (ex: comportamento na sala regular vs. AEE). Trate isso como 'especificidade ambiental'.
-2. Classifique as barreiras ESTRITAMENTE segundo a LBI: Urbanísticas, Arquitetônicas, Transportes, Comunicações/Informação, Atitudinais e Tecnológicas.
-3. Retorne APENAS um objeto JSON válido. Em vez de textos corridos, retorne ARRAYS de strings curtas e objetivas:
+1. Baseie-se SOMENTE nos dados fornecidos. Não invente informações que não estejam explicitamente nos relatos ou fichamentos.
+2. Não force convergência quando houver divergência legítima entre ambientes (ex.: sala regular vs. AEE, casa vs. escola). Trate isso como "especificidade ambiental" e registre o contexto entre parênteses no item.
+3. Os fichamentos do professor são pistas ALTAMENTE RELEVANTES: valide-os contra os relatos e incorpore os que se confirmarem. Mantenha a essência do que o professor marcou.
+4. Classifique barreiras ESTRITAMENTE segundo a LBI (use um desses rótulos no início do item quando aplicável): "Barreira Urbanística:", "Barreira Arquitetônica:", "Barreira nos Transportes:", "Barreira de Comunicação/Informação:", "Barreira Atitudinal:", "Barreira Tecnológica:". Demandas pedagógicas que não sejam barreiras LBI devem iniciar com "Demanda Pedagógica:".
+5. Estratégias devem ser CONCRETAS, acionáveis pelo professor e alinhadas às barreiras mapeadas.
+6. Use frases curtas, objetivas e em português. Evite jargão desnecessário.
+7. Retorne APENAS um objeto JSON válido, SEM markdown, sem cercas de código, sem comentários. Estrutura obrigatória:
+
 {
-  "eixo_I": ["Desmotivação nas aulas expositivas.", "Barreira atitudinal por parte dos colegas."],
-  "eixo_II": ["Barreira de Comunicação: instruções longas.", "Barreira Atitudinal: rigidez de método."],
-  "eixo_III": ["Vocabulário avançado para idade.", "Hiperfoco em Astronomia."],
-  "eixo_IV": ["Uso de fones abafadores de ruído.", "Fragmentação de tarefas."]
-}`;
+  "currentContext": [
+    { "text": "Item curto e objetivo.", "category": "acadêmico" }
+  ],
+  "learningStyle": [
+    { "text": "Item curto e objetivo." }
+  ],
+  "potentialsInterests": [
+    { "text": "Item curto e objetivo." }
+  ],
+  "demandsBarriers": [
+    { "text": "Barreira Atitudinal: rigidez metodológica de alguns docentes." }
+  ],
+  "accessibilityStrategies": [
+    { "text": "Fragmentação de tarefas com checklist visual.", "category": "instrucional" }
+  ]
+}
+
+Valores permitidos para "category" em currentContext: acadêmico, cognitivo, linguístico, social, emocional, psicológico, físico.
+Valores permitidos para "category" em accessibilityStrategies: instrucional, ambiental, avaliação.
+learningStyle, potentialsInterests e demandsBarriers NÃO devem conter o campo "category".`;
+
+function buildMappingPrompt(params: {
+  studentName: string;
+  sources: DataSource[];
+  snippets: HighlightSnippet[];
+}): string {
+  const { studentName, sources, snippets } = params;
+
+  const sectionFor = (kind: InstrumentKind): string => {
+    const src = sources.find(s => s.id === kind);
+    if (!src || src.versions.length === 0) return `### ${kind.toUpperCase()}\n(Sem preenchimentos registrados)\n`;
+    const blocks = src.versions.map((v, idx) => {
+      const header = v.isConsolidated
+        ? `Versão Consolidada IA (${new Date(v.dateISO).toLocaleDateString('pt-BR')})`
+        : `Versão ${idx + 1} — ${v.label}`;
+      return `--- ${header} ---\n${v.content || '(sem conteúdo)'}`;
+    }).join('\n\n');
+    return `### ${src.title}\n${blocks}\n`;
+  };
+
+  const snippetBlock = snippets.length === 0
+    ? '(Nenhum fichamento registrado pelo professor.)'
+    : snippets
+        .filter(s => (s.status || 'ativo') === 'ativo')
+        .map(s => `- [${s.category.toUpperCase()}] "${s.text}" (fonte: ${s.instrument_source})`)
+        .join('\n') || '(Nenhum fichamento ativo.)';
+
+  return `${SYSTEM_PROMPT_ESTUDO_CASO}
+
+=====================================================
+ESTUDANTE: ${studentName}
+=====================================================
+
+DADOS DOS INSTRUMENTOS (relatos brutos e análises automáticas):
+
+${sectionFor('if-sahs')}
+${sectionFor('ip-sahs')}
+${sectionFor('entrevista')}
+${sectionFor('n-ils')}
+
+=====================================================
+FICHAMENTOS PRÉVIOS DO PROFESSOR (pistas prioritárias):
+=====================================================
+${snippetBlock}
+
+=====================================================
+TAREFA:
+Gere AGORA o objeto JSON conforme a estrutura obrigatória descrita acima.
+Nada além do JSON na sua resposta.`;
+}
+
+function safeParseAIJson<T = any>(raw: string): T {
+  if (!raw) throw new Error('IA retornou vazio.');
+  let cleaned = raw.trim();
+  // Remove cercas de código ```json ... ```
+  const fenceMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenceMatch) cleaned = fenceMatch[1].trim();
+  // Recorta do primeiro { até o último }
+  const first = cleaned.indexOf('{');
+  const last = cleaned.lastIndexOf('}');
+  if (first !== -1 && last !== -1 && last > first) cleaned = cleaned.slice(first, last + 1);
+  return JSON.parse(cleaned) as T;
+}
+
+function normalizeMappingResponse(obj: any): CaseStudySynthesis {
+  const toTopics = (arr: any, allowedCats?: string[]): TopicItem[] => {
+    if (!Array.isArray(arr)) return [];
+    return arr
+      .map((it: any) => {
+        const text = typeof it === 'string' ? it : (it?.text ?? '');
+        const cat = typeof it === 'object' && it?.category ? String(it.category).toLowerCase() : undefined;
+        if (!text || !String(text).trim()) return null;
+        const category = allowedCats
+          ? (cat && allowedCats.includes(cat) ? cat : allowedCats[0])
+          : undefined;
+        const topic: TopicItem = { id: crypto.randomUUID(), text: String(text).trim(), selected: true, category };
+        return topic;
+      })
+      .filter((x): x is TopicItem => x !== null);
+  };
+
+  const contextCats = CONTEXT_CATEGORIES.map(c => c.id);
+  const accessCats = ACCESSIBILITY_CATEGORIES.map(c => c.id);
+
+  return {
+    currentContext:        toTopics(obj?.currentContext, contextCats),
+    learningStyle:         toTopics(obj?.learningStyle),
+    potentialsInterests:   toTopics(obj?.potentialsInterests),
+    demandsBarriers:       toTopics(obj?.demandsBarriers),
+    accessibilityStrategies: toTopics(obj?.accessibilityStrategies, accessCats)
+  };
+}
 
 import { AxisItem, HighlightSnippet } from '../types/database';
-type DataSource = { id: string; title: string; subtitle: string; content: string; icon: any; colorClass: string; bgColorClass: string; };
 
-const MOCK_SOURCES: DataSource[] = [
-  {
-    id: 'if-sahs',
-    title: 'IF-SAHS (Família)',
-    subtitle: 'Atualizado há 2 dias',
-    content: 'O aluno começou a se interessar por astronomia aos 4 anos. Consegue citar todos os planetas e suas órbitas. No entanto, notamos que ele sente muita irritação em festas infantis e ambientes muito barulhentos da escola. Em casa é calmo, mas chora quando contrariado na rotina. Gosta de dinossauros também.',
-    icon: Users,
-    colorClass: 'text-blue-600',
-    bgColorClass: 'bg-blue-100',
-  },
-  {
-    id: 'ip-sahs',
-    title: 'IP-SAHS (Matemática)',
-    subtitle: 'Atualizado hoje',
-    content: 'O estudante resolve problemas complexos muito rápido, mas se recusa a escrever o passo a passo (cálculos) no papel. Sente tédio com explicações longas, o que leva à desatenção e conversas paralelas. Demonstra um vocabulário extremamente rico para sua idade.',
-    icon: Activity,
-    colorClass: 'text-orange-600',
-    bgColorClass: 'bg-orange-100',
-  },
-  {
-    id: 'n-ils',
-    title: 'N-ILS (Estilos)',
-    subtitle: 'Mapeado pelo sistema',
-    content: 'O aluno possui estilo de aprendizagem predominantemente Visual e Global. Precisa de uma visão do todo antes das partes e prefere mapas mentais ao invés de textos corridos e lineares. Desempenha muito bem atividades que envolvem raciocínio espacial.',
-    icon: Brain,
-    colorClass: 'text-purple-600',
-    bgColorClass: 'bg-purple-100',
+type InstrumentKind = 'if-sahs' | 'ip-sahs' | 'entrevista' | 'n-ils';
+
+type InstrumentVersion = {
+  id: string;                                           // UUID do registro de origem
+  sourceTable: 'instrument_records' | 'ip_sahs_responses' | 'n_ils_responses' | 'ip_sahs_consolidations';
+  label: string;                                        // Descrição da versão (respondente + data)
+  dateISO: string;                                      // Para ordenação
+  content: string;                                      // Texto achatado usado no fichamento
+  // Campos adicionais usados para a consolidação IA do IP-SAHS
+  rawAnswers?: Record<string, any>;
+  respondentName?: string;
+  respondentRole?: string;
+  isConsolidated?: boolean;
+};
+
+type DataSource = {
+  id: InstrumentKind;
+  title: string;
+  subtitle: string;
+  icon: any;
+  colorClass: string;
+  bgColorClass: string;
+  versions: InstrumentVersion[];
+};
+
+// ---------- Helpers ---------------------------------------------------------
+// Campos técnicos que não devem aparecer ao fichar respostas.
+const META_KEYS = new Set([
+  'id', 'student_id', 'teacher_id', 'instrument_id',
+  'created_at', 'updated_at', 'completed_at', 'deleted_at',
+  'status', 'version', 'respondent_name', 'respondent_role',
+  'role', 'pendingQuestions', 'respondentRelation'
+]);
+
+// Mapa de rótulos amigáveis para chaves conhecidas.
+const FIELD_LABELS: Record<string, string> = {
+  discipline: 'Disciplina',
+  behavioral_profile: 'Perfil Comportamental (Frequência 1–5)',
+  other_behaviors: 'Outros comportamentos observados',
+  social_interaction_option: 'Interação Social (opção escolhida)',
+  social_interaction_example: 'Exemplos de Interação Social',
+  desafios_reacao_option: 'Reação a Desafios (opção escolhida)',
+  desafios_reacao_example: 'Exemplos de Reação a Desafios',
+  areas_of_interest: 'Áreas de Interesse',
+  other_interests: 'Outros Interesses',
+  potentialities_response: 'Potencialidades e facilidades',
+  pedagogical_difficulties_response: 'Maiores dificuldades pedagógicas',
+  demotivation_signs_response: 'Sinais de desmotivação',
+  needs_pedagogical: 'Necessidades Pedagógicas',
+  needs_behavioral: 'Necessidades Comportamentais',
+  needs_emotional: 'Necessidades Emocionais',
+  adopted_strategy: 'Já adotou estratégia pedagógica?',
+  strategy_experience_response: 'Estratégias adotadas e eficácia',
+  suggestions: 'Sugestões para o Plano de Suplementação',
+  additional_notes: 'Observações / Informações Adicionais'
+};
+
+const humanizeKey = (key: string): string =>
+  FIELD_LABELS[key] ?? key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+function formatValue(val: any): string {
+  if (val === null || val === undefined || val === '') return '—';
+  if (typeof val === 'boolean') return val ? 'Sim' : 'Não';
+  if (typeof val === 'string' || typeof val === 'number') return String(val);
+  if (Array.isArray(val)) {
+    if (val.length === 0) return '—';
+    if (typeof val[0] === 'object' && val[0] !== null) {
+      return val.map((item, i) => {
+        const inner = Object.entries(item)
+          .filter(([k, v]) => k !== 'id' && v !== null && v !== '')
+          .map(([k, v]) => `${humanizeKey(k)}: ${formatValue(v)}`)
+          .join(' | ');
+        return `  ${i + 1}. ${inner}`;
+      }).join('\n');
+    }
+    return val.map(v => `  • ${v}`).join('\n');
   }
-];
+  if (typeof val === 'object') {
+    const entries = Object.entries(val as Record<string, any>);
+    // Perfil numérico (índice → valor 1–5)
+    if (entries.length > 0 && entries.every(([, v]) => typeof v === 'number')) {
+      return entries.map(([k, v]) => `  Item ${+k + 1}: ${v}/5`).join('\n');
+    }
+    return entries
+      .filter(([k]) => !META_KEYS.has(k))
+      .map(([k, v]) => `${humanizeKey(k)}: ${formatValue(v)}`)
+      .join('\n');
+  }
+  return String(val);
+}
+
+function flattenAnswersToText(raw: any): string {
+  if (!raw) return '';
+  if (typeof raw === 'string') {
+    try { raw = JSON.parse(raw); } catch { return raw; }
+  }
+  // IF-SAHS / Entrevista frequentemente encapsulam em { responses: {...} }
+  const answers = (raw && typeof raw === 'object' && raw.responses && typeof raw.responses === 'object')
+    ? raw.responses
+    : raw;
+  const lines: string[] = [];
+  for (const [key, val] of Object.entries(answers as Record<string, any>)) {
+    if (META_KEYS.has(key)) continue;
+    if (val === null || val === undefined || val === '') continue;
+    lines.push(`${humanizeKey(key)}:`);
+    lines.push(formatValue(val));
+    lines.push('');
+  }
+  return lines.join('\n').trim();
+}
+
+function buildNilsAnalysisText(r: any): string {
+  const d = (a: number, b: number) => (r?.[a] || 0) - (r?.[b] || 0);
+  // Ignorar eslint; utilitário usa chaves do n_ils_responses
+  const ativoRef = (r?.ati_val || 0) - (r?.ref_val || 0);
+  const sensInt = (r?.sen_val || 0) - (r?.int_val || 0);
+  const visVer = (r?.vis_val || 0) - (r?.ver_val || 0);
+  const seqGlo = (r?.seq_val || 0) - (r?.glo_val || 0);
+  void d; // silencia lint
+
+  const intensity = (v: number) => {
+    const abs = Math.abs(v);
+    if (abs === 0) return 'equilíbrio entre os polos';
+    if (abs <= 1) return 'leve preferência';
+    if (abs <= 3) return 'preferência moderada';
+    return 'forte preferência';
+  };
+  const polo = (v: number, pos: string, neg: string) =>
+    v > 0 ? pos : v < 0 ? neg : `${pos} / ${neg}`;
+  const formatDim = (label: string, v: number, pos: string, neg: string) =>
+    `${label}: ${intensity(v)} pelo polo ${polo(v, pos, neg)} (diferencial ${v > 0 ? '+' : ''}${v}).`;
+
+  return [
+    'Perfil de Estilo de Aprendizagem (N-ILS):',
+    '',
+    formatDim('Dimensão Processamento', ativoRef, 'Ativo', 'Reflexivo'),
+    formatDim('Dimensão Percepção', sensInt, 'Sensorial', 'Intuitivo'),
+    formatDim('Dimensão Representação', visVer, 'Visual', 'Verbal'),
+    formatDim('Dimensão Organização', seqGlo, 'Sequencial', 'Global')
+  ].join('\n');
+}
+
+const INSTRUMENT_DEFAULTS: Record<InstrumentKind, Omit<DataSource, 'versions' | 'subtitle'>> = {
+  'if-sahs':   { id: 'if-sahs',   title: 'IF-SAHS',   icon: Users,         colorClass: 'text-blue-600',   bgColorClass: 'bg-blue-100' },
+  'ip-sahs':   { id: 'ip-sahs',   title: 'IP-SAHS',   icon: ClipboardList, colorClass: 'text-orange-600', bgColorClass: 'bg-orange-100' },
+  'entrevista':{ id: 'entrevista',title: 'Entrevista',icon: MessageSquare, colorClass: 'text-emerald-600',bgColorClass: 'bg-emerald-100' },
+  'n-ils':     { id: 'n-ils',     title: 'N-ILS',     icon: Brain,         colorClass: 'text-purple-600', bgColorClass: 'bg-purple-100' }
+};
 
 type TopicItem = { id: string; text: string; selected: boolean; source?: string; category?: string };
 
@@ -80,28 +318,6 @@ export const ACCESSIBILITY_CATEGORIES = [
   { id: 'ambiental', label: 'Ambiental', colorClass: 'bg-teal-100 text-teal-800' },
   { id: 'avaliação', label: 'Avaliação', colorClass: 'bg-rose-100 text-rose-800' }
 ];
-
-const parseString = (str: string, category?: string): TopicItem[] => str.split(/(?:\. |\n)/).filter(Boolean).map(s => ({ id: crypto.randomUUID(), text: s.trim() + (s.trim().endsWith('.') ? '' : '.'), selected: true, category }));
-
-const mockIaResponse: CaseStudySynthesis = {
-  currentContext: [
-    ...parseString('Desempenha bem em matérias exatas, porém apresenta lentidão em tarefas de leitura e escrita. Demonstra desmotivação nas aulas expositivas.', 'acadêmico'),
-    ...parseString('Capacidade de raciocínio lógico-espacial avançada. Atenção flutuante em tarefas longas.', 'cognitivo'),
-    ...parseString('Vocabulário rico para a idade, porém dificuldade em organizar narrativas escritas.', 'linguístico'),
-    ...parseString('Interação restrita. Prefere brincar sozinho ou conversar com adultos sobre tópicos de interesse específico.', 'social'),
-    ...parseString('Baixa tolerância à frustração. Demonstra ansiedade ao ser corrigido publicamente.', 'emocional'),
-    ...parseString('Sinais de rigidez cognitiva (necessidade de previsibilidade nas rotinas).', 'psicológico'),
-    ...parseString('Sensibilidade auditiva em ambientes ruidosos. Uso de fones abafadores recomendado.', 'físico')
-  ],
-  learningStyle: parseString('Predominantemente Visual e Ativo (Perfil N-ILS). Beneficia-se de mapas mentais e informações concretas.'),
-  potentialsInterests: parseString('Alto interesse/hiperfoco em Astronomia e sistemas mecânicos. Memória prodigiosa para fatos de seu interesse.'),
-  demandsBarriers: parseString('Barreira Atitudinal: rigidez de alguns professores quanto a métodos convencionais. \nBarreira de Comunicação: instruções muito longas ou apenas orais tendem a ser ignoradas.'),
-  accessibilityStrategies: [
-    ...parseString('Fragmentação de tarefas com listas de verificação visuais; permissão para usar mapas mentais em vez de anotações convencionais.', 'instrucional'),
-    ...parseString('Uso de fones abafadores de ruído; sentar-se na frente ou extremidade da sala.', 'ambiental'),
-    ...parseString('Tempo estendido para provas; possibilidade de consulta ao esquema visual autorregulado.', 'avaliação')
-  ]
-};
 
 function AutoResizeTextarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -194,12 +410,14 @@ export default function ConvergenceEditor() {
   const { studentId } = useParams();
   
   // Left Column States
+  const [sources, setSources] = useState<DataSource[]>([]);
+  const [loadingSources, setLoadingSources] = useState(true);
   const [readingSource, setReadingSource] = useState<DataSource | null>(null);
-  const [snippets, setSnippets] = useState<HighlightSnippet[]>(() => {
-    const saved = localStorage.getItem(`snippets_student_${studentId}`);
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [selectedVersionIdx, setSelectedVersionIdx] = useState(0);
+  const [snippets, setSnippets] = useState<HighlightSnippet[]>([]);
   const [isSnippetsExpanded, setIsSnippetsExpanded] = useState(false);
+  // Modo de leitura do modal IP-SAHS: alterna entre versão individual e visão agregada determinística.
+  const [readingMode, setReadingMode] = useState<'version' | 'aggregated'>('version');
   
   // Generation & Right Column States
   const [isGenerating, setIsGenerating] = useState(false);
@@ -217,35 +435,196 @@ export default function ConvergenceEditor() {
   });
   const [lastConsolidation, setLastConsolidation] = useState<string | null>(null);
   const [showToast, setShowToast] = useState(false);
+  // Status do gateway de IA ('unknown' enquanto checa, 'ready' / 'missing-key' / 'offline')
+  const [aiStatus, setAiStatus] = useState<'unknown' | 'ready' | 'missing-key' | 'offline'>('unknown');
 
-  // Carregar do LocalStorage
+  // Health-check do backend de IA (não bloqueia a página).
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      try {
+        const res = await fetch('/api/health', { signal: AbortSignal.timeout(3000) });
+        if (!res.ok) throw new Error('health não ok');
+        const data = await res.json();
+        if (!cancelled) setAiStatus(data.aiReady ? 'ready' : 'missing-key');
+      } catch {
+        if (!cancelled) setAiStatus('offline');
+      }
+    };
+    check();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Carrega a síntese já gerada a partir de convergence_records (Supabase)
+  const [convergenceRowId, setConvergenceRowId] = useState<string | null>(null);
   useEffect(() => {
     if (!studentId) return;
-    
-    // Carregar mapeamento via chave antiga
-    const savedMap = localStorage.getItem(`mapeamento_data_${studentId}`);
-    if (savedMap) {
-      try {
-        const parsed = JSON.parse(savedMap);
-        if (parsed.caseStudySynthesis) {
-          setCaseStudySynthesis(parsed.caseStudySynthesis);
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from('convergence_records')
+        .select('id, synthesis_data, last_updated, updated_at, created_at')
+        .eq('student_id', studentId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (cancelled) return;
+      if (error) {
+        console.error('[Convergence] erro ao carregar síntese:', error);
+        return;
+      }
+      if (data) {
+        setConvergenceRowId(data.id);
+        if (data.synthesis_data) {
+          setCaseStudySynthesis(data.synthesis_data as CaseStudySynthesis);
           setHasGenerated(true);
         }
-        if (parsed.lastConsolidation) setLastConsolidation(parsed.lastConsolidation);
-      } catch (e) {
-        console.error("Erro ao carregar mapeamento local", e);
+        const stamp = data.last_updated || (data as any).updated_at || data.created_at;
+        if (stamp) setLastConsolidation(new Date(stamp).toLocaleString('pt-BR'));
       }
-    }
-
-    // A inicialização dos marcadores agora é feita de forma "Eager" (tardia) direto no useState,
-    // então removemos a lógica com useEffect para evitar sobrescritas ou Race Conditions.
+    })();
+    return () => { cancelled = true; };
   }, [studentId]);
 
-  // Auto-save exclusivo dos snippets (marcadores)
+  // Busca instrumentos reais + fichamentos do Supabase
   useEffect(() => {
     if (!studentId) return;
-    localStorage.setItem('snippets_student_' + studentId, JSON.stringify(snippets));
-  }, [snippets, studentId]);
+    let cancelled = false;
+
+    async function fetchAll() {
+      setLoadingSources(true);
+
+      const [records, ipLegacy, nils, snips, ipConsolid] = await Promise.all([
+        supabase.from('instrument_records')
+          .select('id, type, respondent_name, respondent_role, answers, created_at, updated_at')
+          .eq('student_id', studentId)
+          .order('created_at', { ascending: false }),
+        supabase.from('ip_sahs_responses')
+          .select('*')
+          .eq('student_id', studentId)
+          .order('completed_at', { ascending: false }),
+        supabase.from('n_ils_responses')
+          .select('*')
+          .eq('student_id', studentId)
+          .eq('status', 'active')
+          .order('updated_at', { ascending: false }),
+        supabase.from('highlight_snippets')
+          .select('*')
+          .eq('student_id', studentId)
+          .order('created_at', { ascending: false }),
+        supabase.from('ip_sahs_consolidations')
+          .select('*')
+          .eq('student_id', studentId)
+          .eq('status', 'ativo')
+          .order('created_at', { ascending: false })
+          .limit(1)
+      ]);
+
+      if (cancelled) return;
+
+      const recordsData = records.data || [];
+      const ipLegacyData = ipLegacy.data || [];
+      const nilsData = nils.data || [];
+      const ipConsolidData = ipConsolid.data || [];
+
+      const labelFor = (respondent?: string, role?: string, date?: string) => {
+        const parts = [respondent || role || 'Sem identificação'];
+        if (role && respondent) parts.push(role);
+        if (date) parts.push(new Date(date).toLocaleDateString('pt-BR'));
+        return parts.filter(Boolean).join(' • ');
+      };
+
+      const ifSahsVersions: InstrumentVersion[] = recordsData
+        .filter(r => r.type?.startsWith('if_sahs'))
+        .map(r => ({
+          id: r.id,
+          sourceTable: 'instrument_records' as const,
+          label: labelFor(r.respondent_name, r.respondent_role, r.created_at),
+          dateISO: r.updated_at || r.created_at,
+          content: flattenAnswersToText(r.answers)
+        }));
+
+      const interviewVersions: InstrumentVersion[] = recordsData
+        .filter(r => r.type?.startsWith('interview'))
+        .map(r => ({
+          id: r.id,
+          sourceTable: 'instrument_records' as const,
+          label: labelFor(r.respondent_name, r.respondent_role, r.created_at),
+          dateISO: r.updated_at || r.created_at,
+          content: flattenAnswersToText(r.answers)
+        }));
+
+      const ipSahsIndividual: InstrumentVersion[] = [
+        ...recordsData
+          .filter(r => r.type === 'ip_sahs')
+          .map(r => ({
+            id: r.id,
+            sourceTable: 'instrument_records' as const,
+            label: labelFor(r.respondent_name, r.respondent_role, r.created_at),
+            dateISO: r.updated_at || r.created_at,
+            content: flattenAnswersToText(r.answers),
+            rawAnswers: (r.answers as Record<string, any>) || {},
+            respondentName: r.respondent_name || '',
+            respondentRole: r.respondent_role || ''
+          })),
+        ...ipLegacyData.map((r: any) => {
+          const { respondent_name, role, ...rest } = r;
+          return {
+            id: r.id,
+            sourceTable: 'ip_sahs_responses' as const,
+            label: labelFor(respondent_name, role, r.completed_at || r.created_at),
+            dateISO: r.completed_at || r.created_at,
+            content: flattenAnswersToText(r),
+            rawAnswers: rest,
+            respondentName: respondent_name || '',
+            respondentRole: role || ''
+          };
+        })
+      ];
+
+      const ipSahsConsolidatedVersion: InstrumentVersion[] = ipConsolidData.map((c: any) => ({
+        id: c.id,
+        sourceTable: 'ip_sahs_consolidations' as const,
+        label: `✨ Versão Consolidada IA • ${new Date(c.created_at).toLocaleDateString('pt-BR')}`,
+        dateISO: c.created_at,
+        content: (c.consolidated_data?.analysis as string) || '',
+        isConsolidated: true
+      }));
+
+      // Consolidada sempre como primeira opção quando existir
+      const ipSahsVersions: InstrumentVersion[] = [...ipSahsConsolidatedVersion, ...ipSahsIndividual];
+
+      const nilsVersions: InstrumentVersion[] = nilsData.map((r: any) => ({
+        id: r.id,
+        sourceTable: 'n_ils_responses' as const,
+        label: `Análise automática • ${new Date(r.updated_at || r.created_at).toLocaleDateString('pt-BR')}`,
+        dateISO: r.updated_at || r.created_at,
+        content: buildNilsAnalysisText(r)
+      }));
+
+      const toSubtitle = (count: number) =>
+        count === 0 ? 'Nenhum preenchimento' : count === 1 ? '1 preenchimento' : `${count} preenchimentos`;
+
+      const nextSources: DataSource[] = [
+        { ...INSTRUMENT_DEFAULTS['if-sahs'],   versions: ifSahsVersions,    subtitle: toSubtitle(ifSahsVersions.length) },
+        { ...INSTRUMENT_DEFAULTS['ip-sahs'],   versions: ipSahsVersions,    subtitle: toSubtitle(ipSahsVersions.length) },
+        { ...INSTRUMENT_DEFAULTS['entrevista'],versions: interviewVersions, subtitle: toSubtitle(interviewVersions.length) },
+        { ...INSTRUMENT_DEFAULTS['n-ils'],     versions: nilsVersions,      subtitle: nilsVersions.length ? 'Análise automática disponível' : 'Nenhum preenchimento' }
+      ];
+
+      setSources(nextSources);
+      setSnippets((snips.data || []) as HighlightSnippet[]);
+      setLoadingSources(false);
+    }
+
+    fetchAll().catch(err => {
+      console.error('[Convergence] erro carregando fontes:', err);
+      setLoadingSources(false);
+    });
+
+    return () => { cancelled = true; };
+  }, [studentId]);
 
   // Modal Filters/Sort States
   const [filterStatus, setFilterStatus] = useState<'ativo' | 'armazenado'>('ativo');
@@ -265,67 +644,226 @@ export default function ConvergenceEditor() {
        return Number(b.id) - Number(a.id);
     });
 
-  const handleHighlight = (category: 'demandas' | 'contexto' | 'potencialidades' | 'duvida') => {
-    const selection = window.getSelection()?.toString().trim();
-    if (selection && readingSource) {
-      setSnippets(prev => [...prev, {
-        id: crypto.randomUUID(),
-        student_id: studentId || '',
-        text: selection,
-        category,
-        instrument_source: readingSource.title,
-        status: 'ativo'
-      }]);
-      window.getSelection()?.removeAllRanges();
-    } else {
-      alert("Por favor, selecione um trecho do texto antes de clicar no botão.");
+  const handleHighlight = async (category: 'demandas' | 'contexto' | 'potencialidades' | 'duvida') => {
+    const sel = window.getSelection();
+    const selection = sel?.toString().trim();
+    if (!selection) {
+      alert('Por favor, selecione um trecho do texto antes de clicar no botão.');
+      return;
     }
+    if (!readingSource || !studentId) return;
+
+    // --- Modo "Visão Agregada": inferimos sourceId/sourceTable/respondente a partir do DOM ---
+    let resolvedSourceId: string | null = null;
+    let resolvedSourceTable: string | null = null;
+    let resolvedInstrumentSource: string | null = null;
+
+    if (readingMode === 'aggregated' && readingSource.id === 'ip-sahs' && sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      const findBlock = (node: Node | null): HTMLElement | null => {
+        let el: Node | null = node;
+        while (el && el.nodeType !== 1) el = el.parentNode;
+        return (el as HTMLElement | null)?.closest('[data-source-id]') ?? null;
+      };
+      const startBlock = findBlock(range.startContainer);
+      const endBlock = findBlock(range.endContainer);
+      if (!startBlock || !endBlock) {
+        alert('Seleção fora de um bloco rastreável. Selecione texto dentro de um único relato de respondente.');
+        return;
+      }
+      if (startBlock !== endBlock) {
+        alert('A seleção atravessa respondentes diferentes. Para preservar a rastreabilidade, selecione um trecho contido em um único bloco.');
+        return;
+      }
+      resolvedSourceId = startBlock.dataset.sourceId ?? null;
+      resolvedSourceTable = startBlock.dataset.sourceTable ?? null;
+      const who = startBlock.dataset.respondent || 'Sem identificação';
+      const role = startBlock.dataset.role || '';
+      resolvedInstrumentSource = `${readingSource.title} — ${who}${role ? ` (${role})` : ''}`;
+    }
+
+    const version = readingSource.versions[selectedVersionIdx];
+    const instrumentSource = resolvedInstrumentSource
+      ?? (version ? `${readingSource.title} — ${version.label}` : readingSource.title);
+
+    const payload = {
+      student_id: studentId,
+      instrument_source: instrumentSource,
+      source_record_id: resolvedSourceId ?? version?.id ?? null,
+      source_table: resolvedSourceTable ?? version?.sourceTable ?? null,
+      text: selection,
+      category,
+      status: 'ativo' as const
+    };
+
+    const { data, error } = await supabase
+      .from('highlight_snippets')
+      .insert(payload)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[Convergence] erro ao salvar fichamento:', error);
+      alert('Erro ao salvar marcação: ' + error.message);
+      return;
+    }
+    setSnippets(prev => [data as HighlightSnippet, ...prev]);
+    window.getSelection()?.removeAllRanges();
   };
 
-  const handleChangeCategory = (id: string, newCategory: 'demandas' | 'contexto' | 'potencialidades' | 'duvida') => {
+  const handleChangeCategory = async (id: string, newCategory: 'demandas' | 'contexto' | 'potencialidades' | 'duvida') => {
+    const previous = snippets;
     setSnippets(prev => prev.map(s => s.id === id ? { ...s, category: newCategory } : s));
+    const { error } = await supabase
+      .from('highlight_snippets')
+      .update({ category: newCategory })
+      .eq('id', id);
+    if (error) {
+      console.error('[Convergence] erro ao atualizar categoria:', error);
+      alert('Erro ao atualizar categoria: ' + error.message);
+      setSnippets(previous);
+    }
   };
 
-  const handleGenerate = () => {
-    setIsGenerating(true);
-    
-    let promptAddition = '';
-    if (snippets.length > 0) {
-      promptAddition = `\nATENÇÃO: O professor já fez uma pré-análise e destacou os seguintes pontos importantes. Certifique-se de validar e incluir estes pontos na sua análise final, convertendo-os para itens de lista curtos:\n${snippets.map(s => `- [${s.category.toUpperCase()}] ${s.text}`).join('\n')}`;
+  const handleUpdateSnippetStatus = async (id: string, status: 'ativo' | 'armazenado') => {
+    const previous = snippets;
+    setSnippets(prev => prev.map(s => s.id === id ? { ...s, status } : s));
+    const { error } = await supabase
+      .from('highlight_snippets')
+      .update({ status })
+      .eq('id', id);
+    if (error) {
+      console.error('[Convergence] erro ao alterar status do fichamento:', error);
+      setSnippets(previous);
     }
-    
-    console.log("Enviando para IA:", SYSTEM_PROMPT_ESTUDO_CASO + promptAddition);
+  };
 
-    // Simulating API Call to LLM
-    setTimeout(() => {
-      const now = new Date().toLocaleString('pt-BR');
-      
-      setCaseStudySynthesis(mockIaResponse);
-      
-      if (studentId) {
-        const saved = localStorage.getItem(`mapeamento_data_${studentId}`);
-        const parsed = saved ? JSON.parse(saved) : {};
-        parsed.caseStudySynthesis = mockIaResponse;
-        parsed.lastConsolidation = now;
-        parsed.snippets = snippets;
-        localStorage.setItem(`mapeamento_data_${studentId}`, JSON.stringify(parsed));
+  const handleDeleteSnippet = async (id: string) => {
+    if (!confirm('Deseja realmente apagar este registro em definitivo?')) return;
+    const previous = snippets;
+    setSnippets(prev => prev.filter(s => s.id !== id));
+    const { error } = await supabase
+      .from('highlight_snippets')
+      .delete()
+      .eq('id', id);
+    if (error) {
+      console.error('[Convergence] erro ao excluir fichamento:', error);
+      alert('Erro ao excluir: ' + error.message);
+      setSnippets(previous);
+    }
+  };
+
+  // A função legada handleConsolidateIPSahs foi removida: a nova "Visão Agregada"
+  // determinística (src/lib/ipsahs/aggregator.ts + IPSahsAggregatedView) substitui
+  // a consolidação por IA com mais transparência e zero custo de tokens.
+  // Registros antigos em `ip_sahs_consolidations` continuam sendo exibidos para
+  // preservar histórico, mas novas consolidações não são mais criadas.
+
+  const handleGenerate = async () => {
+    if (!studentId) return;
+    const hasAnyData = sources.some(s => s.versions.length > 0);
+    if (!hasAnyData && snippets.length === 0) {
+      alert('Não há dados de instrumentos nem fichamentos para gerar o mapeamento.');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const studentRes = await supabase
+        .from('students').select('full_name').eq('id', studentId).single();
+      const studentName = studentRes.data?.full_name || 'Aluno';
+
+      const prompt = buildMappingPrompt({
+        studentName,
+        sources,
+        snippets: snippets.filter(s => (s.status || 'ativo') === 'ativo')
+      });
+      const model = 'gemini-1.5-flash';
+
+      const aiRes = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, model })
+      });
+      if (!aiRes.ok) {
+        const err = await aiRes.json().catch(() => ({}));
+        throw new Error(err.error || `Falha na IA (${aiRes.status})`);
+      }
+      const { result: raw } = await aiRes.json();
+      if (!raw || typeof raw !== 'string') {
+        throw new Error('A IA retornou um conteúdo vazio ou inválido.');
       }
 
+      let parsed: any;
+      try {
+        parsed = safeParseAIJson(raw);
+      } catch (e: any) {
+        console.error('[Convergence] JSON inválido da IA:', raw);
+        throw new Error('A IA retornou um JSON inválido. Tente novamente.');
+      }
+      const synthesis = normalizeMappingResponse(parsed);
+
+      const nowIso = new Date().toISOString();
+      const payload: Record<string, any> = {
+        student_id: studentId,
+        synthesis_data: synthesis,
+        ai_prompt: prompt,
+        ai_model: model,
+        last_updated: nowIso
+      };
+
+      let savedId = convergenceRowId;
+      if (savedId) {
+        const { error: updErr } = await supabase
+          .from('convergence_records')
+          .update(payload)
+          .eq('id', savedId);
+        if (updErr) throw updErr;
+      } else {
+        // Garante default para axis_data legado caso a coluna seja NOT NULL
+        const insertPayload = {
+          ...payload,
+          axis_data: { I: [], II: [], III: [], IV: [] }
+        };
+        const { data: inserted, error: insErr } = await supabase
+          .from('convergence_records')
+          .insert(insertPayload)
+          .select('id')
+          .single();
+        if (insErr) throw insErr;
+        savedId = inserted.id;
+        setConvergenceRowId(savedId);
+      }
+
+      setCaseStudySynthesis(synthesis);
       setHasGenerated(true);
+      setLastConsolidation(new Date(nowIso).toLocaleString('pt-BR'));
+    } catch (err: any) {
+      console.error('[Convergence] erro ao gerar mapeamento:', err);
+      alert('Erro ao gerar mapeamento: ' + (err.message || 'desconhecido'));
+    } finally {
       setIsGenerating(false);
-      setLastConsolidation(now);
-    }, 3000);
+    }
+  };
+
+  // Debounce de persistência para evitar escrita a cada tecla
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const persistSynthesis = (synthesis: CaseStudySynthesis) => {
+    if (!studentId || !convergenceRowId) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(async () => {
+      const { error } = await supabase
+        .from('convergence_records')
+        .update({ synthesis_data: synthesis, last_updated: new Date().toISOString() })
+        .eq('id', convergenceRowId);
+      if (error) console.error('[Convergence] erro ao salvar edição da síntese:', error);
+    }, 700);
   };
 
   const handleTopicChange = (updater: (prev: CaseStudySynthesis) => CaseStudySynthesis) => {
     setCaseStudySynthesis(prev => {
       const updated = updater(prev);
-      if (studentId) {
-        const saved = localStorage.getItem(`mapeamento_data_${studentId}`);
-        const parsed = saved ? JSON.parse(saved) : {};
-        parsed.caseStudySynthesis = updated;
-        localStorage.setItem(`mapeamento_data_${studentId}`, JSON.stringify(parsed));
-      }
+      persistSynthesis(updated);
       return updated;
     });
   };
@@ -339,9 +877,13 @@ export default function ConvergenceEditor() {
     }, 1500);
   };
 
-  const renderHighlightedText = (text: string, source: string) => {
-    const sourceSnippets = snippets.filter(s => s.instrument_source === source && s.status !== 'armazenado');
-    if (sourceSnippets.length === 0) return <div dangerouslySetInnerHTML={{ __html: text }} className="leading-relaxed whitespace-pre-wrap" />;
+  const renderHighlightedText = (text: string, versionRecordId?: string) => {
+    const sourceSnippets = snippets.filter(s => {
+      if (s.status === 'armazenado') return false;
+      if (!versionRecordId) return false;
+      return (s as any).source_record_id === versionRecordId;
+    });
+    if (sourceSnippets.length === 0) return <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(text) }} className="leading-relaxed whitespace-pre-wrap" />;
 
     // Mapeamento de cores
     const getCategoryColor = (category: string) => {
@@ -363,7 +905,7 @@ export default function ConvergenceEditor() {
       resultText = resultText.replace(regex, `<mark class="${getCategoryColor(snippet.category)} px-1 rounded">$1</mark>`);
     });
 
-    return <div dangerouslySetInnerHTML={{ __html: resultText }} className="leading-relaxed whitespace-pre-wrap" />;
+    return <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(resultText) }} className="leading-relaxed whitespace-pre-wrap" />;
   };
 
   return (
@@ -388,10 +930,21 @@ export default function ConvergenceEditor() {
           <CheckCircle2 size={16} /> Mapeamento consolidado pela última vez em: {lastConsolidation}
         </div>
       )}
+
+      {(aiStatus === 'offline' || aiStatus === 'missing-key') && (
+        <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-center justify-center gap-2 text-sm font-bold text-amber-800 shadow-inner">
+          <Info size={16} />
+          {aiStatus === 'offline'
+            ? 'Gateway de IA offline. Rode `npm run dev` (ou `npm run dev:server`) e recarregue.'
+            : 'GEMINI_API_KEY ausente no servidor. Preencha em .env.local e reinicie `npm run dev`.'}
+        </div>
+      )}
       
       <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-8 flex flex-col gap-6">
         <StudentPageHeader title="Mapeamento Assistido" studentId={studentId} />
-        
+
+        <IABanner feature="Convergência assistida de instrumentos (IF-SAHS, IP-SAHS, N-ILS, entrevista)" />
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
           {/* COLUNA ESQUERDA: Fontes de Dados e Snippets */}
           <div className="lg:col-span-4 flex flex-col gap-6">
@@ -407,17 +960,31 @@ export default function ConvergenceEditor() {
             </p>
             
             <div className="space-y-4">
-               {MOCK_SOURCES.map(source => {
+               {loadingSources ? (
+                  <div className="flex items-center justify-center py-10 text-slate-400 gap-3">
+                    <Loader2 size={18} className="animate-spin" />
+                    <span className="text-xs font-black uppercase tracking-widest">Carregando instrumentos...</span>
+                  </div>
+               ) : sources.map(source => {
                  const Icon = source.icon;
+                 const empty = source.versions.length === 0;
+                 const snippetCount = snippets.filter(s =>
+                    s.status !== 'armazenado' &&
+                    source.versions.some(v => v.id === (s as any).source_record_id)
+                 ).length;
                  return (
-                   <button 
+                   <button
                      key={source.id}
                      onClick={() => {
-                        if (source.id !== 'n-ils') setReadingSource(source);
+                        if (empty) return;
+                        setSelectedVersionIdx(0);
+                        setReadingMode('version');
+                        setReadingSource(source);
                      }}
+                     disabled={empty}
                      className={cn(
                        "w-full flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 transition-colors text-left",
-                       source.id === 'n-ils' ? "opacity-75 cursor-default" : "group hover:border-primary/30 cursor-pointer"
+                       empty ? "opacity-60 cursor-not-allowed" : "group hover:border-primary/30 cursor-pointer"
                      )}
                    >
                      <div className="flex items-center gap-3">
@@ -427,22 +994,30 @@ export default function ConvergenceEditor() {
                         <div>
                            <p className="font-bold text-sm text-slate-700">{source.title}</p>
                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-1">
-                             {source.id === 'n-ils' ? '(Análise automática de Perfil)' : source.subtitle}
+                             {source.subtitle}
+                             {snippetCount > 0 && <span className="ml-2 text-primary">• {snippetCount} marcações</span>}
                            </p>
                         </div>
                      </div>
-                     {source.id !== 'n-ils' && <ArrowRight size={16} className="text-slate-300 group-hover:text-primary transition-colors" />}
+                     {!empty && <ArrowRight size={16} className="text-slate-300 group-hover:text-primary transition-colors" />}
                    </button>
                  );
                })}
             </div>
 
-            <button 
-               disabled={isGenerating}
+            <button
+               disabled={isGenerating || aiStatus === 'offline' || aiStatus === 'missing-key'}
                onClick={handleGenerate}
+               title={
+                 aiStatus === 'offline' ? 'Gateway de IA offline' :
+                 aiStatus === 'missing-key' ? 'GEMINI_API_KEY não configurada' :
+                 undefined
+               }
                className={cn(
                  "mt-auto w-full py-5 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 transition-all shadow-xl active:scale-95",
-                 isGenerating ? "bg-slate-100 text-slate-400 shadow-none cursor-not-allowed" : "bg-primary text-white shadow-primary/20 hover:brightness-110"
+                 (isGenerating || aiStatus === 'offline' || aiStatus === 'missing-key')
+                   ? "bg-slate-100 text-slate-400 shadow-none cursor-not-allowed"
+                   : "bg-primary text-white shadow-primary/20 hover:brightness-110"
                )}
             >
                {isGenerating ? (
@@ -683,18 +1258,68 @@ export default function ConvergenceEditor() {
                    </div>
                    <div>
                      <h3 className="font-black text-xl text-slate-800">{readingSource.title}</h3>
-                     <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-1">Leitura de Relato Bruto</p>
+                     <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-1">
+                       {readingSource.versions.length > 1
+                         ? `${readingSource.versions.length} versões disponíveis`
+                         : 'Leitura de Relato Bruto'}
+                     </p>
                    </div>
                  </div>
-                 <button 
-                   onClick={() => setReadingSource(null)} 
-                   className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 transition-colors"
-                 >
-                   <X size={24} />
-                 </button>
+                 <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setReadingSource(null)}
+                      className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 transition-colors"
+                    >
+                      <X size={24} />
+                    </button>
+                 </div>
               </div>
 
-              {/* Fichamento Toolbar */}
+              {/* Seletor de Versão + Visão Agregada (apenas IP-SAHS) */}
+              {(() => {
+                const ipSahsIndividuals = readingSource.id === 'ip-sahs'
+                  ? readingSource.versions.filter(v => !v.isConsolidated && v.rawAnswers)
+                  : [];
+                const showAggregatedToggle = ipSahsIndividuals.length >= 2;
+                if (readingSource.versions.length <= 1 && !showAggregatedToggle) return null;
+                return (
+                  <div className="px-6 py-3 border-b border-slate-100 bg-white shrink-0 flex flex-wrap items-center gap-3">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">Modo de leitura:</span>
+                    <div className="flex flex-wrap gap-2">
+                      {showAggregatedToggle && (
+                        <button
+                          onClick={() => setReadingMode('aggregated')}
+                          className={cn(
+                            "px-3 py-1.5 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5",
+                            readingMode === 'aggregated'
+                              ? "bg-slate-900 text-white border-slate-900 shadow-sm"
+                              : "bg-slate-50 text-slate-500 border-slate-200 hover:border-slate-400 hover:text-slate-700"
+                          )}
+                          title="Consolidação estatística de todos os respondentes (sem IA, determinística)."
+                        >
+                          <Activity size={12} /> Visão Agregada
+                        </button>
+                      )}
+                      {readingSource.versions.map((v, idx) => (
+                        <button
+                          key={v.id}
+                          onClick={() => { setReadingMode('version'); setSelectedVersionIdx(idx); }}
+                          className={cn(
+                            "px-3 py-1.5 text-xs font-bold rounded-lg border transition-all",
+                            readingMode === 'version' && selectedVersionIdx === idx
+                              ? "bg-primary text-white border-primary shadow-sm"
+                              : "bg-slate-50 text-slate-500 border-slate-200 hover:border-primary/40 hover:text-primary"
+                          )}
+                        >
+                          {v.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Fichamento Toolbar — disponível também na Visão Agregada (rastreia respondente via DOM) */}
               <div className="px-6 py-4 border-b border-slate-200 bg-white flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 shrink-0">
                  <span className="text-xs font-black text-slate-400 uppercase tracking-widest shrink-0">Grifar Texto (Fichamento):</span>
                  <div className="flex flex-wrap items-center gap-2">
@@ -731,11 +1356,60 @@ export default function ConvergenceEditor() {
 
               {/* Text Content */}
               <div className="p-8 overflow-y-auto flex-1 bg-white text-slate-700 leading-relaxed text-sm selection:bg-yellow-200 selection:text-slate-900">
-                 {renderHighlightedText(readingSource.content, readingSource.title)}
+                 {(() => {
+                    // Modo "Visão Agregada" — consolidação determinística do IP-SAHS
+                    if (readingMode === 'aggregated' && readingSource.id === 'ip-sahs') {
+                      const individuals = readingSource.versions.filter(v => !v.isConsolidated && v.rawAnswers);
+                      if (individuals.length === 0) {
+                        return <p className="text-slate-400 italic">Sem respondentes para agregar.</p>;
+                      }
+                      const aggregated = aggregateIPSahs(individuals.map(v => ({
+                        id: v.id,
+                        sourceTable: (v.sourceTable === 'ip_sahs_responses' ? 'ip_sahs_responses' : 'instrument_records') as 'instrument_records' | 'ip_sahs_responses',
+                        name: v.respondentName || 'Sem identificação',
+                        role: v.respondentRole || '',
+                        dateISO: v.dateISO,
+                        rawAnswers: v.rawAnswers as Record<string, any>
+                      })));
+                      // Snippets que pertencem a algum respondente desta visão agregada
+                      const aggSnippets = snippets.filter(
+                        s => individuals.some(v => (s as any).source_record_id === v.id)
+                      );
+                      return <IPSahsAggregatedView data={aggregated} fichable snippets={aggSnippets} />;
+                    }
+
+                    const version = readingSource.versions[selectedVersionIdx];
+                    if (!version) {
+                       return <p className="text-slate-400 italic">Nenhuma versão disponível.</p>;
+                    }
+                    // Renderer estruturado para IP-SAHS individual (não consolidado)
+                    const isIPSahsIndividual =
+                      readingSource.id === 'ip-sahs' && !version.isConsolidated && version.rawAnswers;
+                    if (isIPSahsIndividual) {
+                      const versionSnippets = snippets.filter(
+                        s => (s as any).source_record_id === version.id
+                      );
+                      return (
+                        <IPSahsReader
+                          rawAnswers={version.rawAnswers as Record<string, any>}
+                          respondentName={version.respondentName}
+                          respondentRole={version.respondentRole}
+                          completedAt={version.dateISO}
+                          snippets={versionSnippets}
+                        />
+                      );
+                    }
+                    if (!version.content.trim()) {
+                       return <p className="text-slate-400 italic">Este preenchimento não possui conteúdo textual a exibir.</p>;
+                    }
+                    return renderHighlightedText(version.content, version.id);
+                 })()}
                  <div className="mt-8 pt-8 border-t border-slate-100">
                     <p className="text-sm font-bold text-slate-400 flex items-center gap-2">
                        <CheckCircle2 size={16} />
-                       Dica: Selecione o texto com o cursor e depois clique em um dos botões coloridos acima.
+                       {readingMode === 'aggregated'
+                         ? 'Dica: selecione o trecho dentro de um único bloco de respondente para preservar a rastreabilidade.'
+                         : 'Dica: selecione o texto com o cursor e depois clique em um dos botões coloridos acima.'}
                     </p>
                  </div>
               </div>
@@ -879,8 +1553,8 @@ export default function ConvergenceEditor() {
                                ))}
                              </div>
                              
-                             <button 
-                               onClick={() => setSnippets(prev => prev.map(s => s.id === snippet.id ? { ...s, status: 'armazenado' } : s))}
+                             <button
+                               onClick={() => handleUpdateSnippetStatus(snippet.id, 'armazenado')}
                                className="w-8 h-8 shrink-0 text-slate-400 hover:bg-slate-200 hover:text-slate-600 rounded-lg flex items-center justify-center transition-all"
                                title="Arquivar marcador no cofre"
                              >
@@ -889,15 +1563,15 @@ export default function ConvergenceEditor() {
                            </>
                          ) : (
                            <>
-                             <button 
-                               onClick={() => setSnippets(prev => prev.map(s => s.id === snippet.id ? { ...s, status: 'ativo' } : s))}
+                             <button
+                               onClick={() => handleUpdateSnippetStatus(snippet.id, 'ativo')}
                                className="px-3 py-1.5 shrink-0 bg-white border border-slate-200 text-slate-500 hover:bg-primary hover:text-white hover:border-primary rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-sm"
                                title="Restaurar para a lista principal"
                              >
                                 <RefreshCcw size={14} /> Restaurar
                              </button>
-                             <button 
-                               onClick={() => { if(confirm("Deseja realmente apagar este registro em definitivo?")) setSnippets(prev => prev.filter(s => s.id !== snippet.id)); }}
+                             <button
+                               onClick={() => handleDeleteSnippet(snippet.id)}
                                className="w-8 h-8 shrink-0 bg-white text-slate-400 hover:bg-red-500 hover:text-white hover:border-red-500 border border-slate-200 shadow-sm rounded-lg flex items-center justify-center transition-all"
                                title="Excluir Definitivamente"
                              >
