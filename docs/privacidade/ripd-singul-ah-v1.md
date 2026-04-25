@@ -1,7 +1,7 @@
 # Relatório de Impacto à Proteção de Dados Pessoais (RIPD)
 
 **Sistema:** Singul-AH — Portal de PEI para estudantes com AH/SD
-**Versão:** 1.0 · **Data:** 23/04/2026
+**Versão:** 1.1 · **Data:** 25/04/2026
 **Base legal:** LGPD Art. 38
 
 ---
@@ -19,7 +19,9 @@
 
 ## 2. Contexto e escopo
 
-O Singul-AH integra dados coletados junto a **três informantes** (professor regente, AEE, família) e ao **próprio estudante**, produzindo uma **visão agregada** que subsidia a equipe pedagógica na construção do PEI. Parte do processamento é auxiliado por IA (Google Gemini).
+O Singul-AH integra dados coletados junto a **três informantes** (professor regente, AEE, família) e ao **próprio estudante**, produzindo uma **visão agregada** que subsidia a equipe pedagógica na construção do PEI. Parte do processamento é auxiliado por IA.
+
+O gateway de IA (`src/server.ts`) opera em modo hierárquico de provedor: **Ollama local** (modelo Gemma 3, código aberto, execução 100% na máquina do controlador — sem subprocessador externo) como provedor primário, com **fallback para Google Gemini** (com pseudonimização obrigatória) quando o Ollama estiver indisponível. O modo padrão é `AI_PROVIDER=auto`; em produção recomenda-se `AI_PROVIDER=ollama` para garantia plena de não-transferência internacional.
 
 ### 2.1 População afetada
 
@@ -52,11 +54,11 @@ O Singul-AH integra dados coletados junto a **três informantes** (professor reg
 |---|---|---|---|---|
 | 1 | Identificação do estudante | Pessoal comum | Cadastro escolar | Supabase |
 | 2 | Nome e vínculo do responsável | Pessoal comum | Autodeclarado | Supabase |
-| 3 | Respostas IF-SAHS | Sensível (biopsicossocial) | Responsável | Supabase + Gemini (pseudon.) |
-| 4 | Respostas IP-SAHS | Sensível | Docentes | Supabase + Gemini (pseudon.) |
+| 3 | Respostas IF-SAHS | Sensível (biopsicossocial) | Responsável | Supabase + IA (Ollama local ou Gemini pseudon.) |
+| 4 | Respostas IP-SAHS | Sensível | Docentes | Supabase + IA (Ollama local ou Gemini pseudon.) |
 | 5 | Respostas N-ILS | Sensível | Estudante | Supabase |
 | 6 | Transcrições de áudio | Sensível | Informantes | Supabase (texto) |
-| 7 | Convergências e sugestões IA | Derivado / sensível | Gemini | Supabase |
+| 7 | Convergências e sugestões IA | Derivado / sensível | Ollama (local) ou Gemini | Supabase |
 | 8 | Fichamentos pedagógicos | Derivado | Equipe escolar | Supabase |
 | 9 | PEI consolidado | Derivado / sensível | Equipe escolar | Supabase + PDF |
 | 10 | Logs de acesso | Pessoal comum | Sistema | Supabase (90d) |
@@ -90,7 +92,8 @@ Metodologia: combinação de **LINDDUN** (privacy threat modeling) + **ISO/IEC 2
 |---|---|---|---|---|---|
 | R1 | Acesso não autorizado ao Supabase (credencial vazada) | Baixa | Alto | Médio | Baixo |
 | R2 | Link de IF-SAHS interceptado / encaminhado | Média | Alto | Alto | **Médio → Baixo** com OTP |
-| R3 | Vazamento via Gemini (prompt/contexto) | Baixa | Alto | Médio | Baixo (pseudonimização) |
+| R3 | Vazamento via Gemini (prompt/contexto) | Muito baixa | Alto | Baixo | Muito baixo (Ollama local como primário; pseudon. quando Gemini é fallback) |
+| R13 | Ollama indisponível → fallback automático para Gemini sem aviso explícito ao usuário | Baixa | Médio | Baixo | Muito baixo (log de provedor ativo em `/api/health`; operador pode forçar `AI_PROVIDER=ollama`) |
 | R4 | Uso de dados fora da finalidade (docente) | Baixa | Médio | Baixo | Muito baixo (termo + logs) |
 | R5 | Reidentificação em publicação científica | Baixa | Alto | Médio | Muito baixo (pseudon. + agregação) |
 | R6 | Perda/corrupção de dados | Baixa | Médio | Baixo | Muito baixo (backup Supabase) |
@@ -107,9 +110,15 @@ Metodologia: combinação de **LINDDUN** (privacy threat modeling) + **ISO/IEC 2
 - **Ataque:** responsável encaminha o link por WhatsApp; alguém não autorizado abre.
 - **Mitigação:** token de uso único, expira em 7 dias, + OTP por e-mail antes de exibir formulário, + log de IP de acesso.
 
-#### R3 — Gemini
-- **Ataque:** prompt contendo identificadores vaza via incidente do operador.
-- **Mitigação:** sistema remove nome/escola/CPF antes do envio; usa token pseudonimizado (`[estudante_001]`); política Google de não-treinamento em Vertex AI; cláusulas contratuais.
+#### R3 — IA externa (Gemini como fallback)
+- **Ataque:** prompt contendo identificadores vaza via incidente do operador Google.
+- **Mitigação primária:** Ollama local (`AI_PROVIDER=ollama`) elimina completamente o risco — dados nunca saem da máquina, sem subprocessador externo, sem transferência internacional.
+- **Mitigação secundária (quando Gemini é ativado como fallback):** pseudonimização obrigatória antes do envio (`pseudonymize.ts`); tokens opacos `[ALUNO_001]`, `[ESCOLA_001]` substituem identificadores diretos; política Google de não-treinamento para APIs pagas; cláusulas contratuais (Art. 33 II-b); log de hash da chamada em `ai_call_logs` sem armazenar conteúdo bruto.
+- **Configuração recomendada para produção:** definir `AI_PROVIDER=ollama` em `.env.local` para suprimir completamente o fallback.
+
+#### R13 — Fallback silencioso para Gemini
+- **Ataque:** administrador configura `AI_PROVIDER=auto` (padrão); Ollama para de responder em produção; sistema passa a usar Gemini sem que o operador perceba mudança de provedor.
+- **Mitigação:** endpoint `/api/health` expõe campo `activeProvider` e `ollamaAvailable` — painel de monitoramento pode alertar quando o provedor ativo mudar; recomendação de configuração `AI_PROVIDER=ollama` em produção (fallback suprimido por configuração, não por comportamento implícito).
 
 #### R7 — IA e discriminação
 - **Ataque:** modelo inferir viés (ex.: menos expectativa para perfis sociais específicos).
@@ -122,7 +131,9 @@ Metodologia: combinação de **LINDDUN** (privacy threat modeling) + **ISO/IEC 2
 - TLS 1.2+ em toda conexão;
 - Criptografia em repouso (AES-256 no Supabase);
 - Row-Level Security (RLS) com políticas por papel;
-- Pseudonimização de identificadores antes de envio à IA;
+- **IA local via Ollama + Gemma 3 (provedor primário):** dados nunca saem da máquina — sem subprocessador externo, sem transferência internacional;
+- **Pseudonimização obrigatória** quando Gemini for acionado como fallback (`pseudonymize.ts`);
+- Gateway com três modos (`AI_PROVIDER`: `auto` / `ollama` / `gemini`) e health-check que expõe provedor ativo;
 - Logs de acesso versionados e imutáveis;
 - OTP para acesso via link (IF-SAHS);
 - Soft-delete + cron de purge com 90 dias de graça;
@@ -139,12 +150,14 @@ Metodologia: combinação de **LINDDUN** (privacy threat modeling) + **ISO/IEC 2
 
 ## 9. Transferência internacional
 
-Identificada — Supabase (US/EU) e Google Gemini (US).
+**Supabase:** identificada (EUA). **Google Gemini:** condicional — somente quando Ollama local indisponível e `AI_PROVIDER=auto` ou `gemini`.
 
-| Destinatário | País | Fundamento LGPD | Salvaguarda |
-|---|---|---|---|
-| Supabase Inc. | EUA | Art. 33 II-b | DPA com cláusulas padrão; SOC 2; GDPR-compliant |
-| Google LLC | EUA | Art. 33 II-b + VIII | DPA Google Cloud; regime "no training" para APIs pagas |
+| Destinatário | País | Condição de ativação | Fundamento LGPD | Salvaguarda |
+|---|---|---|---|---|
+| Supabase Inc. | EUA | Sempre (banco de dados) | Art. 33 II-b | DPA com cláusulas padrão; SOC 2; GDPR-compliant |
+| Google LLC | EUA | Somente fallback (`AI_PROVIDER≠ollama` + Ollama indisponível) | Art. 33 II-b + VIII | Pseudonimização prévia; DPA Google Cloud; regime "no training" para APIs pagas |
+
+**Recomendação de produção:** definir `AI_PROVIDER=ollama` elimina completamente a transferência internacional de dados de IA.
 
 Detalhes em [transferencia-internacional.md](./transferencia-internacional.md).
 
@@ -159,7 +172,18 @@ Este RIPD será **revisado**:
 
 ---
 
+---
+
+## 11. Histórico de revisões
+
+| Versão | Data | Alteração |
+|---|---|---|
+| 1.0 | 23/04/2026 | Versão inicial |
+| 1.1 | 25/04/2026 | Adição de Ollama como provedor primário de IA (zero custo, sem subprocessador externo); atualização de R3; inclusão de R13 (fallback silencioso); atualização da seção de transferência internacional para refletir condicionalidade do Gemini |
+
+---
+
 **Assinatura do Controlador:**
 
 Giovani Vasconcelos da Silva e Silva
-Data: 23/04/2026
+Data: 25/04/2026 (v1.1)
