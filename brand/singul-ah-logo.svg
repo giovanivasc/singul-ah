@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 560" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <!-- Gradiente do sparkle principal: laranja → índigo passando por âmbar -->
+    <linearGradient id="sparkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"  stop-color="#FBBF24"/>
+      <stop offset="45%" stop-color="#F97316"/>
+      <stop offset="100%" stop-color="#4F46E5"/>
+    </linearGradient>
+    <!-- Gradiente sutil para os mini-sparkles orbitais -->
+    <linearGradient id="orbitGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FBBF24"/>
+      <stop offset="100%" stop-color="#F97316"/>
+    </linearGradient>
+
+    <!-- Ícone reutilizável: sparkle 4-pontas assimétrico + 3 orbitais -->
+    <symbol id="singulahMark" viewBox="-100 -100 200 200">
+      <!-- Sparkle principal assimétrico (ponta inferior alongada = singularidade) -->
+      <path d="
+        M 0,-70
+        C 6,-22  22,-6  70,0
+        C 22, 6  6, 22  0, 95
+        C -6, 22 -22, 6 -70, 0
+        C -22,-6 -6,-22 0,-70 Z"
+        fill="url(#sparkGrad)"/>
+
+      <!-- Brilhos orbitais = multi-informante convergindo -->
+      <g fill="url(#orbitGrad)">
+        <!-- superior-direito (família) -->
+        <path d="M 62,-55 C 63,-46 68,-41 77,-40 C 68,-39 63,-34 62,-25 C 61,-34 56,-39 47,-40 C 56,-41 61,-46 62,-55 Z"/>
+        <!-- inferior-direito (AEE) -->
+        <path d="M 78, 42 C 79, 49 83, 53 90, 54 C 83, 55 79, 59 78, 66 C 77, 59 73, 55 66, 54 C 73, 53 77, 49 78, 42 Z"/>
+        <!-- esquerda (professor regente) -->
+        <path d="M -78,-15 C -77,-8 -73,-4 -66,-3 C -73,-2 -77, 2 -78, 9 C -79, 2 -83,-2 -90,-3 C -83,-4 -79,-8 -78,-15 Z"/>
+      </g>
+    </symbol>
+  </defs>
+
+  <!-- =================================================================== -->
+  <!-- (A) Versão horizontal completa                                        -->
+  <!-- =================================================================== -->
+  <g transform="translate(40,60)">
+    <use href="#singulahMark" x="0" y="0" width="140" height="140" transform="translate(70,70)"/>
+    <g transform="translate(175,0)">
+      <text x="0" y="82" font-size="72" font-weight="900" letter-spacing="-2" fill="#0F172A">
+        Singul<tspan fill="#F97316">·</tspan>AH
+      </text>
+      <text x="2" y="118" font-size="18" font-weight="700" letter-spacing="4" fill="#64748B" style="text-transform:uppercase">
+        Plano Individualizado · Altas Habilidades
+      </text>
+    </g>
+  </g>
+
+  <!-- divisor -->
+  <line x1="40" y1="240" x2="860" y2="240" stroke="#E2E8F0" stroke-width="1"/>
+
+  <!-- =================================================================== -->
+  <!-- (B) Versão empilhada                                                  -->
+  <!-- =================================================================== -->
+  <g transform="translate(60,270)">
+    <use href="#singulahMark" x="0" y="0" width="120" height="120" transform="translate(60,60)"/>
+    <text x="60" y="210" text-anchor="middle" font-size="34" font-weight="900" letter-spacing="-1" fill="#0F172A">
+      Singul<tspan fill="#F97316">·</tspan>AH
+    </text>
+  </g>
+
+  <!-- =================================================================== -->
+  <!-- (C) Somente ícone (favicon / app icon)                                -->
+  <!-- =================================================================== -->
+  <g transform="translate(340,270)">
+    <rect x="0" y="0" width="200" height="200" rx="44" ry="44" fill="#0F172A"/>
+    <use href="#singulahMark" x="0" y="0" width="150" height="150" transform="translate(100,100)"/>
+  </g>
+
+  <!-- =================================================================== -->
+  <!-- (D) Variação monocromática (para impressão 1-cor / marca d'água)     -->
+  <!-- =================================================================== -->
+  <g transform="translate(600,270)">
+    <rect x="0" y="0" width="200" height="200" rx="44" ry="44" fill="#F97316"/>
+    <g fill="#FFFFFF">
+      <path transform="translate(100,100) scale(0.75)"
+        d="M 0,-70 C 6,-22 22,-6 70,0 C 22,6 6,22 0,95 C -6,22 -22,6 -70,0 C -22,-6 -6,-22 0,-70 Z"/>
+      <path transform="translate(100,100) scale(0.75)"
+        d="M 62,-55 C 63,-46 68,-41 77,-40 C 68,-39 63,-34 62,-25 C 61,-34 56,-39 47,-40 C 56,-41 61,-46 62,-55 Z"/>
+      <path transform="translate(100,100) scale(0.75)"
+        d="M 78, 42 C 79,49 83,53 90,54 C 83,55 79,59 78,66 C 77,59 73,55 66,54 C 73,53 77,49 78,42 Z"/>
+      <path transform="translate(100,100) scale(0.75)"
+        d="M -78,-15 C -77,-8 -73,-4 -66,-3 C -73,-2 -77,2 -78,9 C -79,2 -83,-2 -90,-3 C -83,-4 -79,-8 -78,-15 Z"/>
+    </g>
+  </g>
+
+  <!-- Legendas das variantes -->
+  <g font-size="11" font-weight="700" letter-spacing="2" fill="#94A3B8" style="text-transform:uppercase">
+    <text x="40" y="30">A · Horizontal</text>
+    <text x="60" y="260">B · Empilhada</text>
+    <text x="340" y="260">C · Ícone / App</text>
+    <text x="600" y="260">D · Monocromática</text>
+  </g>
+</svg>

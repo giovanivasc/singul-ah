@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import { 
   Brain, Rocket, Trash2, Send, 
   ChevronLeft, Sparkles, History,
@@ -304,40 +305,28 @@ Entendimento: ${valEnte}
 Com base EXCLUSIVAMENTE nas regras do seu sistema, gere a interpretação e as estratégias pedagógicas.`;
 
     try {
-      const apiKey = (import.meta as any).env.VITE_GEMINI_API_KEY;
-      if (!apiKey) {
-        alert("Chave VITE_GEMINI_API_KEY não localizada.");
-        setIsGeneratingIA(false);
-        return;
-      }
-
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
+      const response = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ parts: [{ text: userQuery }] }],
-          generationConfig: { temperature: 0.7 }
-        })
+        body: JSON.stringify({ prompt: `${systemPrompt}\n\n${userQuery}` })
       });
 
       const data = await response.json();
       if (!response.ok) {
-        console.error("Gemini erro de resposta:", data);
-        alert(`Erro da API Gemini:\n\n${data.error?.message || response.statusText}\n\nVerifique se a sua VITE_GEMINI_API_KEY do arquivo .env é realmente válida.`);
+        console.error("Erro no servidor de IA:", data);
+        alert(`Erro ao gerar análise:\n\n${data.error || response.statusText}`);
         return;
       }
 
-      if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
-        let text = data.candidates[0].content.parts[0].text;
-        text = text.replace(/```html/g, "").replace(/```/g, "");
+      if (data?.result) {
+        let text = data.result.replace(/```html/g, "").replace(/```/g, "");
         setIaAdvice(text);
       } else {
-        alert("Ocorreu um erro ao processar o retorno da IA. Detalhes: Formato de mensagem inesperado.");
+        alert("Ocorreu um erro ao processar o retorno da IA. Formato de mensagem inesperado.");
       }
     } catch (err) {
       console.error(err);
-      alert("Falha na comunicação com a API Gemini.");
+      alert("Falha na comunicação com o servidor de IA.");
     } finally {
       setIsGeneratingIA(false);
     }
@@ -547,7 +536,7 @@ Com base EXCLUSIVAMENTE nas regras do seu sistema, gere a interpretação e as e
                             ) : (
                               <div 
                                 className="prose prose-sm md:prose-base prose-slate max-w-none prose-headings:font-black prose-h3:text-lg prose-h4:text-base prose-h4:text-primary prose-a:text-primary"
-                                dangerouslySetInnerHTML={{ __html: iaAdvice }}
+                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(iaAdvice) }}
                               />
                             )}
                          </motion.div>
@@ -556,52 +545,79 @@ Com base EXCLUSIVAMENTE nas regras do seu sistema, gere a interpretação e as e
                   </div>
               </div>
 
-              {/* Arquivados Accordion */}
-              {archivedTests.length > 0 && (
+              {/* Histórico de Preenchimentos */}
+              {(activeResult || archivedTests.length > 0) && (
                 <div className="mt-16">
-                   <button 
+                   <button
                      onClick={() => setShowArchived(!showArchived)}
                      className="w-full bg-slate-100/50 hover:bg-slate-100 border border-slate-200 rounded-[32px] p-6 flex items-center justify-between transition-all"
                    >
                      <div className="flex items-center gap-4">
                        <History className="text-slate-400" />
-                       <span className="font-black text-slate-500 uppercase tracking-widest text-sm">Ver Histórico Arquivado ({archivedTests.length})</span>
+                       <span className="font-black text-slate-500 uppercase tracking-widest text-sm">
+                         Histórico de Preenchimentos ({(activeResult ? 1 : 0) + archivedTests.length})
+                       </span>
                      </div>
                      <ChevronRight className={cn("text-slate-400 transition-transform", showArchived && "rotate-90")} />
                    </button>
-                   
+
                    <AnimatePresence>
                      {showArchived && (
-                       <motion.div 
+                       <motion.div
                          initial={{ opacity: 0, height: 0 }}
                          animate={{ opacity: 1, height: 'auto' }}
                          exit={{ opacity: 0, height: 0 }}
                          className="overflow-hidden"
                        >
                          <div className="pt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {archivedTests.map(test => (
-                               <div key={test.id} className="bg-slate-50 border border-slate-200 rounded-3xl p-6 opacity-70 grayscale hover:grayscale-0 hover:opacity-100 transition-all flex flex-col gap-4">
-                                  <div className="flex justify-between items-start">
-                                    <div className="bg-slate-200 text-slate-500 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-2">
-                                       <Archive size={12} /> Arquivado
-                                    </div>
-                                    <span className="text-[10px] font-bold text-slate-400">{new Date(test.updated_at).toLocaleDateString()}</span>
-                                  </div>
-                                  <div>
-                                    <p className="font-black text-on-surface text-lg">Estatísticas Antigas</p>
-                                    <div className="grid grid-cols-2 gap-2 mt-4 text-xs font-bold text-slate-500">
-                                       <span className="bg-white px-3 py-2 rounded-xl">Ativo: {test.ati_val}</span>
-                                       <span className="bg-white px-3 py-2 rounded-xl">Reflexivo: {test.ref_val}</span>
-                                       <span className="bg-white px-3 py-2 rounded-xl">Sensorial: {test.sen_val}</span>
-                                       <span className="bg-white px-3 py-2 rounded-xl">Intuitivo: {test.int_val}</span>
-                                       <span className="bg-white px-3 py-2 rounded-xl">Visual: {test.vis_val}</span>
-                                       <span className="bg-white px-3 py-2 rounded-xl">Verbal: {test.ver_val}</span>
-                                       <span className="bg-white px-3 py-2 rounded-xl">Sequencial: {test.seq_val}</span>
-                                       <span className="bg-white px-3 py-2 rounded-xl">Global: {test.glo_val}</span>
-                                    </div>
-                                  </div>
+                           {/* Teste ativo */}
+                           {activeResult && (
+                             <div key={activeResult.id} className="bg-white border border-primary/30 rounded-3xl p-6 flex flex-col gap-4 shadow-sm">
+                               <div className="flex justify-between items-start">
+                                 <div className="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-2">
+                                   <Activity size={12} /> Ativo
+                                 </div>
+                                 <span className="text-[10px] font-bold text-slate-400">{new Date(activeResult.updated_at).toLocaleDateString()}</span>
                                </div>
-                            ))}
+                               <div>
+                                 <p className="font-black text-on-surface text-lg">Teste Atual</p>
+                                 <div className="grid grid-cols-2 gap-2 mt-4 text-xs font-bold text-slate-500">
+                                   <span className="bg-slate-50 px-3 py-2 rounded-xl">Ativo: {activeResult.ati_val}</span>
+                                   <span className="bg-slate-50 px-3 py-2 rounded-xl">Reflexivo: {activeResult.ref_val}</span>
+                                   <span className="bg-slate-50 px-3 py-2 rounded-xl">Sensorial: {activeResult.sen_val}</span>
+                                   <span className="bg-slate-50 px-3 py-2 rounded-xl">Intuitivo: {activeResult.int_val}</span>
+                                   <span className="bg-slate-50 px-3 py-2 rounded-xl">Visual: {activeResult.vis_val}</span>
+                                   <span className="bg-slate-50 px-3 py-2 rounded-xl">Verbal: {activeResult.ver_val}</span>
+                                   <span className="bg-slate-50 px-3 py-2 rounded-xl">Sequencial: {activeResult.seq_val}</span>
+                                   <span className="bg-slate-50 px-3 py-2 rounded-xl">Global: {activeResult.glo_val}</span>
+                                 </div>
+                               </div>
+                             </div>
+                           )}
+                           {/* Testes arquivados */}
+                           {archivedTests.map(test => (
+                             <div key={test.id} className="bg-slate-50 border border-slate-200 rounded-3xl p-6 opacity-70 grayscale hover:grayscale-0 hover:opacity-100 transition-all flex flex-col gap-4">
+                               <div className="flex justify-between items-start">
+                                 <div className="bg-slate-200 text-slate-500 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-2">
+                                   <Archive size={12} /> Arquivado
+                                 </div>
+                                 <span className="text-[10px] font-bold text-slate-400">{new Date(test.updated_at).toLocaleDateString()}</span>
+                               </div>
+                               <div>
+                                 <p className="font-black text-on-surface text-lg">Estatísticas Antigas</p>
+                                 <div className="grid grid-cols-2 gap-2 mt-4 text-xs font-bold text-slate-500">
+                                   <span className="bg-white px-3 py-2 rounded-xl">Ativo: {test.ati_val}</span>
+                                   <span className="bg-white px-3 py-2 rounded-xl">Reflexivo: {test.ref_val}</span>
+                                   <span className="bg-white px-3 py-2 rounded-xl">Sensorial: {test.sen_val}</span>
+                                   <span className="bg-white px-3 py-2 rounded-xl">Intuitivo: {test.int_val}</span>
+                                   <span className="bg-white px-3 py-2 rounded-xl">Visual: {test.vis_val}</span>
+                                   <span className="bg-white px-3 py-2 rounded-xl">Verbal: {test.ver_val}</span>
+                                   <span className="bg-white px-3 py-2 rounded-xl">Sequencial: {test.seq_val}</span>
+                                   <span className="bg-white px-3 py-2 rounded-xl">Global: {test.glo_val}</span>
+                                 </div>
+                               </div>
+                             </div>
+                           ))}
                          </div>
                        </motion.div>
                      )}

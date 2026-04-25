@@ -7,14 +7,18 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
+import { SingulAhMark, SingulAhWordmark } from './SingulAhLogo';
 
 export function Logo() {
   return (
-    <NavLink 
+    <NavLink
       to="/dashboard"
-      className="group flex flex-col items-center justify-center mb-2 mt-4 w-full px-2"
+      className="group flex flex-col items-center justify-center gap-1 mb-2 mt-4 w-full px-2"
     >
-      <span className="text-[10px] font-black text-white/90 tracking-widest uppercase transition-all group-hover:text-primary">SINGUL-AH</span>
+      <SingulAhMark size={28} />
+      <span className="text-[9px] font-black text-white/80 tracking-[0.25em] uppercase transition-all group-hover:text-primary">
+        Singul-AH
+      </span>
     </NavLink>
   );
 }
@@ -161,21 +165,17 @@ export function TopBar({
           </button>
         ) : (
           <div className="md:hidden flex items-center justify-center">
-             <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                <Compass size={22} />
-             </div>
+            <SingulAhMark size={36} />
           </div>
         )}
         <div className="flex items-center gap-2">
           {title === "Singul-AH" && !showBack && (
-            <div className="md:flex hidden items-center gap-3">
-              <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
-                <Compass size={18} />
-              </div>
+            <div className="md:flex hidden items-center">
+              <SingulAhMark size={32} />
             </div>
           )}
           <h1 className="text-xl font-black tracking-tight text-on-surface">
-            {title === "Singul-AH" ? <span className="flex items-center gap-1">Singul<span className="text-primary">-AH</span></span> : title}
+            {title === "Singul-AH" ? <SingulAhWordmark className="text-xl" /> : title}
           </h1>
         </div>
         {children}

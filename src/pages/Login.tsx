@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Brain, Mail, Lock, Key, Loader2 } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Mail, Lock, Key, Loader2, ArrowLeft } from 'lucide-react';
+import SingulAhLogo from '../components/SingulAhLogo';
 import { motion } from 'motion/react';
 import { supabase } from '../lib/supabase';
 
@@ -63,12 +64,16 @@ export default function Login() {
         className="w-full max-w-md bg-white rounded-card atmospheric-shadow overflow-hidden"
       >
         <div className="p-8 md:p-12 flex flex-col items-center">
-          <header className="mb-10 text-center">
-            <div className="flex items-center justify-center mb-3">
-              <Brain className="text-primary mr-3" size={40} />
-              <h1 className="text-2xl font-black tracking-tight text-on-surface">Singul-AH</h1>
-            </div>
-            <p className="text-on-surface-variant text-sm font-medium opacity-60 max-w-[240px] mx-auto leading-relaxed">
+          <Link
+            to="/"
+            className="self-start -mt-2 mb-4 inline-flex items-center gap-1.5 text-xs font-bold text-on-surface-variant/70 hover:text-primary transition-colors"
+          >
+            <ArrowLeft size={14} />
+            Voltar ao início
+          </Link>
+          <header className="mb-10 text-center flex flex-col items-center">
+            <SingulAhLogo variant="stacked" markSize={72} tagline />
+            <p className="mt-5 text-on-surface-variant text-sm font-medium opacity-60 max-w-[240px] mx-auto leading-relaxed">
               Acesso ao Portal de Educação Individualizada
             </p>
           </header>
@@ -159,9 +164,17 @@ export default function Login() {
             </div>
 
             <p className="mt-8 text-xs text-on-surface-variant/80">
-              Não tem uma conta? 
+              Não tem uma conta?
               <a className="text-primary font-bold hover:underline ml-1" href="#">Solicitar acesso</a>
             </p>
+
+            <div className="mt-6 pt-6 border-t border-slate-100 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] font-semibold text-on-surface-variant/60">
+              <Link to="/privacidade" className="hover:text-primary transition">Privacidade</Link>
+              <span className="text-on-surface-variant/30">·</span>
+              <Link to="/termo-consentimento" className="hover:text-primary transition">Termo</Link>
+              <span className="text-on-surface-variant/30">·</span>
+              <Link to="/encarregado" className="hover:text-primary transition">Encarregado</Link>
+            </div>
           </footer>
         </div>
       </motion.main>

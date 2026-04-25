@@ -48,7 +48,6 @@ export interface InstrumentRecord {
   respondent_name?: string;
   respondent_role?: string;
   answers: Record<string, string>; // JSONB
-  audio_urls: Record<string, string>; // JSONB (Links do Storage)
   updates: Array<{
     date: string;
     person: string;
@@ -57,6 +56,22 @@ export interface InstrumentRecord {
   }>; // JSONB (Evolução do Caso)
   created_at?: string;
   updated_at?: string;
+}
+
+export type AudioFileStatus = 'pending' | 'transcribed' | 'reviewed' | 'merged' | 'deleted';
+
+// 3b. Tabela de Áudios dos Instrumentos
+export interface InstrumentAudioFile {
+  id: string;
+  record_id: string;
+  field_key: string;
+  audio_data: string | null;     // base64 (nulo após exclusão)
+  transcription: string | null;
+  status: AudioFileStatus;
+  created_at?: string;
+  transcribed_at?: string | null;
+  reviewed_at?: string | null;
+  deleted_at?: string | null;
 }
 
 // 4. Tabela de Fichamentos (Marcadores)
